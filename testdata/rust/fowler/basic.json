@@ -1,0 +1,3708 @@
+{
+  "test": [
+    {
+      "haystack": "abracadabracadabra",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            7,
+            18
+          ]
+        ]
+      ],
+      "name": "basic3",
+      "regex": "abracadabra$"
+    },
+    {
+      "haystack": "abababbb",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            2,
+            7
+          ]
+        ]
+      ],
+      "name": "basic4",
+      "regex": "a...b"
+    },
+    {
+      "haystack": "..XXXXXX",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            2,
+            8
+          ]
+        ]
+      ],
+      "name": "basic5",
+      "regex": "XXXXXX"
+    },
+    {
+      "haystack": "()",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic6",
+      "regex": "\\)"
+    },
+    {
+      "anchored": true,
+      "haystack": "a]a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic7",
+      "regex": "a]"
+    },
+    {
+      "anchored": true,
+      "haystack": "}",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic9",
+      "regex": "\\}"
+    },
+    {
+      "anchored": true,
+      "haystack": "]",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic10",
+      "regex": "\\]"
+    },
+    {
+      "anchored": true,
+      "haystack": "]",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic12",
+      "regex": "]"
+    },
+    {
+      "anchored": true,
+      "haystack": "ax",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic15",
+      "regex": "^a"
+    },
+    {
+      "haystack": "a^a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic16",
+      "regex": "\\^a"
+    },
+    {
+      "anchored": true,
+      "haystack": "a^",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic17",
+      "regex": "a\\^"
+    },
+    {
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic18",
+      "regex": "a$"
+    },
+    {
+      "anchored": true,
+      "haystack": "a$",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic19",
+      "regex": "a\\$"
+    },
+    {
+      "anchored": true,
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic20",
+      "regex": "^$"
+    },
+    {
+      "anchored": true,
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic21",
+      "regex": "$^"
+    },
+    {
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            2
+          ]
+        ]
+      ],
+      "name": "basic22",
+      "regex": "a($)"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic23",
+      "regex": "a*(^a)"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic24",
+      "regex": "(..)*(...)*"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "basic25",
+      "regex": "(..)*(...)*"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "basic26",
+      "regex": "(ab|a)(bc|c)"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic27",
+      "regex": "(ab)c|abc"
+    },
+    {
+      "haystack": "ab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic28",
+      "regex": "a{0}b"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaabbbbbbb",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            10
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic29",
+      "regex": "(a*)(b?)(b+)b{3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaabbbbbbb",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            10
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic30",
+      "regex": "(a*)(b{0,1})(b{1,})b{3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic32",
+      "regex": "((a|a)|a)"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      ],
+      "name": "basic33",
+      "regex": "(a*)(a|aa)"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      ],
+      "name": "basic34",
+      "regex": "a*(a.|aa)"
+    },
+    {
+      "anchored": true,
+      "haystack": "aef",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [],
+          [],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic35",
+      "regex": "a(b)|c(d)|a(e)f"
+    },
+    {
+      "anchored": true,
+      "haystack": "b",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic36",
+      "regex": "(a|b)?.*"
+    },
+    {
+      "anchored": true,
+      "haystack": "ac",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            1
+          ],
+          []
+        ]
+      ],
+      "name": "basic37",
+      "regex": "(a|b)c|a(b|c)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic38",
+      "regex": "(a|b)c|a(b|c)"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "basic39",
+      "regex": "(a|b)*c|(a|ab)*c"
+    },
+    {
+      "haystack": "xc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            2
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic40",
+      "regex": "(a|b)*c|(a|ab)*c"
+    },
+    {
+      "anchored": true,
+      "haystack": "xa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "basic41",
+      "regex": "(.a|.b).*|.*(.a|.b)"
+    },
+    {
+      "anchored": true,
+      "haystack": "abab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic42",
+      "regex": "a?(ab|ba)ab"
+    },
+    {
+      "anchored": true,
+      "haystack": "abab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic43",
+      "regex": "a?(ac{0}b|ba)ab"
+    },
+    {
+      "anchored": true,
+      "haystack": "abbabab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic44",
+      "regex": "ab|abab"
+    },
+    {
+      "haystack": "baaabbbaba",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            5,
+            8
+          ]
+        ]
+      ],
+      "name": "basic45",
+      "regex": "aba|bab|bba"
+    },
+    {
+      "haystack": "baaabbbaba",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            6,
+            9
+          ]
+        ]
+      ],
+      "name": "basic46",
+      "regex": "aba|bab"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "basic47",
+      "regex": "(aa|aaa)*|(a|aaaaa)"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "basic48",
+      "regex": "(a.|.a.)*|(a|.a...)"
+    },
+    {
+      "haystack": "xabc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic49",
+      "regex": "ab|a"
+    },
+    {
+      "haystack": "xxabc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            2,
+            4
+          ]
+        ]
+      ],
+      "name": "basic50",
+      "regex": "ab|a"
+    },
+    {
+      "anchored": true,
+      "case-insensitive": true,
+      "haystack": "aBcD",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      ],
+      "name": "basic51",
+      "regex": "(Ab|cD)*"
+    },
+    {
+      "haystack": "--a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "basic52",
+      "regex": "[^-]"
+    },
+    {
+      "anchored": true,
+      "haystack": "--a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic53",
+      "regex": "[a-]*"
+    },
+    {
+      "anchored": true,
+      "haystack": "--amoma--",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic54",
+      "regex": "[a-m-]*"
+    },
+    {
+      "haystack": ":::0:::1:::1:::0:",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            8,
+            17
+          ]
+        ]
+      ],
+      "name": "basic55",
+      "regex": ":::1:::0:|:::1:1:0:"
+    },
+    {
+      "haystack": ":::0:::1:::1:::0:",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            8,
+            17
+          ]
+        ]
+      ],
+      "name": "basic56",
+      "regex": ":::1:::0:|:::1:1:1:"
+    },
+    {
+      "anchored": true,
+      "haystack": "A",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic57",
+      "regex": "[[:upper:]]"
+    },
+    {
+      "haystack": "`az{",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic58",
+      "regex": "[[:lower:]]+"
+    },
+    {
+      "haystack": "@AZ[",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic59",
+      "regex": "[[:upper:]]+"
+    },
+    {
+      "anchored": true,
+      "haystack": "\\n",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic65",
+      "regex": "\\n",
+      "unescape": true
+    },
+    {
+      "anchored": true,
+      "haystack": "\\n",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic66",
+      "regex": "\\n",
+      "unescape": true
+    },
+    {
+      "anchored": true,
+      "haystack": "\\n",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic67",
+      "regex": "[^a]",
+      "unescape": true
+    },
+    {
+      "anchored": true,
+      "haystack": "\\na",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic68",
+      "regex": "\\na",
+      "unescape": true
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "basic69",
+      "regex": "(a)(b)(c)"
+    },
+    {
+      "anchored": true,
+      "haystack": "xxx",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic70",
+      "regex": "xxx"
+    },
+    {
+      "anchored": true,
+      "haystack": "feb 6,",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ]
+        ]
+      ],
+      "name": "basic72",
+      "regex": "(?:^|[ (,;])(?:(?:(?:[Ff]eb[^ ]* *|0*2/|\\* */?)0*[6-7]))(?:[^0-9]|$)"
+    },
+    {
+      "anchored": true,
+      "haystack": "2/7",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic74",
+      "regex": "(?:^|[ (,;])(?:(?:(?:[Ff]eb[^ ]* *|0*2/|\\* */?)0*[6-7]))(?:[^0-9]|$)"
+    },
+    {
+      "haystack": "feb 1,Feb 6",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            5,
+            11
+          ]
+        ]
+      ],
+      "name": "basic76",
+      "regex": "(?:^|[ (,;])(?:(?:(?:[Ff]eb[^ ]* *|0*2/|\\* */?)0*[6-7]))(?:[^0-9]|$)"
+    },
+    {
+      "anchored": true,
+      "haystack": "x",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic78",
+      "regex": "(((?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:x))))))))))))))))))))))))))))))"
+    },
+    {
+      "anchored": true,
+      "haystack": "xx",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic80",
+      "regex": "(((?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:(?:x))))))))))))))))))))))))))))))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababababababababababababababababababababababababababababababababababababababababa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            81
+          ],
+          [
+            79,
+            81
+          ]
+        ]
+      ],
+      "name": "basic81",
+      "regex": "a?(ab|ba)*"
+    },
+    {
+      "haystack": "ababbabbbabbbabbbbabbbbaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            18,
+            25
+          ]
+        ]
+      ],
+      "name": "basic82",
+      "regex": "abaa|abbaa|abbbaa|abbbbaa"
+    },
+    {
+      "haystack": "ababbabbbabbbabbbbabaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            18,
+            22
+          ]
+        ]
+      ],
+      "name": "basic83",
+      "regex": "abaa|abbaa|abbbaa|abbbbaa"
+    },
+    {
+      "haystack": "baaabbbabac",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            7,
+            11
+          ]
+        ]
+      ],
+      "name": "basic84",
+      "regex": "aaac|aabc|abac|abbc|baac|babc|bbac|bbbc"
+    },
+    {
+      "anchored": true,
+      "haystack": "\\x01\\x7f",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic86",
+      "regex": ".*",
+      "unescape": true
+    },
+    {
+      "haystack": "XaaaXbbbXcccXdddXeeeXfffXgggXhhhXiiiXjjjXkkkXlllXcbaXaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            53,
+            57
+          ]
+        ]
+      ],
+      "name": "basic87",
+      "regex": "aaaa|bbbb|cccc|ddddd|eeeeee|fffffff|gggg|hhhh|iiiii|jjjjj|kkkkk|llll"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaaaaab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            10
+          ]
+        ]
+      ],
+      "name": "basic89",
+      "regex": "a*a*a*a*a*b"
+    },
+    {
+      "anchored": true,
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic90",
+      "regex": "^"
+    },
+    {
+      "anchored": true,
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic91",
+      "regex": "$"
+    },
+    {
+      "anchored": true,
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic92",
+      "regex": "^$"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic93",
+      "regex": "^a$"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic94",
+      "regex": "abc"
+    },
+    {
+      "haystack": "xabcy",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            4
+          ]
+        ]
+      ],
+      "name": "basic95",
+      "regex": "abc"
+    },
+    {
+      "haystack": "ababc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            2,
+            5
+          ]
+        ]
+      ],
+      "name": "basic96",
+      "regex": "abc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic97",
+      "regex": "ab*c"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic98",
+      "regex": "ab*bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abbc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic99",
+      "regex": "ab*bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abbbbc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ]
+        ]
+      ],
+      "name": "basic100",
+      "regex": "ab*bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abbc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic101",
+      "regex": "ab+bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abbbbc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ]
+        ]
+      ],
+      "name": "basic102",
+      "regex": "ab+bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abbc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic103",
+      "regex": "ab?bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic104",
+      "regex": "ab?bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic105",
+      "regex": "ab?c"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic106",
+      "regex": "^abc$"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic107",
+      "regex": "^abc"
+    },
+    {
+      "haystack": "aabc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            4
+          ]
+        ]
+      ],
+      "name": "basic108",
+      "regex": "abc$"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic109",
+      "regex": "^"
+    },
+    {
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            3,
+            3
+          ]
+        ]
+      ],
+      "name": "basic110",
+      "regex": "$"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic111",
+      "regex": "a.c"
+    },
+    {
+      "anchored": true,
+      "haystack": "axc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic112",
+      "regex": "a.c"
+    },
+    {
+      "anchored": true,
+      "haystack": "axyzc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            5
+          ]
+        ]
+      ],
+      "name": "basic113",
+      "regex": "a.*c"
+    },
+    {
+      "anchored": true,
+      "haystack": "abd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic114",
+      "regex": "a[bc]d"
+    },
+    {
+      "anchored": true,
+      "haystack": "ace",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic115",
+      "regex": "a[b-d]e"
+    },
+    {
+      "haystack": "aac",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic116",
+      "regex": "a[b-d]"
+    },
+    {
+      "anchored": true,
+      "haystack": "a-",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic117",
+      "regex": "a[-b]"
+    },
+    {
+      "anchored": true,
+      "haystack": "a-",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic118",
+      "regex": "a[b-]"
+    },
+    {
+      "anchored": true,
+      "haystack": "a]",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic119",
+      "regex": "a]"
+    },
+    {
+      "anchored": true,
+      "haystack": "a]b",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic120",
+      "regex": "a[]]b"
+    },
+    {
+      "anchored": true,
+      "haystack": "aed",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic121",
+      "regex": "a[^bc]d"
+    },
+    {
+      "anchored": true,
+      "haystack": "adc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic122",
+      "regex": "a[^-b]c"
+    },
+    {
+      "anchored": true,
+      "haystack": "adc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic123",
+      "regex": "a[^]b]c"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic124",
+      "regex": "ab|cd"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic125",
+      "regex": "ab|cd"
+    },
+    {
+      "anchored": true,
+      "haystack": "a(b",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic126",
+      "regex": "a\\(b"
+    },
+    {
+      "anchored": true,
+      "haystack": "ab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic127",
+      "regex": "a\\(*b"
+    },
+    {
+      "anchored": true,
+      "haystack": "a((b",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic128",
+      "regex": "a\\(*b"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic129",
+      "regex": "((a))"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "basic130",
+      "regex": "(a)b(c)"
+    },
+    {
+      "haystack": "aabbabc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic131",
+      "regex": "a+b+c"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic132",
+      "regex": "a*"
+    },
+    {
+      "anchored": true,
+      "haystack": "-",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic133",
+      "regex": "(a*)*"
+    },
+    {
+      "anchored": true,
+      "haystack": "-",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic134",
+      "regex": "(a*)+"
+    },
+    {
+      "anchored": true,
+      "haystack": "-",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic135",
+      "regex": "(a*|b)*"
+    },
+    {
+      "anchored": true,
+      "haystack": "ab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic136",
+      "regex": "(a+|b)*"
+    },
+    {
+      "anchored": true,
+      "haystack": "ab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic137",
+      "regex": "(a+|b)+"
+    },
+    {
+      "anchored": true,
+      "haystack": "ab",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic138",
+      "regex": "(a+|b)?"
+    },
+    {
+      "anchored": true,
+      "haystack": "cde",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic139",
+      "regex": "[^ab]*"
+    },
+    {
+      "anchored": true,
+      "haystack": "-",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic140",
+      "regex": "(^)*"
+    },
+    {
+      "anchored": true,
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic141",
+      "regex": "a*"
+    },
+    {
+      "anchored": true,
+      "haystack": "abbbcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      ],
+      "name": "basic142",
+      "regex": "([abc])*d"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic143",
+      "regex": "([abc])*bcd"
+    },
+    {
+      "anchored": true,
+      "haystack": "e",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic144",
+      "regex": "a|b|c|d|e"
+    },
+    {
+      "anchored": true,
+      "haystack": "ef",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic145",
+      "regex": "(a|b|c|d|e)f"
+    },
+    {
+      "anchored": true,
+      "haystack": "-",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "name": "basic146",
+      "regex": "((a*|b))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcdefg",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ]
+        ]
+      ],
+      "name": "basic147",
+      "regex": "abcd*efg"
+    },
+    {
+      "haystack": "xabyabbbz",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic148",
+      "regex": "ab*"
+    },
+    {
+      "haystack": "xayabbbz",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic149",
+      "regex": "ab*"
+    },
+    {
+      "haystack": "abcde",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            2,
+            5
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      ],
+      "name": "basic150",
+      "regex": "(ab|cd)e"
+    },
+    {
+      "anchored": true,
+      "haystack": "hij",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic151",
+      "regex": "[abhgefdc]ij"
+    },
+    {
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            4
+          ],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic152",
+      "regex": "(a|b)c*d"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic153",
+      "regex": "(ab|ab*)bc"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic154",
+      "regex": "a([bc]*)c*"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      ],
+      "name": "basic155",
+      "regex": "a([bc]*)(c*d)"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      ],
+      "name": "basic156",
+      "regex": "a([bc]+)(c*d)"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            4
+          ]
+        ]
+      ],
+      "name": "basic157",
+      "regex": "a([bc]*)(c+d)"
+    },
+    {
+      "anchored": true,
+      "haystack": "adcdcde",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ]
+        ]
+      ],
+      "name": "basic158",
+      "regex": "a[bcd]*dcdcde"
+    },
+    {
+      "anchored": true,
+      "haystack": "abc",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            2
+          ]
+        ]
+      ],
+      "name": "basic159",
+      "regex": "(ab|a)b*c"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      ],
+      "name": "basic160",
+      "regex": "((a)(b)c)(d)"
+    },
+    {
+      "anchored": true,
+      "haystack": "alpha",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            5
+          ]
+        ]
+      ],
+      "name": "basic161",
+      "regex": "[A-Za-z_][A-Za-z0-9_]*"
+    },
+    {
+      "haystack": "abh",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            3
+          ],
+          []
+        ]
+      ],
+      "name": "basic162",
+      "regex": "^a(bc+|b[eh])g|.h$"
+    },
+    {
+      "anchored": true,
+      "haystack": "effgz",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            5
+          ],
+          [
+            0,
+            5
+          ],
+          []
+        ]
+      ],
+      "name": "basic163",
+      "regex": "(bc+d$|ef*g.|h?i(j|k))"
+    },
+    {
+      "anchored": true,
+      "haystack": "ij",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "basic164",
+      "regex": "(bc+d$|ef*g.|h?i(j|k))"
+    },
+    {
+      "haystack": "reffgz",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            1,
+            6
+          ],
+          [
+            1,
+            6
+          ],
+          []
+        ]
+      ],
+      "name": "basic165",
+      "regex": "(bc+d$|ef*g.|h?i(j|k))"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "basic166",
+      "regex": "(((((((((a)))))))))"
+    },
+    {
+      "anchored": true,
+      "haystack": "multiple words yeah",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            14
+          ]
+        ]
+      ],
+      "name": "basic167",
+      "regex": "multiple words"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcde",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            5
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            3,
+            5
+          ]
+        ]
+      ],
+      "name": "basic168",
+      "regex": "(.*)c(.*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic169",
+      "regex": "abcd"
+    },
+    {
+      "anchored": true,
+      "haystack": "abcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            1,
+            3
+          ]
+        ]
+      ],
+      "name": "basic170",
+      "regex": "a(bc)d"
+    },
+    {
+      "anchored": true,
+      "haystack": "a\\x02c",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic171",
+      "regex": "a[\\x01-\\x03]?c",
+      "unescape": true
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Qaddafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            15
+          ],
+          [],
+          [
+            10,
+            12
+          ]
+        ]
+      ],
+      "name": "basic172",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Mo'ammar Gadhafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            16
+          ],
+          [],
+          [
+            11,
+            13
+          ]
+        ]
+      ],
+      "name": "basic173",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Kaddafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            15
+          ],
+          [],
+          [
+            10,
+            12
+          ]
+        ]
+      ],
+      "name": "basic174",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Qadhafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            15
+          ],
+          [],
+          [
+            10,
+            12
+          ]
+        ]
+      ],
+      "name": "basic175",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Gadafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            14
+          ],
+          [],
+          [
+            10,
+            11
+          ]
+        ]
+      ],
+      "name": "basic176",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Mu'ammar Qadafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            15
+          ],
+          [],
+          [
+            11,
+            12
+          ]
+        ]
+      ],
+      "name": "basic177",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Moamar Gaddafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            14
+          ],
+          [],
+          [
+            9,
+            11
+          ]
+        ]
+      ],
+      "name": "basic178",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Mu'ammar Qadhdhafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            18
+          ],
+          [],
+          [
+            13,
+            15
+          ]
+        ]
+      ],
+      "name": "basic179",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Khaddafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            16
+          ],
+          [],
+          [
+            11,
+            13
+          ]
+        ]
+      ],
+      "name": "basic180",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Ghaddafy",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            16
+          ],
+          [],
+          [
+            11,
+            13
+          ]
+        ]
+      ],
+      "name": "basic181",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Ghadafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            15
+          ],
+          [],
+          [
+            11,
+            12
+          ]
+        ]
+      ],
+      "name": "basic182",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Ghaddafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            16
+          ],
+          [],
+          [
+            11,
+            13
+          ]
+        ]
+      ],
+      "name": "basic183",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muamar Kaddafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            14
+          ],
+          [],
+          [
+            9,
+            11
+          ]
+        ]
+      ],
+      "name": "basic184",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Quathafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            16
+          ],
+          [],
+          [
+            11,
+            13
+          ]
+        ]
+      ],
+      "name": "basic185",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Muammar Gheddafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            16
+          ],
+          [],
+          [
+            11,
+            13
+          ]
+        ]
+      ],
+      "name": "basic186",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Moammar Khadafy",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            15
+          ],
+          [],
+          [
+            11,
+            12
+          ]
+        ]
+      ],
+      "name": "basic187",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "Moammar Qudhafi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            15
+          ],
+          [],
+          [
+            10,
+            12
+          ]
+        ]
+      ],
+      "name": "basic188",
+      "regex": "M[ou]'?am+[ae]r .*([AEae]l[- ])?[GKQ]h?[aeu]+([dtz][dhz]?)+af[iy]"
+    },
+    {
+      "anchored": true,
+      "haystack": "aabcdd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      ],
+      "name": "basic189",
+      "regex": "a+(b|c)*d+"
+    },
+    {
+      "anchored": true,
+      "haystack": "vivi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic190",
+      "regex": "^.+$"
+    },
+    {
+      "anchored": true,
+      "haystack": "vivi",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic191",
+      "regex": "^(.+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "gryphon.att.com!eby",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            19
+          ],
+          [
+            0,
+            7
+          ],
+          [
+            16,
+            19
+          ]
+        ]
+      ],
+      "name": "basic192",
+      "regex": "^([^!.]+).att.com!(.+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic193",
+      "regex": "^([^!]+!)?([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic194",
+      "regex": "^([^!]+!)?([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic195",
+      "regex": "^([^!]+!)?([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            11
+          ],
+          [
+            4,
+            8
+          ],
+          [
+            8,
+            11
+          ]
+        ]
+      ],
+      "name": "basic196",
+      "regex": "^.+!([^!]+!)([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ],
+          [],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic197",
+      "regex": "((foo)|(bar))!bas"
+    },
+    {
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            4,
+            11
+          ],
+          [
+            4,
+            7
+          ],
+          [],
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic198",
+      "regex": "((foo)|(bar))!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            3
+          ],
+          []
+        ]
+      ],
+      "name": "basic199",
+      "regex": "((foo)|(bar))!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ],
+          []
+        ]
+      ],
+      "name": "basic200",
+      "regex": "((foo)|bar)!bas"
+    },
+    {
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            4,
+            11
+          ],
+          [
+            4,
+            7
+          ],
+          []
+        ]
+      ],
+      "name": "basic201",
+      "regex": "((foo)|bar)!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic202",
+      "regex": "((foo)|bar)!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic203",
+      "regex": "(foo|(bar))!bas"
+    },
+    {
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            4,
+            11
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic204",
+      "regex": "(foo|(bar))!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ],
+          []
+        ]
+      ],
+      "name": "basic205",
+      "regex": "(foo|(bar))!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic206",
+      "regex": "(foo|bar)!bas"
+    },
+    {
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            4,
+            11
+          ],
+          [
+            4,
+            7
+          ]
+        ]
+      ],
+      "name": "basic207",
+      "regex": "(foo|bar)!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "basic208",
+      "regex": "(foo|bar)!bas"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            11
+          ],
+          [
+            0,
+            11
+          ],
+          [],
+          [],
+          [
+            4,
+            8
+          ],
+          [
+            8,
+            11
+          ]
+        ]
+      ],
+      "name": "basic209",
+      "regex": "^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$"
+    },
+    {
+      "anchored": true,
+      "haystack": "bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [],
+          [
+            0,
+            3
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic210",
+      "regex": "^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic211",
+      "regex": "^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            11
+          ],
+          [],
+          [],
+          [
+            4,
+            8
+          ],
+          [
+            8,
+            11
+          ]
+        ]
+      ],
+      "name": "basic212",
+      "regex": "^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic213",
+      "regex": "^([^!]+!)?([^!]+)$|^.+!([^!]+!)([^!]+)$"
+    },
+    {
+      "anchored": true,
+      "haystack": "bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            3
+          ],
+          [],
+          [
+            0,
+            3
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic214",
+      "regex": "^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$"
+    },
+    {
+      "anchored": true,
+      "haystack": "bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic215",
+      "regex": "^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bar!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            11
+          ],
+          [
+            0,
+            11
+          ],
+          [],
+          [],
+          [
+            4,
+            8
+          ],
+          [
+            8,
+            11
+          ]
+        ]
+      ],
+      "name": "basic216",
+      "regex": "^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$"
+    },
+    {
+      "anchored": true,
+      "haystack": "foo!bas",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            7
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ],
+          [],
+          []
+        ]
+      ],
+      "name": "basic217",
+      "regex": "^(([^!]+!)?([^!]+)|.+!([^!]+!)([^!]+))$"
+    },
+    {
+      "anchored": true,
+      "haystack": "/XXX",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic218",
+      "regex": ".*(/XXX).*"
+    },
+    {
+      "anchored": true,
+      "haystack": "\\XXX",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic219",
+      "regex": ".*(\\\\XXX).*"
+    },
+    {
+      "anchored": true,
+      "haystack": "\\XXX",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic220",
+      "regex": "\\\\XXX"
+    },
+    {
+      "anchored": true,
+      "haystack": "/000",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic221",
+      "regex": ".*(/000).*"
+    },
+    {
+      "anchored": true,
+      "haystack": "\\000",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic222",
+      "regex": ".*(\\\\000).*"
+    },
+    {
+      "anchored": true,
+      "haystack": "\\000",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ]
+        ]
+      ],
+      "name": "basic223",
+      "regex": "\\\\000"
+    }
+  ]
+}

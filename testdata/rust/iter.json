@@ -1,0 +1,413 @@
+{
+  "test": [
+    {
+      "haystack": "aaa",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "name": "1",
+      "regex": "a"
+    },
+    {
+      "haystack": "aba",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "name": "2",
+      "regex": "a"
+    },
+    {
+      "haystack": "",
+      "matches": [
+        [
+          0,
+          0
+        ]
+      ],
+      "name": "empty1",
+      "regex": ""
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty2",
+      "regex": ""
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty3",
+      "regex": "(?:)"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty4",
+      "regex": "(?:)*"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty5",
+      "regex": "(?:)+"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty6",
+      "regex": "(?:)?"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty7",
+      "regex": "(?:)(?:)"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty8",
+      "regex": "(?:)+|z"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty9",
+      "regex": "z|(?:)+"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty10",
+      "regex": "(?:)+|b"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "name": "empty11",
+      "regex": "b|(?:)+"
+    },
+    {
+      "haystack": "a",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "start1",
+      "regex": "^a"
+    },
+    {
+      "haystack": "aa",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "start2",
+      "regex": "^a"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "anchored1",
+      "regex": "a"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "name": "anchored2",
+      "regex": "a"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaba",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "name": "anchored3",
+      "regex": "a"
+    },
+    {
+      "haystack": "abczzz",
+      "matches": [
+        [
+          0,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ]
+      ],
+      "name": "nonempty-followedby-empty",
+      "regex": "abc|.*?"
+    },
+    {
+      "haystack": "abcz",
+      "matches": [
+        [
+          0,
+          3
+        ],
+        [
+          4,
+          4
+        ]
+      ],
+      "name": "nonempty-followedby-oneempty",
+      "regex": "abc|.*?"
+    },
+    {
+      "haystack": "abczabc",
+      "matches": [
+        [
+          0,
+          3
+        ],
+        [
+          4,
+          7
+        ]
+      ],
+      "name": "nonempty-followedby-onemixed",
+      "regex": "abc|.*?"
+    },
+    {
+      "haystack": "abczzabc",
+      "matches": [
+        [
+          0,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          8
+        ]
+      ],
+      "name": "nonempty-followedby-twomixed",
+      "regex": "abc|.*?"
+    }
+  ]
+}

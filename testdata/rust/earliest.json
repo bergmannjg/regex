@@ -1,0 +1,120 @@
+{
+  "test": [
+    {
+      "haystack": "aaa",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "name": "no-greedy-100",
+      "regex": "a+",
+      "search-kind": "earliest"
+    },
+    {
+      "haystack": "zzzabccc",
+      "matches": [
+        [
+          3,
+          6
+        ]
+      ],
+      "name": "no-greedy-200",
+      "regex": "abc+",
+      "search-kind": "earliest"
+    },
+    {
+      "haystack": "aaa",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "name": "is-ungreedy",
+      "regex": "a+?",
+      "search-kind": "earliest"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "look-start-test",
+      "regex": "^(abc|a)",
+      "search-kind": "earliest"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "look-end-test",
+      "regex": "(abc|a)$",
+      "search-kind": "earliest"
+    },
+    {
+      "haystack": "abc",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "no-leftmost-first-100",
+      "regex": "abc|a",
+      "search-kind": "earliest"
+    },
+    {
+      "haystack": "aba",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "name": "no-leftmost-first-200",
+      "regex": "aba|a",
+      "search-kind": "earliest"
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "test": [
+    {
+      "haystack": "\\x00abc\\x00",
+      "line-terminator": "\\x00",
+      "matches": [
+        [
+          1,
+          4
+        ]
+      ],
+      "name": "nul",
+      "regex": "(?m)^[a-z]+$",
+      "unescape": true
+    },
+    {
+      "haystack": "\\x00\\n",
+      "line-terminator": "\\x00",
+      "matches": [
+        [
+          1,
+          2
+        ]
+      ],
+      "name": "dot-changes-with-line-terminator",
+      "regex": ".",
+      "unescape": true
+    },
+    {
+      "haystack": "\\nabc\\n",
+      "line-terminator": "\\x00",
+      "matches": [],
+      "name": "not-line-feed",
+      "regex": "(?m)^[a-z]+$",
+      "unescape": true
+    },
+    {
+      "haystack": "\\xFFabc\\xFF",
+      "line-terminator": "\\xFF",
+      "matches": [
+        [
+          1,
+          4
+        ]
+      ],
+      "name": "non-ascii",
+      "regex": "(?m)^[a-z]+$",
+      "unescape": true,
+      "utf8": false
+    },
+    {
+      "bounds": [
+        4,
+        7
+      ],
+      "haystack": "ABC\\rabc",
+      "line-terminator": "\\r",
+      "matches": [
+        [
+          4,
+          7
+        ]
+      ],
+      "name": "carriage",
+      "regex": "(?m)^[a-z]+",
+      "unescape": true
+    },
+    {
+      "haystack": "ZabcZ",
+      "line-terminator": "Z",
+      "matches": [
+        [
+          1,
+          4
+        ]
+      ],
+      "name": "word-byte",
+      "regex": "(?m)^[a-z]+$",
+      "unescape": true
+    },
+    {
+      "haystack": "%abc%",
+      "line-terminator": "%",
+      "matches": [
+        [
+          1,
+          4
+        ]
+      ],
+      "name": "non-word-byte",
+      "regex": "(?m)^[a-z]+$",
+      "unescape": true
+    },
+    {
+      "haystack": "ZabcZ",
+      "line-terminator": "Z",
+      "matches": [],
+      "name": "word-boundary",
+      "regex": "(?m)^\\b[a-z]+\\b$",
+      "unescape": true
+    },
+    {
+      "anchored": true,
+      "bounds": [
+        1,
+        4
+      ],
+      "haystack": "ZabcZ",
+      "line-terminator": "Z",
+      "matches": [],
+      "name": "word-boundary-at",
+      "regex": "(?m)^\\b[a-z]+\\b$",
+      "unescape": true
+    },
+    {
+      "anchored": true,
+      "bounds": [
+        1,
+        4
+      ],
+      "haystack": "ZabcZ",
+      "line-terminator": "Z",
+      "matches": [
+        [
+          1,
+          4
+        ]
+      ],
+      "name": "not-word-boundary-at",
+      "regex": "(?m)^\\B[a-z]+\\B$",
+      "unescape": true
+    }
+  ]
+}

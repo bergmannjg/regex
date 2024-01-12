@@ -1,0 +1,6 @@
+/.lake
+/benchmark/report
+compile_flags.txt
+.vscode/launch.json
+benchmark/run_output.yaml
+benchmark/*.txt

@@ -1,0 +1,379 @@
+{
+  "test": [
+    {
+      "haystack": " δ",
+      "matches": [],
+      "name": "word-boundary-ascii",
+      "regex": " \\b",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": " δ",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "word-boundary-unicode",
+      "regex": " \\b",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": " δ",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "word-boundary-ascii-not",
+      "regex": " \\B",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": " δ",
+      "matches": [],
+      "name": "word-boundary-unicode-not",
+      "regex": " \\B",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": "aδ",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "perl-word-ascii",
+      "regex": "\\w+",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "aδ",
+      "matches": [
+        [
+          0,
+          3
+        ]
+      ],
+      "name": "perl-word-unicode",
+      "regex": "\\w+",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": "1२३9",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "name": "perl-decimal-ascii",
+      "regex": "\\d+",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "1२३9",
+      "matches": [
+        [
+          0,
+          8
+        ]
+      ],
+      "name": "perl-decimal-unicode",
+      "regex": "\\d+",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": "  ",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "perl-whitespace-ascii",
+      "regex": "\\s+",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "  ",
+      "matches": [
+        [
+          0,
+          4
+        ]
+      ],
+      "name": "perl-whitespace-unicode",
+      "regex": "\\s+",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": "\\xCE\\x93\\xCE\\x94\\xFF",
+      "matches": [
+        [
+          [
+            0,
+            5
+          ],
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      ],
+      "name": "mixed-dot",
+      "regex": "(.+)(?-u)(.+)",
+      "unescape": true,
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "case-insensitive": true,
+      "haystack": "A",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "case-one-ascii",
+      "regex": "a",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "case-insensitive": true,
+      "haystack": "A",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "case-one-unicode",
+      "regex": "a",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "case-insensitive": true,
+      "haystack": "AaAaA",
+      "matches": [
+        [
+          0,
+          5
+        ]
+      ],
+      "name": "case-class-simple-ascii",
+      "regex": "[a-z]+",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "case-insensitive": true,
+      "haystack": "aAKaA",
+      "matches": [
+        [
+          0,
+          2
+        ],
+        [
+          5,
+          7
+        ]
+      ],
+      "name": "case-class-ascii",
+      "regex": "[a-z]+",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "case-insensitive": true,
+      "haystack": "aAKaA",
+      "matches": [
+        [
+          0,
+          7
+        ]
+      ],
+      "name": "case-class-unicode",
+      "regex": "[a-z]+",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": "δ",
+      "matches": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "name": "negate-ascii",
+      "regex": "[^a]",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "δ",
+      "matches": [
+        [
+          0,
+          2
+        ]
+      ],
+      "name": "negate-unicode",
+      "regex": "[^a]",
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": "\\xFFa",
+      "matches": [
+        [
+          1,
+          2
+        ]
+      ],
+      "name": "dotstar-prefix-ascii",
+      "regex": "a",
+      "unescape": true,
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "\\xFFa",
+      "matches": [
+        [
+          1,
+          2
+        ]
+      ],
+      "name": "dotstar-prefix-unicode",
+      "regex": "a",
+      "unescape": true,
+      "unicode": true,
+      "utf8": false
+    },
+    {
+      "haystack": "foo\\x00",
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            3
+          ]
+        ]
+      ],
+      "name": "null-bytes",
+      "regex": "(?P<cstr>[^\\x00]+)\\x00",
+      "unescape": true,
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "\\x8d#;\\x1a\\xa4s3\\x05foobarX\\\\\\x0f0t\\xe4\\x9b\\xa4",
+      "matches": [
+        [
+          0,
+          0
+        ]
+      ],
+      "name": "invalid-utf8-anchor-100",
+      "regex": "\\xCC?^",
+      "unescape": true,
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "\\x8d#;\\x1a\\xa4s3\\x05foobarX\\\\\\x0f0t\\xe4\\x9b\\xa4",
+      "matches": [
+        [
+          22,
+          22
+        ]
+      ],
+      "name": "invalid-utf8-anchor-200",
+      "regex": "^\\xf7|4\\xff\\d\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a##########[] d\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a\\x8a##########\\[] #####\\x80\\S7|$",
+      "unescape": true,
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "\\x8d#;\\x1a\\xa4s3\\x05foobarX\\\\\\x0f0t\\xe4\\x9b\\xa4",
+      "matches": [
+        [
+          0,
+          0
+        ]
+      ],
+      "name": "invalid-utf8-anchor-300",
+      "regex": "^|ddp\\xff\\xffdddddlQd@\\x80",
+      "unescape": true,
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "áxβ",
+      "matches": [],
+      "name": "word-boundary-ascii-100",
+      "regex": "\\Bx\\B",
+      "unicode": false,
+      "utf8": false
+    },
+    {
+      "haystack": "0񾽞",
+      "matches": [
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ]
+      ],
+      "name": "word-boundary-ascii-200",
+      "regex": "\\B",
+      "unicode": false,
+      "utf8": false
+    }
+  ]
+}

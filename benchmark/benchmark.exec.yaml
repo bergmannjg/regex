@@ -1,0 +1,22 @@
+- attributes:
+    description: benchmark pattern 100
+  run_config:
+    run_cmd: ../.lake/build/bin/benchmark pattern 100 1000
+    runs: 5
+  build_config:
+    cmd: lake --dir .. build
+- attributes:
+    description: benchmark pattern 500
+  run_config:
+    run_cmd: ../.lake/build/bin/benchmark pattern 500 10
+    runs: 5
+- attributes:
+    description: benchmark pattern 1000
+  run_config:
+    run_cmd: ../.lake/build/bin/benchmark pattern 1000 10
+    runs: 5
+- attributes:
+    description: benchmark pattern 2000
+  run_config:
+    run_cmd: ../.lake/build/bin/benchmark pattern 2000 5
+    runs: 5

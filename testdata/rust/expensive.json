@@ -1,0 +1,34 @@
+{
+  "test": [
+    {
+      "haystack": "a",
+      "matches": [
+        [
+          0,
+          1
+        ]
+      ],
+      "name": "regression-many-repeat-no-stack-overflow",
+      "regex": "^.{1,2500}"
+    },
+    {
+      "haystack": "abcdefghijklmnopqrstuvwxyabcdefghijklmnopqrstuvwxyabcdefghijklmnopqrstuvwxyabcdefghijklmnopqrstuvwxyabcdefghijklmnopqrstuvwxyabcdefghijklmnopqrstuvwxyZZ",
+      "matches": [
+        [
+          0,
+          50
+        ],
+        [
+          50,
+          100
+        ],
+        [
+          100,
+          150
+        ]
+      ],
+      "name": "backtrack-blow-visited-capacity",
+      "regex": "\\pL{50}"
+    }
+  ]
+}

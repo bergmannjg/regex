@@ -1,0 +1,1932 @@
+{
+  "test": [
+    {
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition10",
+      "regex": "((..)|(.))"
+    },
+    {
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition11",
+      "regex": "((..)|(.))((..)|(.))"
+    },
+    {
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition12",
+      "regex": "((..)|(.))((..)|(.))((..)|(.))"
+    },
+    {
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition14",
+      "regex": "((..)|(.)){1}"
+    },
+    {
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition15",
+      "regex": "((..)|(.)){2}"
+    },
+    {
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition16",
+      "regex": "((..)|(.)){3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            0
+          ],
+          [],
+          [],
+          []
+        ]
+      ],
+      "name": "repetition18",
+      "regex": "((..)|(.))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition20",
+      "regex": "((..)|(.))"
+    },
+    {
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition21",
+      "regex": "((..)|(.))((..)|(.))"
+    },
+    {
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition22",
+      "regex": "((..)|(.))((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition24",
+      "regex": "((..)|(.)){1}"
+    },
+    {
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition25",
+      "regex": "((..)|(.)){2}"
+    },
+    {
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition26",
+      "regex": "((..)|(.)){3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "a",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [],
+          [
+            0,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition28",
+      "regex": "((..)|(.))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition30",
+      "regex": "((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            1
+          ],
+          [],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "repetition31",
+      "regex": "((..)|(.))((..)|(.))"
+    },
+    {
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition32",
+      "regex": "((..)|(.))((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition34",
+      "regex": "((..)|(.)){1}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            2
+          ],
+          [],
+          [
+            1,
+            2
+          ]
+        ]
+      ],
+      "name": "repetition35",
+      "regex": "((..)|(.)){2}"
+    },
+    {
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition36",
+      "regex": "((..)|(.)){3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition38",
+      "regex": "((..)|(.))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition40",
+      "regex": "((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            2,
+            3
+          ],
+          [],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "repetition41",
+      "regex": "((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            1
+          ],
+          [],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            2
+          ],
+          [],
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            3
+          ],
+          [],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "repetition42",
+      "regex": "((..)|(.))((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition44",
+      "regex": "((..)|(.)){1}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "repetition46",
+      "regex": "((..)|(.)){2}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            2,
+            3
+          ],
+          [],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "repetition47",
+      "regex": "((..)|(.)){3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            3
+          ],
+          [
+            2,
+            3
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      ],
+      "name": "repetition50",
+      "regex": "((..)|(.))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition52",
+      "regex": "((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "repetition53",
+      "regex": "((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            2,
+            3
+          ],
+          [],
+          [
+            2,
+            3
+          ],
+          [
+            3,
+            4
+          ],
+          [],
+          [
+            3,
+            4
+          ]
+        ]
+      ],
+      "name": "repetition54",
+      "regex": "((..)|(.))((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition56",
+      "regex": "((..)|(.)){1}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "repetition57",
+      "regex": "((..)|(.)){2}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            3,
+            4
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            3,
+            4
+          ]
+        ]
+      ],
+      "name": "repetition59",
+      "regex": "((..)|(.)){3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "repetition61",
+      "regex": "((..)|(.))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition63",
+      "regex": "((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "repetition64",
+      "regex": "((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            5
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [],
+          [
+            4,
+            5
+          ],
+          [],
+          [
+            4,
+            5
+          ]
+        ]
+      ],
+      "name": "repetition65",
+      "regex": "((..)|(.))((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition67",
+      "regex": "((..)|(.)){1}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "repetition68",
+      "regex": "((..)|(.)){2}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            5
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      ],
+      "name": "repetition70",
+      "regex": "((..)|(.)){3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            5
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            4,
+            5
+          ]
+        ]
+      ],
+      "name": "repetition73",
+      "regex": "((..)|(.))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition75",
+      "regex": "((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "repetition76",
+      "regex": "((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [],
+          [
+            4,
+            6
+          ],
+          [
+            4,
+            6
+          ],
+          []
+        ]
+      ],
+      "name": "repetition77",
+      "regex": "((..)|(.))((..)|(.))((..)|(.))"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          []
+        ]
+      ],
+      "name": "repetition79",
+      "regex": "((..)|(.)){1}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          []
+        ]
+      ],
+      "name": "repetition80",
+      "regex": "((..)|(.)){2}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            4,
+            6
+          ],
+          []
+        ]
+      ],
+      "name": "repetition81",
+      "regex": "((..)|(.)){3}"
+    },
+    {
+      "anchored": true,
+      "haystack": "aaaaaa",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            4,
+            6
+          ],
+          []
+        ]
+      ],
+      "name": "repetition83",
+      "regex": "((..)|(.))*"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive90",
+      "regex": "X(.?){0,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive91",
+      "regex": "X(.?){1,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive92",
+      "regex": "X(.?){2,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive93",
+      "regex": "X(.?){3,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive94",
+      "regex": "X(.?){4,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive95",
+      "regex": "X(.?){5,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive96",
+      "regex": "X(.?){6,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            7,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive97",
+      "regex": "X(.?){7,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive98",
+      "regex": "X(.?){8,}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive100",
+      "regex": "X(.?){0,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive102",
+      "regex": "X(.?){1,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive104",
+      "regex": "X(.?){2,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive106",
+      "regex": "X(.?){3,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive108",
+      "regex": "X(.?){4,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive110",
+      "regex": "X(.?){5,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive112",
+      "regex": "X(.?){6,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive114",
+      "regex": "X(.?){7,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "X1234567Y",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            9
+          ],
+          [
+            8,
+            8
+          ]
+        ]
+      ],
+      "name": "repetition-expensive115",
+      "regex": "X(.?){8,8}Y"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition-expensive127",
+      "regex": "(a|ab|c|bcd){0,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition-expensive129",
+      "regex": "(a|ab|c|bcd){1,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive130",
+      "regex": "(a|ab|c|bcd){2,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive131",
+      "regex": "(a|ab|c|bcd){3,}(d*)"
+    },
+    {
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition-expensive132",
+      "regex": "(a|ab|c|bcd){4,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition-expensive134",
+      "regex": "(a|ab|c|bcd){0,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition-expensive136",
+      "regex": "(a|ab|c|bcd){1,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive137",
+      "regex": "(a|ab|c|bcd){2,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            3,
+            6
+          ],
+          [
+            6,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive138",
+      "regex": "(a|ab|c|bcd){3,10}(d*)"
+    },
+    {
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition-expensive139",
+      "regex": "(a|ab|c|bcd){4,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition-expensive141",
+      "regex": "(a|ab|c|bcd)*(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      ],
+      "name": "repetition-expensive143",
+      "regex": "(a|ab|c|bcd)+(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive149",
+      "regex": "(ab|a|c|bcd){0,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive151",
+      "regex": "(ab|a|c|bcd){1,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive153",
+      "regex": "(ab|a|c|bcd){2,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive155",
+      "regex": "(ab|a|c|bcd){3,}(d*)"
+    },
+    {
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition-expensive156",
+      "regex": "(ab|a|c|bcd){4,}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive158",
+      "regex": "(ab|a|c|bcd){0,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive160",
+      "regex": "(ab|a|c|bcd){1,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive162",
+      "regex": "(ab|a|c|bcd){2,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive164",
+      "regex": "(ab|a|c|bcd){3,10}(d*)"
+    },
+    {
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [],
+      "name": "repetition-expensive165",
+      "regex": "(ab|a|c|bcd){4,10}(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive167",
+      "regex": "(ab|a|c|bcd)*(d*)"
+    },
+    {
+      "anchored": true,
+      "haystack": "ababcd",
+      "match-limit": 1,
+      "matches": [
+        [
+          [
+            0,
+            6
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            5,
+            6
+          ]
+        ]
+      ],
+      "name": "repetition-expensive169",
+      "regex": "(ab|a|c|bcd)+(d*)"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+- attributes:
+    description: match 1 kb file
+  run_config:
+    run_cmd: ../.lake/build/bin/inspect captures -a '(?i)Xyz' -f 1k.txt
+    runs: 5
+  build_config:
+    cmd: bash -c '../.lake/build/bin/benchmark randomfile 1000 a e xyz > 1k.txt'
+- attributes:
+    description: match 100 kb file
+  run_config:
+    run_cmd: ../.lake/build/bin/inspect captures -a '(?i)Xyz' -f 100k.txt
+    runs: 5
+  build_config:
+    cmd: bash -c '../.lake/build/bin/benchmark randomfile 100000 a e xyz > 100k.txt'
+- attributes:
+    description: match 1 mb file
+  run_config:
+    run_cmd: ../.lake/build/bin/inspect captures -a '(?i)Xyz' -f 1m.txt
+    runs: 5
+  build_config:
+    cmd: bash -c '../.lake/build/bin/benchmark randomfile 1000000 a e xyz > 1m.txt'
