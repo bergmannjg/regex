@@ -9,7 +9,7 @@ Main restrictions:
 
 - focus on unicode data,
 - simple api and few configurations,
-- [BoundedBacktracker](https://bergmannjg.github.io/regex/Regex/Backtrack.lean) as the single regex engine,
+- [BoundedBacktracker](https://bergmannjg.github.io/regex/Regex/Backtrack.html) as the single regex engine,
 - no optimizations.
 
 ## Installation
@@ -27,7 +27,7 @@ The main documentation is in [Regex.lean](https://bergmannjg.github.io/regex/Reg
 
 ## Test
 
-The library is tested with the [testdata](https://github.com/rust-lang/regex/tree/master/testdata) of Rust Regex crate.
+The library is tested with the [testdata](./testdata) of Rust Regex crate.
 
 The tests are run with
 
