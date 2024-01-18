@@ -307,6 +307,44 @@ private def encodeChar? (c: Option Char) : String :=
     else state.at.curr?.any Unicode.is_word_char
   word_before = word_after
 
+/-- Returns true when [`Look::WordStartUnicode`] is satisfied `at` the given position
+    in `haystack`. -/
+@[inline] private def is_word_start_unicode (state : SearchState) : Bool :=
+  let word_before :=
+    if state.at.atStart then false
+    else state.at.prev?.any Unicode.is_word_char
+  let word_after :=
+    if state.at.atStop then false
+    else state.at.curr?.any Unicode.is_word_char
+  !word_before && word_after
+
+/-- Returns true when [`Look::WordEndUnicode`] is satisfied `at` the given position
+    in `haystack`. -/
+@[inline] private def is_word_end_unicode (state : SearchState) : Bool :=
+  let word_before :=
+    if state.at.atStart then false
+    else state.at.prev?.any Unicode.is_word_char
+  let word_after :=
+    if state.at.atStop then false
+    else state.at.curr?.any Unicode.is_word_char
+  word_before && !word_after
+
+/-- Returns true when [`Look::WordStartHalfUnicode`] is satisfied `at` the given position
+    in `haystack`. -/
+@[inline] private def is_word_start_half_unicode (state : SearchState) : Bool :=
+  let word_before :=
+    if state.at.atStart then false
+    else state.at.prev?.any Unicode.is_word_char
+  !word_before
+
+/-- Returns true when [`Look::WordEndHalfUnicode`] is satisfied `at` the given position
+    in `haystack`. -/
+@[inline] private def is_word_end_half_unicode (state : SearchState) : Bool :=
+  let word_after :=
+    if state.at.atStop then false
+    else state.at.curr?.any Unicode.is_word_char
+  !word_after
+
 @[inline] private def step_empty (next : StateID) (state : SearchState) : SearchState :=
   withMsg (fun _ => s!"{state.sid}: Empty -> {next}") {state with sid := next}
 
@@ -360,6 +398,26 @@ private def encodeChar? (c: Option Char) : String :=
   | .WordUnicodeNegate =>
     if is_word_unicode_negate state then
       let state := (withMsg (fun _ => s!"Look.WordUnicodeNegate -> {next}") {state with sid := next})
+      state
+    else state
+  | .WordStartUnicode =>
+    if is_word_start_unicode state then
+      let state := (withMsg (fun _ => s!"Look.WordStartUnicode -> {next}") {state with sid := next})
+      state
+    else state
+  | .WordEndUnicode =>
+    if is_word_end_unicode state then
+      let state := (withMsg (fun _ => s!"Look.WordEndUnicode -> {next}") {state with sid := next})
+      state
+    else state
+  | .WordStartHalfUnicode =>
+    if is_word_start_half_unicode state then
+      let state := (withMsg (fun _ => s!"Look.WordStartHalfUnicode -> {next}") {state with sid := next})
+      state
+    else state
+  | .WordEndHalfUnicode =>
+    if is_word_end_half_unicode state then
+      let state := (withMsg (fun _ => s!"Look.WordEndHalfUnicode -> {next}") {state with sid := next})
       state
     else state
 

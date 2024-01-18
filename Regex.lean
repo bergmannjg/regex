@@ -23,10 +23,12 @@ Contents:
 ## Syntax
 
 The [syntax](https://docs.rs/regex/latest/regex/#syntax) of the Rust regex crate is documented below.
-The syntax is similar to Perl-style regular expressions, but lacks a few features
-like back-references.
+The syntax is similar to Perl-style regular expressions, but lacks a few features like
 
-This library supports the syntax unless it is marked as not yet implemented (**NYI**).
+* [back references](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC25),
+* [look around assertions](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22).
+
+This library supports the Rust regex syntax unless it is marked as not yet implemented (**NYI**).
 
 ### Matching one character
 
@@ -91,10 +93,10 @@ $               the end of a haystack (or end-of-line with multi-line mode)
 \z              only the end of a haystack (even with multi-line mode enabled)
 \b              a Unicode word boundary (\w on one side and \W, \A, or \z on other)
 \B              not a Unicode word boundary
-NYI \b{start}, \<   a Unicode start-of-word boundary (\W|\A on the left, \w on the right)
-NYI \b{end}, \>     a Unicode end-of-word boundary (\w on the left, \W|\z on the right))
-NYI \b{start-half}  half of a Unicode start-of-word boundary (\W|\A on the left)
-NYI \b{end-half}    half of a Unicode end-of-word boundary (\W|\z on the right)
+\b{start}       a Unicode start-of-word boundary (\W|\A on the left, \w on the right)
+\b{end}         a Unicode end-of-word boundary (\w on the left, \W|\z on the right))
+\b{start-half}  half of a Unicode start-of-word boundary (\W|\A on the left)
+\b{end-half}    half of a Unicode end-of-word boundary (\W|\z on the right)
 </pre>
 
 The empty regex is valid and matches the empty string. For example, the
@@ -104,8 +106,8 @@ empty regex matches `abc` at positions `0`, `1`, `2` and `3`.
 
 <pre>
 (exp)          numbered capture group (indexed by opening parenthesis)
-NYI (?P&lt;name&gt;exp)  named (also numbered) capture group (names must be alpha-numeric)
-NYI (?&lt;name&gt;exp)   named (also numbered) capture group (names must be alpha-numeric)
+(?P&lt;name&gt;exp)  named (also numbered) capture group (names must be alpha-numeric)
+(?&lt;name&gt;exp)   named (also numbered) capture group (names must be alpha-numeric)
 (?:exp)        non-capturing group
 (?flags)       set flags within current group
 (?flags:exp)   set flags for exp (non-capturing)
@@ -130,7 +132,7 @@ m     multi-line mode: ^ and $ match begin/end of line
 s     allow . to match \n
 R     enables CRLF mode: when multi-line mode is enabled, \r\n is used
 U     swap the meaning of x* and x*?
-u     Unicode support (enabled by default)
+u     Unicode support (always enabled, *u* and *-u* are ignored)
 NYI x verbose mode, ignores whitespace and allow line comments (starting with `#`)
 </pre>
 
@@ -285,13 +287,13 @@ Components of regular expression:
 
 The performance is tested for 2 different kinds of regular expressions and haystacks.
 
+The performance data is generated with the [benchmark tool](https://github.com/bergmannjg/regex/tree/main/benchmark) .
+
 ### Test 1
 
 The performance is tested for the regular expression **a?<sup>n</sup>a<sup>n</sup>** and
 the haystack a<sup>n</sup> where n means repetition i.e. a?a?aa for n = 2.
 To find a match for this expression the BoundedBacktracker has to traverse the entire search space.
-
-The performance data is generated with the [benchmark tool](./benchmark) .
 
 <table border="1" align="center">
 <tr><th>n</th><th>seconds</th><th>visited values</th><th>backtracks</></tr>
@@ -308,8 +310,6 @@ by the backtracker within a single search (`BoundedBacktracker.SearchState`).
 
 The performance is tested for the regular expression **(?i)Xyz** and
 a haystack which contains **xyz** as last element.
-
-The performance data is generated with the [benchmark tool](./benchmark) .
 
 <table border="1" align="center">
 <tr align="right"><th>size of haystack</th><th>seconds</th><th>visited values</th></tr>

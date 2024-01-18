@@ -154,6 +154,24 @@ private def maybe_parse_ascii_class (pattern : String) (i : Nat)
     else
       Except.ok none
 
+/-- Attempt to parse a specialty word boundary. That is, `\b{start}`,
+    `\b{end}`, `\b{start-half}` or `\b{end-half}`. -/
+private def maybe_parse_special_word_boundary (pattern : String) (i : Nat)
+    : Except String (Option (NChars × AssertionKind)) := do
+  let n := 2
+  let chars := (pattern.data.drop (i + n)).takeWhile (· != '}')
+  if i + n + chars.length < pattern.length
+  then
+    let name : String := ⟨chars⟩
+    match name with
+    | "start" => Except.ok (some (n + chars.length, AssertionKind.WordBoundaryStart))
+    | "end" => Except.ok (some (n + chars.length, AssertionKind.WordBoundaryEnd))
+    | "start-half" => Except.ok (some (n + chars.length, AssertionKind.WordBoundaryStartHalf))
+    | "end-half" => Except.ok (some (n + chars.length, AssertionKind.WordBoundaryEndHalf))
+    | _ => Except.error (toError pattern .SpecialWordBoundaryUnrecognized)
+  else
+    Except.ok none
+
 /-- Parse a Unicode class in either the single character notation `\pN`
     or the multi-character bracketed notation `\p{Greek}`.
     Assumes '\p' is already parsed. -/
@@ -219,8 +237,15 @@ private def parse_escape (pattern : String) (i : Nat) : Except String (NatPos ×
   | 'r' => Except.ok (NatPos.one, toVerbatim '\r')
   | 'V' => Except.ok (NatPos.one, toVerbatim '\x0B')
   | 'b' =>
-    Except.ok (NatPos.succ 0,
-      Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.WordBoundary⟩)
+    if '{' = pattern.getAtCodepoint (i + 1) then
+      match ← maybe_parse_special_word_boundary pattern i with
+      | some (n, kind) =>
+        Except.ok (NatPos.succ n,
+          Primitive.Assertion ⟨toSpan pattern i (i + n + 1), kind⟩)
+      | none => Except.error (toError pattern .EscapeUnrecognized)
+    else
+      Except.ok (NatPos.succ 0,
+        Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.WordBoundary⟩)
   | 'z' =>
     Except.ok (NatPos.succ 0,
       Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.EndText⟩)

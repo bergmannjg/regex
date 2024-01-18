@@ -496,8 +496,6 @@ def ignoreTest (t : RegexTest) : Bool :=
   || t.«search-kind».any (· != "leftmost") -- only leftmost is valid for BoundedBacktracker
   || t.«match-kind».any (· = "all") -- Sets
   || match t.regex with | .Right _ => true | .Left _ => false -- Sets
-  || String.containsSubstr (Either.val t.regex) "\\b{start" -- WordBoundary
-  || String.containsSubstr (Either.val t.regex) "\\b{end" -- WordBoundary
 
 def testItem (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
   if checkFlagIsFalse t.compiles

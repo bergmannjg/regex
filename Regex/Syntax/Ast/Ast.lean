@@ -416,6 +416,14 @@ inductive AssertionKind where
   | WordBoundary : AssertionKind
   /-- \B -/
   | NotWordBoundary : AssertionKind
+  /-- `\b{start}` -/
+  | WordBoundaryStart : AssertionKind
+  /-- `\b{end}` -/
+  |  WordBoundaryEnd : AssertionKind
+  /-- `\b{start-half}` -/
+  | WordBoundaryStartHalf : AssertionKind
+  /-- `\b{end-half}` -/
+  |  WordBoundaryEndHalf : AssertionKind
 
 namespace AssertionKind
 
@@ -426,6 +434,10 @@ def toString : AssertionKind -> String
   | .EndText => s!"EndText"
   | .WordBoundary => s!"WordBoundary"
   | .NotWordBoundary => s!"NotWordBoundary"
+  | .WordBoundaryStart => s!"WordBoundaryStart"
+  | .WordBoundaryEnd => s!"WordBoundaryEnd"
+  | .WordBoundaryStartHalf => s!"WordBoundaryStartHalf"
+  | .WordBoundaryEndHalf => s!"WordBoundaryEndHalf"
 
 end AssertionKind
 

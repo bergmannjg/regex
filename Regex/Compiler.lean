@@ -109,6 +109,10 @@ private def c_look : Syntax.Look -> CompilerM ThompsonRef
   | .EndCRLF => push' (State.Look NFA.Look.EndCRLF 0)
   | .WordUnicode => push' (State.Look NFA.Look.WordUnicode 0)
   | .WordUnicodeNegate => push' (State.Look NFA.Look.WordUnicodeNegate 0)
+  | .WordStartUnicode => push' (State.Look NFA.Look.WordStartUnicode 0)
+  | .WordEndUnicode => push' (State.Look NFA.Look.WordEndUnicode 0)
+  | .WordStartHalfUnicode => push' (State.Look NFA.Look.WordStartHalfUnicode 0)
+  | .WordEndHalfUnicode => push' (State.Look NFA.Look.WordEndHalfUnicode 0)
 
 private def c_cap' (pattern_id slot: Nat) : CompilerM StateID  :=
   push (State.Capture 0 0 pattern_id slot)

@@ -84,6 +84,14 @@ inductive Look where
   | WordUnicode : Look
   /--  Match a Unicode-aware negation of a word boundary. -/
   | WordUnicodeNegate : Look
+  /-- Match the start of a Unicode word boundary. -/
+  | WordStartUnicode : Look
+  /-- Match the end of a Unicode word boundary. -/
+  | WordEndUnicode : Look
+  /-- Match the start half of a Unicode word boundary. -/
+  | WordStartHalfUnicode : Look
+  /-- Match the end half of a Unicode word boundary. -/
+  | WordEndHalfUnicode : Look
 deriving BEq
 
 namespace Look
@@ -97,6 +105,10 @@ def toString : Look -> String
   | .EndCRLF => s!"EndCRLF"
   | .WordUnicode => s!"WordUnicode"
   | .WordUnicodeNegate => s!"WordUnicodeNegate"
+  | .WordStartUnicode => s!"WordStartUnicode"
+  | .WordEndUnicode => s!"WordEndUnicode"
+  | .WordStartHalfUnicode => s!"WordStartHalfUnicode"
+  | .WordEndHalfUnicode => s!"WordEndHalfUnicode"
 
 end Look
 

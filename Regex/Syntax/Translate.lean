@@ -197,6 +197,14 @@ private def hir_assertion (ast : Ast.Assertion) (flags : Syntax.Flags) : Hir :=
       HirKind.Look (Look.WordUnicode)
   | .NotWordBoundary =>
       HirKind.Look (Look.WordUnicodeNegate)
+  | .WordBoundaryStart =>
+      HirKind.Look (Look.WordStartUnicode)
+  | .WordBoundaryEnd =>
+      HirKind.Look (Look.WordEndUnicode)
+  | .WordBoundaryStartHalf =>
+      HirKind.Look (Look.WordStartHalfUnicode)
+  | .WordBoundaryEndHalf =>
+      HirKind.Look (Look.WordEndHalfUnicode)
 
   ⟨kind, Syntax.Hir.toProperties kind⟩
 
