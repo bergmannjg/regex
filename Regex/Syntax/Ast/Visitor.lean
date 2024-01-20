@@ -12,21 +12,29 @@ namespace Syntax.Ast
 open Syntax Ast
 
 /-- A class for visiting an abstract syntax tree (AST) in depth first order. -/
-class Visitor (ε : Type u) (α : Type v) (σ : Type w) where
+class Visitor (α : Type v) (σ : Type w) where
   /-- The result of visiting the AST or an error. -/
-  finish : (state : σ) -> Except ε α
+  finish : (state : σ) -> Except String α
   /-- This method is called before beginning traversal of the AST. -/
   start :  σ -> σ
   /-- This method is called on an `Ast` before descending into child `Ast` nodes. -/
-  visit_pre : (ast: Ast) -> StateT σ (Except ε) PUnit
+  visit_pre : (ast: Ast) -> StateT σ (Except String) PUnit
   /-- This method is called on an `Ast` after descending all of its child `Ast` nodes. -/
-  visit_post : (ast: Ast) -> StateT σ (Except ε) PUnit
+  visit_post : (ast: Ast) -> StateT σ (Except String) PUnit
   /-- This method is called on every [`ClassSetItem`] before descending into child nodes. -/
-  visit_class_set_item_pre : (ast: ClassSetItem) -> StateT σ (Except ε) PUnit
+  visit_class_set_item_pre : (ast: ClassSetItem) -> StateT σ (Except String) PUnit
   /-- This method is called on every [`ClassSetItem`] after descending into child nodes. -/
-  visit_class_set_item_post : (ast: ClassSetItem) -> StateT σ (Except ε) PUnit
+  visit_class_set_item_post : (ast: ClassSetItem) -> StateT σ (Except String) PUnit
+  /-- This method is called on every [`ClassSetBinaryOp`] before descending into
+      child nodes. -/
+  visit_class_set_binary_op_pre : (ast: ClassSetBinaryOp) -> StateT σ (Except String) PUnit
+  /-- This method is called on every [`ClassSetBinaryOp`] after descending into
+      child nodes. -/
+  visit_class_set_binary_op_post : (ast: ClassSetBinaryOp) -> StateT σ (Except String) PUnit
+  /-- This method is called between the left hand and right hand child nodes -/
+  visit_class_set_binary_op_in : (ast: ClassSetBinaryOp) -> StateT σ (Except String) PUnit
 
-abbrev M σ ε := StateT σ (Except ε)
+abbrev M σ String := StateT σ (Except String)
 
 /-- Represents a single stack frame while performing structural induction over an `Ast`.-/
 private inductive Frame where
@@ -37,7 +45,19 @@ private inductive Frame where
 
 /-- Represents a single stack frame while performing structural induction overa character class. -/
 private inductive ClassFrame where
+  /-- The stack frame used while visiting every child node of a union of character class items. -/
   | Union (head: ClassSetItem) (tail: Array ClassSetItem) : ClassFrame
+  /-- The stack frame used while a binary class operation. -/
+  | Binary (op: ClassSetBinaryOp) : ClassFrame
+  /-- A stack frame allocated just before descending into a binary operator's
+      left hand child node. -/
+  | BinaryLHS
+        (op: ClassSetBinaryOp)
+        (lhs: ClassSet)
+        (rhs: ClassSet) : ClassFrame
+  /-- A stack frame allocated just before descending into a binary operator's
+      right hand child node. -/
+  | BinaryRHS (op: ClassSetBinaryOp) (rhs: ClassSet) : ClassFrame
 
 namespace Frame
 
@@ -55,11 +75,13 @@ abbrev CallStack := Array (Ast × Frame)
 /-- A representation of the inductive step when performing structural induction . -/
 inductive ClassInduct where
   | Item : ClassSetItem -> ClassInduct
+  | BinaryOp : ClassSetBinaryOp -> ClassInduct
 
 namespace ClassInduct
 
 def from_set : ClassSet -> ClassInduct
   | .Item cls => ClassInduct.Item cls
+  | .BinaryOp op => ClassInduct.BinaryOp op
 
 def from_bracketed : ClassBracketed -> ClassInduct
   | .mk _ _ cls => from_set cls
@@ -71,22 +93,31 @@ namespace ClassFrame
 def child (x : ClassFrame) : ClassInduct :=
   match x with
   | .Union head _ => ClassInduct.Item head
+  | .Binary op => ClassInduct.BinaryOp op
+  | .BinaryLHS _ lhs _ => ClassInduct.from_set lhs
+  | .BinaryRHS _ rhs => ClassInduct.from_set rhs
 
 end ClassFrame
 
-private def visit_class_pre {ε α σ: Type} [Inhabited ε] (ast: ClassInduct)
-    (β : Visitor ε α σ) : M σ ε PUnit := do
+private def visit_class_pre {α σ: Type} (ast: ClassInduct)
+    (β : Visitor α σ) : M σ String PUnit := do
   match ast with
   | .Item cls => β.visit_class_set_item_pre cls
+  | .BinaryOp op => β.visit_class_set_binary_op_pre op
 
-private def visit_class_post {ε α σ: Type} [Inhabited ε] (ast: ClassInduct)
-    (β : Visitor ε α σ) : M σ ε PUnit := do
+private def visit_class_post {α σ: Type} (ast: ClassInduct)
+    (β : Visitor α σ) : M σ String PUnit := do
   match ast with
   | .Item cls => β.visit_class_set_item_post cls
+  | .BinaryOp op => β.visit_class_set_binary_op_post op
 
 /-- Build a stack frame for the given class node -/
 private def induct_class (ast: ClassInduct) : Option ClassFrame :=
   match ast with
+  | .Item (ClassSetItem.Bracketed ⟨_, _, kind⟩ ) =>
+    match kind with
+    | .Item item => some (ClassFrame.Union item #[])
+    | .BinaryOp op => some (ClassFrame.Binary op)
   | .Item (ClassSetItem.Union union) =>
     let ⟨_, items⟩ := union
     if items.size = 0 then none
@@ -94,6 +125,9 @@ private def induct_class (ast: ClassInduct) : Option ClassFrame :=
       match items.head? with
       | some (head, tail) => some (ClassFrame.Union head tail)
       | none => none
+  | .BinaryOp op =>
+    match op with
+    | .mk _ _ lhs rhs => some (ClassFrame.BinaryLHS op lhs rhs)
   | _ => none
 
 /-- Pops the given frame. If the frame has an additional inductive step,
@@ -102,53 +136,61 @@ private partial def pop_class (induct: ClassFrame) : Option ClassFrame :=
   match induct with
   | .Union _ tail =>
     match tail.head? with
-    | some (head, tail) => some (ClassFrame.Union head tail)
+    | some (head, tail) => ClassFrame.Union head tail
     | none => none
+  | .Binary _ => none
+  | .BinaryLHS op _ rhs => ClassFrame.BinaryRHS op rhs
+  | .BinaryRHS _ _ => none
 
-private partial def visit_class_inner_loop {ε α σ: Type} [Inhabited ε] [Inhabited α]
-    (β : Visitor ε α σ) (stack : Array (ClassInduct × ClassFrame))
-    : M σ ε (Option ClassInduct × (Array (ClassInduct × ClassFrame))) := do
-  if stack.size > 1 then Except.error (default : ε)
-  else
-    match Array.pop? stack with
-    | some ((post_ast, frame), stack) =>
-      match pop_class frame with
-      | some x =>
+/-- try to pop the call stack until it is either empty or hit another inductive case. -/
+private partial def visit_class_inner_loop {α σ: Type} [Inhabited α]
+    (β : Visitor α σ) (stack : Array (ClassInduct × ClassFrame))
+    : M σ String (Option ClassInduct × (Array (ClassInduct × ClassFrame))) := do
+  match Array.pop? stack with
+  | some ((post_ast, frame), stack) =>
+    match pop_class frame with
+    | some x =>
+      match x with
+      | .BinaryRHS op _ =>
+        let s ← get
+        let (_, s) ← β.visit_class_set_binary_op_in op s
+        set s
         let stack := stack.push (post_ast, x)
         pure (some (ClassFrame.child x), stack)
-      | none =>
-        visit_class_post post_ast β
-        visit_class_inner_loop β stack
-    | none => pure (none, stack)
-
-private partial def visit_class_loop {ε α σ: Type} [Inhabited ε] [Inhabited α]
-    (β : Visitor ε α σ) (ast : ClassInduct) (stack : Array (ClassInduct × ClassFrame))
-    : M σ ε PUnit := do
-  if stack.size > 1 then Except.error (default : ε)
-  else
-    visit_class_pre ast β
-    match induct_class ast with
-    | some x =>
-      let child := ClassFrame.child x
-      let stack := stack.push (ast, x)
-      visit_class_loop β child stack
+      | _ =>
+        let stack := stack.push (post_ast, x)
+        pure (some (ClassFrame.child x), stack)
     | none =>
-      /- No induction means we have a base case, so we can post visit it now.-/
-      visit_class_post ast β
-      match ← visit_class_inner_loop β stack with
-      | (some ast, stack) =>
-        /- Process new inductive steps. -/
-        visit_class_loop β ast stack
-      | (none, _) => pure ()
+      visit_class_post post_ast β
+      visit_class_inner_loop β stack
+  | none => pure (none, #[])
 
-private def visit_class [Inhabited ε] [Inhabited α] (ast: ClassBracketed)
-    (β : Visitor ε α σ) : M σ ε PUnit := do
+private partial def visit_class_loop {α σ: Type} [Inhabited α]
+    (β : Visitor α σ) (ast : ClassInduct) (stack : Array (ClassInduct × ClassFrame))
+    : M σ String PUnit := do
+  visit_class_pre ast β
+  match induct_class ast with
+  | some x =>
+    let child := ClassFrame.child x
+    let stack := stack.push (ast, x)
+    visit_class_loop β child stack
+  | none =>
+    /- No induction means we have a base case, so we can post visit it now.-/
+    visit_class_post ast β
+    match ← visit_class_inner_loop β stack with
+    | (some ast, stack) =>
+      /- Process new inductive steps. -/
+      visit_class_loop β ast stack
+    | (none, _) => pure ()
+
+private def visit_class [Inhabited α] (ast: ClassBracketed)
+    (β : Visitor α σ) : M σ String PUnit := do
   let ast := ClassInduct.from_bracketed ast
   visit_class_loop β ast #[]
 
 /-- Build a stack frame for the given AST if one is needed-/
-private def induct [Inhabited ε] [Inhabited α] (β : Visitor ε α σ) (ast : Ast)
-    : M σ ε (Option Frame) := do
+private def induct [Inhabited α] (β : Visitor α σ) (ast : Ast)
+    : M σ String (Option Frame) := do
   match ast with
   | .ClassBracketed cls =>
       visit_class cls β
@@ -181,8 +223,8 @@ private def pop (induct: Frame) : Option Frame :=
       | none => none
 
 /- try to pop the call stack until it is either empty or we hit another inductive case.-/
-private partial def visit_inner_loop {ε α σ: Type} [Inhabited ε] [Inhabited α]
-    (β : Visitor ε α σ) (stack : CallStack) : M σ ε ((Option (Ast × (CallStack))) × α) := do
+private partial def visit_inner_loop {α σ: Type} [Inhabited α]
+    (β : Visitor α σ) (stack : CallStack) : M σ String ((Option (Ast × (CallStack))) × α) := do
   let state ← get
   match Array.pop? stack with
   | some ((post_ast, frame), stack) =>
@@ -205,8 +247,8 @@ private partial def visit_inner_loop {ε α σ: Type} [Inhabited ε] [Inhabited 
     | Except.error e => Except.error e
 
 /-- Visit every item in an `Ast` recursively -/
-partial def visit_loop {ε α σ: Type} [Inhabited ε] [Inhabited α]
-    (β : Visitor ε α σ) (ast : Ast) (stack : CallStack) : M σ ε α := do
+partial def visit_loop {α σ: Type} [Inhabited α]
+    (β : Visitor α σ) (ast : Ast) (stack : CallStack) : M σ String α := do
   β.visit_pre ast
   match ← induct β ast with
   | some x =>
@@ -223,8 +265,8 @@ partial def visit_loop {ε α σ: Type} [Inhabited ε] [Inhabited α]
     | (none, res) => pure res
 
 /-- Visit every item in an `Ast` recursively -/
-def visit {ε α σ: Type} [Inhabited ε] [Inhabited α] (β : Visitor ε α σ) (state : σ) (ast : Ast)
-    : Except ε α := do
+def visit {α σ: Type} [Inhabited α] (β : Visitor α σ) (state : σ) (ast : Ast)
+    : Except String α := do
   let state := β.start state
   let (res, _) ← visit_loop β ast default state
   pure res

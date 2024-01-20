@@ -615,10 +615,27 @@ inductive ClassSetItem where
   /-- A union of items. -/
   | Union : ClassSetUnion -> ClassSetItem
 
+/-- The type of a Unicode character class set operation. -/
+inductive ClassSetBinaryOpKind where
+  /-- The intersection of two sets, e.g., `\pN&&[a-z]`. -/
+  | Intersection : ClassSetBinaryOpKind
+  /-- The difference of two sets, e.g., `\pN--[0-9]`. -/
+  | Difference : ClassSetBinaryOpKind
+  /-- The symmetric difference of two sets. The symmetric difference is the
+      set of elements belonging to one but not both sets.-/
+  | SymmetricDifference : ClassSetBinaryOpKind
+
+/-- A Unicode character class set operation. -/
+inductive ClassSetBinaryOp where
+  | mk (span : Substring) (kind: ClassSetBinaryOpKind) (lhs: ClassSet) (rhs: ClassSet)
+    : ClassSetBinaryOp
+
 /-- A character class set. -/
 inductive ClassSet where
   /-- An item, which can be a single literal, range, nested character class or a union of items.-/
   | Item : ClassSetItem -> ClassSet
+  /-- A single binary operation (i.e., &&, -- or ~~). -/
+  | BinaryOp : ClassSetBinaryOp -> ClassSet
 
 /-- A bracketed character class, e.g., `[a-z0-9]`.-/
 inductive ClassBracketed where
@@ -744,6 +761,12 @@ def ast (g : Group) : Ast := match g with | .mk _ _ ast => ast
 
 end Group
 
+namespace ClassSetBinaryOp
+
+def kind (cls : ClassSetBinaryOp) : ClassSetBinaryOpKind := match cls with | .mk _ kind _ _ => kind
+
+end ClassSetBinaryOp
+
 instance : ToString SetFlags where
   toString s :=
     let ⟨_, flags⟩ := s
@@ -788,11 +811,29 @@ instance : ToString ClassSetUnion where
 instance : ToString ClassSetItem where
   toString item := ClassSetItem.toStringClassSetItem item 0
 
+namespace ClassSetBinaryOpKind
+
+def toString (r : ClassSetBinaryOpKind) : String :=
+  match r with
+  | .Intersection => s!"Intersection"
+  | .Difference => s!"Difference"
+  | .SymmetricDifference => s!"SymmetricDifference"
+
+end ClassSetBinaryOpKind
+
 namespace ClassSet
 
-def toString (r : ClassSet) (col : Nat) : String :=
+partial def toString (r : ClassSet) (col : Nat) : String :=
+  let col := col + 2
+  let pre := "\n" ++ (multiple ' ' col "")
+
   match r with
   | .Item item => s!"{ClassSetItem.toStringClassSetItem item col}"
+  | .BinaryOp ⟨_, kind, lhs, rhs⟩ =>
+      let op := s!"BinaryOp {ClassSetBinaryOpKind.toString kind}"
+      let lhs := s!"lhs {ClassSet.toString lhs col}"
+      let rhs := s!"rhs {ClassSet.toString rhs col}"
+      s!"ClassSet {op}{pre}{lhs}{pre}{rhs}"
 
 end ClassSet
 

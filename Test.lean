@@ -15,6 +15,51 @@ instance : MonadLift (Except String) IO where
     | Except.ok res => pure res
     | Except.error e => throw $ .userError e
 
+namespace Test.Range
+
+example : (⟨'b', 'c'⟩ : Range Char) = Range.intersection ⟨'a', 'c'⟩ ⟨'b', 'e'⟩ := by rfl
+
+namespace Test.Range.Intersection
+
+def iv1 : IntervalSet Char := ⟨#[⟨'a', 'c'⟩, ⟨'g', 'k'⟩]⟩
+def iv2 : IntervalSet Char := ⟨#[⟨'b', 'e'⟩, ⟨'j', 'l'⟩, ⟨'m', 'n'⟩]⟩
+def iv : IntervalSet Char := ⟨#[⟨'b', 'c'⟩, ⟨'j', 'k'⟩]⟩
+
+example : iv = Interval.intersection iv1 iv2 := by rfl
+
+end Test.Range.Intersection
+
+namespace Test.Range.Difference
+
+def iv1 : IntervalSet Char := ⟨#[⟨'a', 'e'⟩]⟩
+def iv2 : IntervalSet Char := ⟨#[⟨'b', 'c'⟩]⟩
+def iv : IntervalSet Char := ⟨#[⟨'a', 'a'⟩, ⟨'d', 'e'⟩]⟩
+
+example : iv = Interval.difference iv1 iv2 := by rfl
+
+end Test.Range.Difference
+
+namespace Test.Range.SymmetricDifference
+
+def iv1 : IntervalSet Char := ⟨#[⟨'a', 'c'⟩]⟩
+def iv2 : IntervalSet Char := ⟨#[⟨'b', 'd'⟩]⟩
+def iv : IntervalSet Char := ⟨#[⟨'a', 'a'⟩, ⟨'d', 'd'⟩]⟩
+
+example : iv = (Interval.symmetric_difference iv1 iv2) := by native_decide
+
+end Test.Range.SymmetricDifference
+
+namespace Test.Range.Canonicalize
+
+def ivnc : IntervalSet Char := ⟨#[⟨'a', 'c'⟩, ⟨'b', 'd'⟩]⟩
+def iv : IntervalSet Char := ⟨#[⟨'a', 'd'⟩]⟩
+
+example : iv = Interval.canonicalize ivnc := by native_decide
+
+end Test.Range.Canonicalize
+
+end Test.Range
+
 namespace Test.Ast
 
 private def toString (x : Except String Ast) : String :=
@@ -45,17 +90,17 @@ private def «astOf'[a]'» : Ast :=
       (ClassBracketed.mk
         (toSpan "[a]" 0 3)
         false
-        ⟨ClassSetItem.Literal ⟨toSpan "[a]" 1 2, LiteralKind.Verbatim, 'a'⟩⟩)
+        (ClassSet.Item (ClassSetItem.Literal ⟨toSpan "[a]" 1 2, LiteralKind.Verbatim, 'a'⟩)))
 
 private def «astOf'[a-b]'» : Ast :=
     Ast.ClassBracketed
       (ClassBracketed.mk
         (toSpan "[a-b]" 0 5)
         false
-        ⟨ClassSetItem.Range ⟨
+        (ClassSet.Item (ClassSetItem.Range ⟨
             toSpan "[a-b]" 1 4,
             ⟨toSpan "[a-b]" 1 2, LiteralKind.Verbatim, 'a'⟩,
-            ⟨toSpan "[a-b]" 3 4, LiteralKind.Verbatim, 'b'⟩⟩⟩)
+            ⟨toSpan "[a-b]" 3 4, LiteralKind.Verbatim, 'b'⟩⟩)))
 
 private def «astOf'a|b'» : Ast :=
     Ast.Alternation
@@ -119,6 +164,51 @@ private def «hirOf'(a)'» : Hir :=
 example : (build "a" |> toString) = hirOf'a'.toString 0 := by native_decide
 
 example : (build "(a)" |> toString) = «hirOf'(a)'».toString 0 := by native_decide
+
+private def mkCls (arr : Array $ Char × Char) : Hir :=
+    Hir.mk (HirKind.Class (Class.Unicode ⟨⟨arr |> Array.map (fun (c1, c2) => ⟨c1, c2⟩)⟩⟩)) default
+
+private def mkConcat (hir : Hir) : Hir :=
+  Hir.mk (HirKind.Concat #[hir]) default
+
+example : (build "[[:alpha:]]" |> toString)
+  = (mkCls #[('A', 'Z'), ('a', 'z')]).toString 0 := by native_decide
+
+example : (build "[[:^alpha:]]" |> toString)
+  = (mkCls #[('\u0000', '@'), ('[', '`'), ('{', ⟨0x10FFFF, by simp_arith⟩)]).toString 0 := by
+    native_decide
+
+example : (build "[^A-Za-z]" |> toString)
+  = (mkCls #[('\u0000', '@'), ('[', '`'), ('{', ⟨0x10FFFF, by simp_arith⟩)]).toString 0 := by
+    native_decide
+
+example : (build "[x[^xyz]]" |> toString)
+  = (mkCls #[('\u0000', 'x'), ('{', ⟨0x10FFFF, by simp_arith⟩)]).toString 0 := by native_decide
+
+example : (build "[a-y&&xyz]" |> toString) = (mkCls #[('x', 'y')]).toString 0 := by native_decide
+
+example : (build "[0-9&&[^4]]" |> toString)
+  = (mkCls #[('0', '3'), ('5', '9')]).toString 0 := by native_decide
+
+example : (build "[0-9--4]" |> toString)
+  = (mkCls #[('0', '3'), ('5', '9')]).toString 0 := by native_decide
+
+example : (build r"[\&&&&]" |> toString) = (mkCls #[('&', '&')]).toString 0 := by native_decide
+
+example : (build "(?i)[abc&&b-c]" |> toString) =
+      (mkConcat (mkCls #[('B', 'B'), ('C', 'C'), ('b', 'b'), ('c', 'c')])).toString 0 := by
+    native_decide
+
+example : (build "[a-z&&b-y&&c-x]" |> toString) = (mkCls #[('c', 'x')]).toString 0 := by
+  native_decide
+
+example : (build "[[:alpha:]--[:lower:]]" |> toString) = (mkCls #[('A', 'Z')]).toString 0 := by
+  native_decide
+
+example : (build "[a-g~~c-j]" |> toString) = (mkCls #[('a', 'b'), ('h', 'j')]).toString 0 := by
+  native_decide
+
+example : (build "[a&&b]" |> toString) = (mkCls #[]).toString 0 := by native_decide
 
 end Test.Hir
 

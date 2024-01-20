@@ -43,6 +43,18 @@ def empty : ClassUnicode :=
 def canonicalize (cls : ClassUnicode) : ClassUnicode :=
   ⟨Interval.canonicalize cls.set⟩
 
+def union (cls1 cls2 : ClassUnicode) : ClassUnicode :=
+  ⟨Interval.union cls1.set cls2.set⟩
+
+def intersection (cls1 cls2 : ClassUnicode) : ClassUnicode :=
+  ⟨Interval.intersection cls1.set cls2.set⟩
+
+def difference (cls1 cls2 : ClassUnicode) : ClassUnicode :=
+  ⟨Interval.difference cls1.set cls2.set⟩
+
+def symmetric_difference (cls1 cls2 : ClassUnicode) : ClassUnicode :=
+  ⟨Interval.symmetric_difference cls1.set cls2.set⟩
+
 def negate (cls : ClassUnicode) : ClassUnicode :=
   ⟨Interval.negate cls.set⟩
 
@@ -290,7 +302,7 @@ namespace HirFrame
 def toString : HirFrame -> String
   | .Expr hir => s!"Expr '{hir}'"
   | .Literal c => s!"Literal {c}"
-  | .ClassUnicode _ => "ClassUnicode"
+  | .ClassUnicode cls => s!"ClassUnicode cls set size {cls.set.ranges.size}"
   | .Repetition => "Repetition"
   | .Group flags => s!"Group {flags}"
   | .Concat => "Concat"

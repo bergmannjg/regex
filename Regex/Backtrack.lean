@@ -164,7 +164,7 @@ end Stack
 instance : Inhabited Stack := ⟨[]⟩
 
 /-- The encoded set of (StateID, HaystackOffset) pairs that have been visited
-    by the backtracker within a single search. todo: encode as bits -/
+    by the backtracker within a single search. Optimization: encode as bits -/
 abbrev Visited := Array UInt8
 
 /-- State of the backtracking search -/

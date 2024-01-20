@@ -76,7 +76,7 @@ private def add_union : CompilerM StateID :=
   push (State.Union #[])
 
 private def add_union_reverse : CompilerM StateID  :=
-  push (State.UnionReverse #[]) --todo
+  push (State.UnionReverse #[])
 
 private def c_range (start «end» : UInt32) : CompilerM ThompsonRef :=
   let trans: Transition := ⟨start, «end», 0⟩

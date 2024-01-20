@@ -29,13 +29,33 @@ instance : HSub Char Char UInt32 where
 structure Range (α : Type u) [Ord α] [LT α] [Bound α] where
   start: α
   «end»: α
+deriving Repr, DecidableEq
 
 instance : ToString $ Range Char where
   toString s := s!"{s.start} {s.end}"
 
+instance (α : Type u) [Ord α] [LT α] [Bound α] [Inhabited α] : Inhabited $ Range α where
+  default := ⟨default, default⟩
+
+namespace Range
+
+def intersection {α : Type u} [Ord α]
+    [LT α] [LE α] [Bound α] [(a b : α) → Decidable (a ≤ b)]
+    (r1 r2 : Range  α) : Option $ Range α :=
+  let lower := if r1.start ≤ r2.start then r2.start else r1.start
+  let upper := if r1.«end» ≤ r2.«end» then r1.«end» else r2.«end»
+  if lower ≤ upper then some ⟨lower, upper⟩
+  else none
+
+end Range
+
 /-- A sorted set of non-overlapping ranges. -/
 structure IntervalSet (α : Type u) [Ord α] [LT α] [Bound α] where
   ranges: Array (Range α)
+deriving Repr, DecidableEq
+
+instance : ToString $ IntervalSet Char where
+  toString s := s!"{s.ranges}"
 
 namespace Interval
 
@@ -49,7 +69,33 @@ def Fin.pred (i : Fin n) (h : 0 < i.val) : Fin n :=
     have h2 : i.val < n := i.isLt
     simp [Nat.lt_trans h1 h2]⟩
 
-/-- Negate this interval set. -/
+/-- Converts this set into a canonical ordering. That is, every interval set contains an
+    ordered sequence of intervals where no two intervals are overlapping or adjacent. -/
+def canonicalize [Ord α] [HSub α α UInt32] [LT α] [Bound α] [ToString α]
+  [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a = b)]
+    (interval : IntervalSet α) : IntervalSet α :=
+  let ranges := Array.qsort interval.ranges (fun a b => a.start < b.end)
+
+  let init : Option (Range α) × Array (Range α) := (none, #[])
+  let (v, ranges) := ranges |> Array.foldl (init := init) (fun (v, acc) r =>
+    match v with
+    | some l =>
+      if (r.start - l.end).toNat = 1 then (some ⟨l.start, r.end⟩, acc) -- [a-bc-d] => [a-d]
+      else if r.start < l.end && l.start < r.start then (some ⟨l.start, r.end⟩, acc) -- [a-cb-d] => [a-d]
+      else if l.end < r.start then (r, acc.push l) -- [a-fg-h] => [a-fg-h]
+      else if l.end = r.start then (none, acc.push ⟨l.start, r.end⟩) -- [a-bb-c] => [a-c]
+      else if l.end < r.end then (none, acc.push r) -- [a-fb-c] => [a-f]
+      else (some r, acc.push l)
+    | none => (some r, acc))
+
+  let ranges :=
+    match v with
+    | some v => ranges.push v
+    | none => ranges
+
+  IntervalSet.mk (Array.qsort ranges (fun a b => a.start < b.end))
+
+/-- Negate a interval set with canonical ordering. -/
 def negate [Ord α] [LT α] [Bound α] [ToString α] [(a b : α) → Decidable (a < b)]
     (interval : IntervalSet α) : IntervalSet α :=
   if interval.ranges.size = 0
@@ -77,26 +123,47 @@ def negate [Ord α] [LT α] [Bound α] [ToString α] [(a b : α) → Decidable (
       | none => #[]
     ⟨ranges ++ last⟩
 
-/-- Converts this set into a canonical ordering. -/
-def canonicalize [Ord α] [HSub α α UInt32] [LT α] [Bound α] [ToString α] [(a b : α) → Decidable (a < b)]
-     [(a b : α) → Decidable (a = b)]
-    (interval : IntervalSet α) : IntervalSet α :=
-  let ranges := Array.qsort interval.ranges (fun a b => a.start < b.end)
+/-- Intersection of interval sets with canonical ordering -/
+def intersection [Ord α] [LT α] [LE α] [Bound α] [ToString α] [Inhabited α]
+  [(a b : α) → Decidable (a ≤ b)] [(a b : α) → Decidable (a < b)]
+    (interval1 interval2 : IntervalSet α) : IntervalSet α :=
+  let ranges := intersection.loop 0 0 interval1.ranges interval2.ranges #[]
+  ⟨ranges⟩
+where
+  loop [Ord α] [LT α] [LE α][Bound α] [ToString α] [Inhabited α]
+    [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a ≤ b)]
+    (a b : Nat) (ra rb acc : Array $ Range α) : Array $ Range α :=
+    if h₁ : a < ra.size then
+      if h₂ : b < rb.size then
+        let acc :=
+          match Range.intersection (ra.get ⟨a, h₁⟩) (rb.get ⟨b, h₂⟩) with
+          | some r => acc.push r
+          | none => acc
 
-  let init : Option (Range α) × Array (Range α) := (none, #[])
-  let (v, ranges) := ranges |> Array.foldl (init := init) (fun (v, acc) r =>
-    match v with
-    | some v =>
-      if (r.start - v.end).toNat = 1 then (some ⟨v.start, r.end⟩, acc) -- [a-bc-d] => [a-d]
-      else if v.end < r.start then (r, acc.push v) -- [a-fg-h] => [a-fg-h]
-      else if v.end = r.start then (none, acc.push ⟨v.start, r.end⟩) -- [a-bb-c] => [a-c]
-      else if v.end < r.end then (none, acc.push r) -- [a-fb-c] => [a-f]
-      else (some r, acc.push v)
-    | none => (some r, acc))
+        if (ra.get ⟨a, h₁⟩).end < (rb.get ⟨b, h₂⟩).end
+        then loop (a+1) b ra rb acc
+        else loop a (b+1) ra rb acc
+      else acc
+    else acc
+termination_by _ a b ra rb _ => (ra.size - a, rb.size - b)
 
-  let ranges :=
-    match v with
-    | some v => ranges.push v
-    | none => ranges
+/-- Subtract the interval set `interval2` from `interval1`, asumes canonical ordering. -/
+def difference [Ord α] [LT α] [LE α] [Bound α] [ToString α] [Inhabited α]
+  [(a b : α) → Decidable (a ≤ b)] [(a b : α) → Decidable (a < b)]
+    (interval1 interval2 : IntervalSet α) : IntervalSet α :=
+  intersection interval1 (negate interval2)
 
-  IntervalSet.mk (Array.qsort ranges (fun a b => a.start < b.end))
+/-- Union of interval sets, result set has canonical ordering. -/
+def union [Ord α] [HSub α α UInt32] [LT α] [Bound α]
+    [ToString α] [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a = b)]
+    (interval1 interval2 : IntervalSet α) : IntervalSet α :=
+  ⟨interval1.ranges ++ interval2.ranges⟩ |> canonicalize
+
+/-- Compute the symmetric difference (A⊖B = (A∪B)\(A∩B)) of the two sets,
+    asumes canonical ordering. -/
+def symmetric_difference [Ord α] [HSub α α UInt32] [LT α] [LE α] [Bound α] [ToString α] [Inhabited α]
+  [(a b : α) → Decidable (a ≤ b)] [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a = b)]
+    (interval1 interval2 : IntervalSet α) : IntervalSet α :=
+  let intervalI := intersection interval1 interval2
+  let intervalU := union interval1 interval2
+  difference intervalU intervalI

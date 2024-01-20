@@ -28,7 +28,9 @@ The syntax is similar to Perl-style regular expressions, but lacks a few feature
 * [back references](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC25),
 * [look around assertions](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22).
 
-This library supports the Rust regex syntax unless it is marked as not yet implemented (**NYI**).
+This library supports the Rust regex syntax except
+* non unicode mode,
+* verbose mode.
 
 ### Matching one character
 
@@ -51,13 +53,13 @@ This library supports the Rust regex syntax unless it is marked as not yet imple
 [a-z]           A character class matching any character in range a-z.
 [[:alpha:]]     ASCII character class ([A-Za-z])
 [[:^alpha:]]    Negated ASCII character class ([^A-Za-z])
-NYI [x[^xyz]]   Nested character class (matching any character except y and z)
-NYI [a-y&&xyz]  Intersection (matching x or y)
-NYI [0-9&&[^4]] Subtraction using intersection and negation (matching 0-9 except 4)
-NYI [0-9--4]    Direct subtraction (matching 0-9 except 4)
-NYI [a-g~~b-h]  Symmetric difference (matching `a` and `h` only)
+[x[^xyz]]       Nested character class (matching any character except y and z)
+[a-y&&xyz]      Intersection (matching x or y)
+[0-9&&[^4]]     Subtraction using intersection and negation (matching 0-9 except 4)
+[0-9--4]        Direct subtraction (matching 0-9 except 4)
+[a-g~~b-h]      Symmetric difference (matching `a` and `h` only)
 [\\[\\]]          Escaping in character classes (matching [ or ])
-NYI [a&&b]      An empty character class matching nothing
+[a&&b]          An empty character class matching nothing
 </pre>
 
 ### Composites
@@ -132,8 +134,9 @@ m     multi-line mode: ^ and $ match begin/end of line
 s     allow . to match \n
 R     enables CRLF mode: when multi-line mode is enabled, \r\n is used
 U     swap the meaning of x* and x*?
-u     Unicode support (always enabled, *u* and *-u* are ignored)
-NYI x verbose mode, ignores whitespace and allow line comments (starting with `#`)
+u     Unicode support (always enabled, *-u* is ignored)
+-u    non unicode support (*-u* is ignored)
+x     verbose mode, allow line comments (not implemented)
 </pre>
 
 Multi-line mode means `^` and `$` no longer match just at the beginning/end of
@@ -248,6 +251,12 @@ These forms of property notation are supported:
 </pre>
 
 The type `Unicode.PropertyName` contains all supported property names.
+
+### RL1.3 Subtraction and Intersection
+
+[RL1.3](https://www.unicode.org/reports/tr18/#RL1.3)
+
+This library implements union, intersection and subtraction of sets of characters.
 
 ## Api
 

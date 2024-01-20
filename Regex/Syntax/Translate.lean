@@ -365,9 +365,13 @@ def visit_post (ast: Ast) : StateT Translator (Except String) PUnit := do
     | Except.error e => Except.error e
 
 /-- This method is called on every [`ClassSetItem`] before descending into child nodes. -/
-def visit_class_set_item_pre (_ : ClassSetItem)
+def visit_class_set_item_pre (ast : ClassSetItem)
     : StateT Translator (Except String) PUnit := do
- pure ()
+ match ast with
+ | .Bracketed _ =>
+    let t ← get
+    set {t with stack := t.stack.push (HirFrame.ClassUnicode  ClassUnicode.empty)}
+ | _ => pure ()
 
 /-- This method is called on every [`ClassSetItem`] after descending into child nodes. -/
 def visit_class_set_item_post (ast : ClassSetItem)
@@ -395,8 +399,7 @@ def visit_class_set_item_post (ast : ClassSetItem)
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
       let xcls ← hir_ascii_unicode_class asciicls t.flags
-      let ranges := cls.set.ranges ++ xcls.set.ranges -- todo
-      let cls := ⟨ClassUnicode.set ⟨⟨ranges⟩⟩⟩
+      let cls := ⟨ClassUnicode.set ⟨Interval.union cls.set xcls.set⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Range in stack expected"
   | .Unicode cls =>
@@ -404,8 +407,7 @@ def visit_class_set_item_post (ast : ClassSetItem)
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let ranges := cls.set.ranges ++ xcls.set.ranges -- todo
-      let cls := ⟨ClassUnicode.set ⟨⟨ranges⟩⟩⟩
+      let cls := ⟨ClassUnicode.set ⟨Interval.union cls.set xcls.set⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Range in stack expected"
   | .Perl cls =>
@@ -413,22 +415,73 @@ def visit_class_set_item_post (ast : ClassSetItem)
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let ranges := cls.set.ranges ++ xcls.set.ranges -- todo
-      let cls := ⟨ClassUnicode.set ⟨⟨ranges⟩⟩⟩
+      let cls := ⟨ClassUnicode.set ⟨Interval.union cls.set xcls.set⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Range in stack expected"
-  | .Bracketed _ => pure ()
+  | .Bracketed ast =>
+     match t.stack.pop? with
+    | some (cls1, stack) =>
+      match stack.pop? with
+      | some (cls2, stack) =>
+        let cls1 ← cls1.unwrap_class_unicode
+        let cls1 := unicode_fold_and_negate cls1 t.flags ast.negate
+        let cls2 ← cls2.unwrap_class_unicode
+        set {t with stack :=
+          stack.push (HirFrame.ClassUnicode (ClassUnicode.union cls1 cls2))}
+      | none => Except.error "visit_class_set_item_post .Range in stack expected"
+    | none => Except.error "visit_class_set_item_post .Range in stack expected"
   | .Union _ => pure ()
   | .Empty _ => pure ()
 
-instance : Ast.Visitor String Hir Translator where
+/-- This method is called on every [`ClassSetBinaryOp`] before descending into  child nodes. -/
+def visit_class_set_binary_op_pre (_: ClassSetBinaryOp)
+    : StateT Translator (Except String) PUnit := do
+  let t ← get
+  set {t with stack := t.stack.push (HirFrame.ClassUnicode ClassUnicode.empty)}
+
+/-- This method is called between the left hand and right hand child nodes. -/
+def visit_class_set_binary_op_in (_: ClassSetBinaryOp)
+    : StateT Translator (Except String) PUnit := do
+  let t ← get
+  set {t with stack := t.stack.push (HirFrame.ClassUnicode ClassUnicode.empty)}
+
+/-- This method is called on every [`ClassSetBinaryOp`] after descending into  child nodes. -/
+def visit_class_set_binary_op_post (op: ClassSetBinaryOp)
+    : StateT Translator (Except String) PUnit := do
+  let t ← get
+  match t.stack.pop? with
+  | some (rhs, stack) =>
+    match stack.pop? with
+    | some (lhs, stack) =>
+      match stack.pop? with
+      | some (cls, stack) =>
+        let lhs ← lhs.unwrap_class_unicode
+        let lhs := unicode_fold_and_negate lhs t.flags false
+        let rhs ← rhs.unwrap_class_unicode
+        let rhs := unicode_fold_and_negate rhs t.flags false
+        let cls ← cls.unwrap_class_unicode
+        let clsOfKind :=
+          match op.kind with
+          | .Intersection => ClassUnicode.intersection lhs rhs
+          | .Difference => ClassUnicode.difference lhs rhs
+          | .SymmetricDifference => ClassUnicode.symmetric_difference lhs rhs
+        set {t with stack :=
+              stack.push (HirFrame.ClassUnicode (ClassUnicode.union cls clsOfKind))}
+      | none => Except.error "visit_class_set_binary_op_post stack empty for cls"
+    | none => Except.error "visit_class_set_binary_op_post stack empty for lhs"
+  | none => Except.error "visit_class_set_binary_op_post stack empty for rhs"
+
+instance : Ast.Visitor Hir Translator where
   finish := finish
   start := start
   visit_pre := visit_pre
   visit_post := visit_post
   visit_class_set_item_pre := visit_class_set_item_pre
   visit_class_set_item_post := visit_class_set_item_post
+  visit_class_set_binary_op_pre := visit_class_set_binary_op_pre
+  visit_class_set_binary_op_in := visit_class_set_binary_op_in
+  visit_class_set_binary_op_post := visit_class_set_binary_op_post
 
 /-- Translate the given abstract syntax tree into a high level intermediate representation. -/
 def translate (flags : Flags := default) (ast : Ast) : Except String Hir :=
-  visit instVisitorStringHirTranslator ⟨#[], flags⟩  ast
+  visit instVisitorHirTranslator ⟨#[], flags⟩  ast

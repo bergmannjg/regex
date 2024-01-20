@@ -393,7 +393,10 @@ private def pop_class_op (rhs: ClassSet) : ParserM ClassSet := do
     let stack := stack.push (ClassState.Open union clsset)
     set {parser with stack_class := stack}
     pure rhs
-  | some (ClassState.Op _ _, _) => throw "ClassState.Op nyi"
+  | some (ClassState.Op kind lhs, stack) =>
+    set {parser with stack_class := stack}
+    let op : ClassSetBinaryOp := ClassSetBinaryOp.mk default kind lhs rhs
+    pure (ClassSet.BinaryOp op)
   | _ => throw "internal error: pop_class_op unexpected empty character class stack"
 
 /-- Parse the end of a character class set and pop the character class parser stack. -/
@@ -401,21 +404,44 @@ private def pop_class (nested_union : ClassSetUnion)
     : ParserM (Either ClassSetUnion ClassBracketed) := do
   let ⟨span, _⟩ := nested_union
   let item := ClassSet.Item nested_union.into_item
-  let prevset ←  pop_class_op item
+  let prevset ← pop_class_op item
   let parser ← get
   match parser.stack_class.pop? with
-  | some (ClassState.Open _ ⟨_, negated, _⟩, stack) =>
+  | some (ClassState.Open ⟨uspan, uitems⟩ ⟨_, negated, _⟩, stack) =>
     let clsset : ClassBracketed := ⟨span, negated, prevset⟩
     if stack.size = 0
     then
       set {parser with stack_class := stack}
       pure (Either.Right clsset)
-    else throw "pop_class, .ClassSetItem.Bracketed nyi"
-  | some (ClassState.Op _ _, _) => throw "pop_class, .Op nyi"
+    else
+      set {parser with stack_class := stack}
+      let union : ClassSetUnion := ⟨uspan, uitems.push (ClassSetItem.Bracketed clsset)⟩
+      pure (Either.Left union)
+  | some (ClassState.Op _ _, _) => throw "internal error: pop_class, unexpected ClassState.Op"
   | none => throw "internal error: pop_class unexpected empty character class stack"
+
+/-- Push the current set of class items on to the class parser's stack as
+    the left hand side of the given operator. -/
+def push_class_op (next_kind: ClassSetBinaryOpKind) (next_union: ClassSetUnion)
+    : ParserM ClassSetUnion := do
+  let item : ClassSet := ClassSet.Item next_union.into_item
+  let new_lhs ← pop_class_op item
+  let parser ← get
+  let stack := parser.stack_class.push (ClassState.Op next_kind new_lhs)
+  set {parser with stack_class := stack}
+  let union : ClassSetUnion := ⟨default, #[]⟩
+  pure union
 
 private def parse_set_class_loop (pattern : String) (i : Nat) (union : ClassSetUnion)
     : ParserM (NChars × ClassBracketed) := do
+  let handle_other_char (span : Substring) (items : Array ClassSetItem)
+      (h₀ : ¬i ≥ String.length pattern)  : ParserM (NChars × ClassBracketed) := do
+    let (⟨n, h⟩, range) ←  parse_set_class_range pattern i
+    let union : ClassSetUnion := ⟨span, items.push range⟩
+    have : pattern.length - (i + n) < pattern.length - i :=
+      Nat.sum_lt_of_not_gt pattern.length i n h₀ h
+    parse_set_class_loop pattern (i + n) union
+
   if h₀ : i >= pattern.length
   then Except.error (toError pattern .ClassUnclosed)
   else
@@ -448,12 +474,31 @@ private def parse_set_class_loop (pattern : String) (i : Nat) (union : ClassSetU
         parse_set_class_loop pattern (i + 1) nested_union
       | .Right cls =>
         pure (i + 1, cls)
-    | _ =>
-      let (⟨n, h⟩, range) ←  parse_set_class_range pattern i
-      let union : ClassSetUnion := ⟨span, items.push range⟩
-      have : pattern.length - (i + n) < pattern.length - i :=
-        Nat.sum_lt_of_not_gt pattern.length i n h₀ h
-      parse_set_class_loop pattern (i + n) union
+    | '&' =>
+      if pattern.getAtCodepoint (i+1) = '&' then
+        let n := 1
+        let union ← push_class_op ClassSetBinaryOpKind.Intersection union
+        have : pattern.length - (i + n + 1) < pattern.length - i :=
+          Nat.sum_succ_lt_of_not_gt pattern.length i n h₀
+        parse_set_class_loop pattern (i + n + 1) union
+      else handle_other_char span items h₀
+    | '-' =>
+      if pattern.getAtCodepoint (i+1) = '-' then
+        let n := 1
+        let union ← push_class_op ClassSetBinaryOpKind.Difference union
+        have : pattern.length - (i + n + 1) < pattern.length - i :=
+          Nat.sum_succ_lt_of_not_gt pattern.length i n h₀
+        parse_set_class_loop pattern (i + n + 1) union
+      else handle_other_char span items h₀
+    | '~' =>
+      if pattern.getAtCodepoint (i+1) = '~' then
+        let n := 1
+        let union ← push_class_op ClassSetBinaryOpKind.SymmetricDifference union
+        have : pattern.length - (i + n + 1) < pattern.length - i :=
+          Nat.sum_succ_lt_of_not_gt pattern.length i n h₀
+        parse_set_class_loop pattern (i + n + 1) union
+      else handle_other_char span items h₀
+    | _ => handle_other_char span items h₀
 termination_by _ => pattern.length - i
 
 /-- Parse a standard character class consisting primarily of characters or character ranges. -/
