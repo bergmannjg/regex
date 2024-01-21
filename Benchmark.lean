@@ -13,9 +13,9 @@ instance : MonadLift (Except String) IO where
     | Except.ok res => pure res
     | Except.error e => throw $ .userError e
 
-private def stack_ops (stack : Stack) : Nat × Stack :=
-  let frameStep : Frame := Frame.Step default default
-  let frameRestoreCapture : Frame := Frame.RestoreCapture default default
+private def stack_ops (stack : Stack 1) : Nat × Stack 1 :=
+  let frameStep : Frame 1 := Frame.Step default default
+  let frameRestoreCapture : Frame 1 := Frame.RestoreCapture default default
   let stack := Stack.push stack frameStep
   let stack := Stack.push stack frameRestoreCapture
   match Stack.pop? stack with
@@ -106,7 +106,7 @@ def main (args : List String): IO Unit := do
     | ["stack", n] => -- check performance of Stack
         match n.toNat? with
         | some n =>
-          let (ops, stack) : Nat × Stack := n.fold
+          let (ops, stack) : Nat × Stack 1 := n.fold
               (fun _ (ops, acc) => let (n, stack) := stack_ops acc; (n+ops, stack)) default
           IO.println s!"ops {ops}, stack {stack}"
         | none => IO.println "Nat expected"

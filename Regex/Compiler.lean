@@ -25,75 +25,76 @@ instance : Inhabited Config := ⟨⟨true⟩⟩
     has an initial state at `start` and a final state at `end`.
 -/
 structure ThompsonRef where
-  start: StateID
-  «end»: StateID
+  start: Unchecked.StateID
+  «end»: Unchecked.StateID
 
 instance : Inhabited ThompsonRef := ⟨0, 0⟩
 
 instance : ToString ThompsonRef where
   toString s := s!"{s.start}, {s.end}"
 
-abbrev CompilerM := StateT (Array State) (Except String)
+abbrev CompilerM := StateT (Array Unchecked.State) (Except String)
 
 /-- Add a transition from one state to another. -/
-private def patch («from» to : StateID) : CompilerM PUnit := do
+private def patch («from» to : Unchecked.StateID) : CompilerM PUnit := do
   let states ← get
   if h : «from» < states.size
   then
     match states.get ⟨«from», h⟩ with
-    | .Empty _ =>  set (states.set ⟨«from», h⟩ (State.Empty to))
-    | .Look look _ =>  set (states.set ⟨«from», h⟩ (State.Look look to))
+    | .Empty _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Empty to))
+    | .Look look _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Look look to))
     | .ByteRange trans =>
-        set (states.set ⟨«from», h⟩ (State.ByteRange {trans with next := to}))
+        set (states.set ⟨«from», h⟩ (Unchecked.State.ByteRange {trans with next := to}))
     | .Capture _ pattern_id group_index slot =>
-        set (states.set ⟨«from», h⟩ (State.Capture to pattern_id group_index slot))
+        set (states.set ⟨«from», h⟩ (Unchecked.State.Capture to pattern_id group_index slot))
     | .BinaryUnion alt1 alt2 =>
-        if alt1 = 0 then set (states.set ⟨«from», h⟩ (State.BinaryUnion to alt2))
-        else if alt2 = 0 then set (states.set ⟨«from», h⟩ (State.BinaryUnion alt1 to))
+        if alt1 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion to alt2))
+        else if alt2 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion alt1 to))
         else Except.error "patch states, .BinaryUnion alt1 and alt2 not null"
     | .SparseTransitions _ => set states -- todo
     | .Union alternates =>
-        set (states.set ⟨«from», h⟩ (State.Union (alternates.push to)))
+        set (states.set ⟨«from», h⟩ (Unchecked.State.Union (alternates.push to)))
     | .UnionReverse alternates =>
-        set (states.set ⟨«from», h⟩ (State.UnionReverse (alternates.push to)))
+        set (states.set ⟨«from», h⟩ (Unchecked.State.UnionReverse (alternates.push to)))
     | .Match _ => Except.error s!"patch states .Match unexpected"
   else  Except.error s!"patch not valid, {«from»} ge size {states.size}"
 
-private def push (s : State) : CompilerM StateID := do
+private def push (s : Unchecked.State) : CompilerM Unchecked.StateID := do
   let states ← get
   set (states.push s)
   pure states.size
 
-private def push' (s : State) : CompilerM ThompsonRef := do
+private def push' (s : Unchecked.State) : CompilerM ThompsonRef := do
   let states ← get
   set (states.push s)
   pure ⟨states.size, states.size⟩
 
-private def add_match (pattern_id : PatternID) : CompilerM StateID :=
-  push (State.Match pattern_id)
+private def add_match (pattern_id : PatternID) : CompilerM Unchecked.StateID :=
+  push (Unchecked.State.Match pattern_id)
 
-private def add_union : CompilerM StateID :=
-  push (State.Union #[])
+private def add_union : CompilerM Unchecked.StateID :=
+  push (Unchecked.State.Union #[])
 
-private def add_union_reverse : CompilerM StateID  :=
-  push (State.UnionReverse #[])
+private def add_union_reverse : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.UnionReverse #[])
 
 private def c_range (start «end» : UInt32) : CompilerM ThompsonRef :=
-  let trans: Transition := ⟨start, «end», 0⟩
-  push' (State.ByteRange trans)
+  let trans: Unchecked.Transition := ⟨start, «end», 0⟩
+  push' (Unchecked.State.ByteRange trans)
 
-private def add_empty : CompilerM StateID  :=
-  push (State.Empty 0)
+private def add_empty : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.Empty 0)
 
 private def c_empty : CompilerM ThompsonRef :=
-  push' (State.Empty 0)
+  push' (Unchecked.State.Empty 0)
 
-private def add_sparse (trans : Array Transition) : CompilerM StateID  :=
-  push (State.SparseTransitions trans)
+private def add_sparse (trans : Array Unchecked.Transition) : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.SparseTransitions trans)
 
 private def c_unicode_class (cls : ClassUnicode) : CompilerM ThompsonRef := do
   let «end» ← add_empty
-  let trans : Array Transition := cls.set.ranges.map (fun r => ⟨r.start.val, r.end.val, «end»⟩)
+  let trans : Array Unchecked.Transition :=
+    cls.set.ranges.map (fun r => ⟨r.start.val, r.end.val, «end»⟩)
   let start ← add_sparse trans
   pure ⟨start, «end»⟩
 
@@ -101,21 +102,21 @@ private def c_literal (c : Char) : CompilerM ThompsonRef :=
   c_range c.val c.val
 
 private def c_look : Syntax.Look -> CompilerM ThompsonRef
-  | .Start => push' (State.Look NFA.Look.Start 0)
-  | .End => push' (State.Look NFA.Look.End 0)
-  | .StartLF => push' (State.Look NFA.Look.StartLF 0)
-  | .EndLF => push' (State.Look NFA.Look.EndLF 0)
-  | .StartCRLF => push' (State.Look NFA.Look.StartCRLF 0)
-  | .EndCRLF => push' (State.Look NFA.Look.EndCRLF 0)
-  | .WordUnicode => push' (State.Look NFA.Look.WordUnicode 0)
-  | .WordUnicodeNegate => push' (State.Look NFA.Look.WordUnicodeNegate 0)
-  | .WordStartUnicode => push' (State.Look NFA.Look.WordStartUnicode 0)
-  | .WordEndUnicode => push' (State.Look NFA.Look.WordEndUnicode 0)
-  | .WordStartHalfUnicode => push' (State.Look NFA.Look.WordStartHalfUnicode 0)
-  | .WordEndHalfUnicode => push' (State.Look NFA.Look.WordEndHalfUnicode 0)
+  | .Start => push' (Unchecked.State.Look NFA.Look.Start 0)
+  | .End => push' (Unchecked.State.Look NFA.Look.End 0)
+  | .StartLF => push' (Unchecked.State.Look NFA.Look.StartLF 0)
+  | .EndLF => push' (Unchecked.State.Look NFA.Look.EndLF 0)
+  | .StartCRLF => push' (Unchecked.State.Look NFA.Look.StartCRLF 0)
+  | .EndCRLF => push' (Unchecked.State.Look NFA.Look.EndCRLF 0)
+  | .WordUnicode => push' (Unchecked.State.Look NFA.Look.WordUnicode 0)
+  | .WordUnicodeNegate => push' (Unchecked.State.Look NFA.Look.WordUnicodeNegate 0)
+  | .WordStartUnicode => push' (Unchecked.State.Look NFA.Look.WordStartUnicode 0)
+  | .WordEndUnicode => push' (Unchecked.State.Look NFA.Look.WordEndUnicode 0)
+  | .WordStartHalfUnicode => push' (Unchecked.State.Look NFA.Look.WordStartHalfUnicode 0)
+  | .WordEndHalfUnicode => push' (Unchecked.State.Look NFA.Look.WordEndHalfUnicode 0)
 
-private def c_cap' (pattern_id slot: Nat) : CompilerM StateID  :=
-  push (State.Capture 0 0 pattern_id slot)
+private def c_cap' (pattern_id slot: Nat) : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.Capture 0 0 pattern_id slot)
 
 mutual
 
@@ -280,8 +281,8 @@ private def compile' (anchored : Bool) (expr : Hir) : CompilerM PUnit := do
   patch unanchored_prefix.end one.start
 
 /-- Compile the HIR expression given. -/
-def compile (config : Config := default) (expr : Hir) : Except String NFA := do
+def compile (config : Config := default) (expr : Hir) : Except String Checked.NFA := do
   let anchored := !config.unanchored_prefix || startsWithStart expr
   let (_, states) ← compile' anchored expr #[]
-  let nfa : NFA := ⟨states, 0, 0⟩
+  let nfa ← NFA.toCkecked ⟨states, 0, 0⟩
   Except.ok nfa

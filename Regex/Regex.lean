@@ -47,7 +47,7 @@ instance : ToString Captures where
 
 /-- A compiled regular expression for searching Unicode haystacks. -/
 structure Regex where
-  nfa : NFA
+  nfa : Checked.NFA
 
 instance : ToString Regex where
   toString m := s!"{m.nfa}"

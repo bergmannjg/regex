@@ -216,12 +216,12 @@ namespace Test.Compiler
 
 open BoundedBacktracker
 
-private def toString (x : Except String NFA) : String :=
+private def toString (x : Except String Checked.NFA) : String :=
   match x with
-  | Except.ok nfa => nfa.toString
+  | Except.ok nfa => NFA.Checked.toString nfa
   | Except.error e => s!"Error {e}"
 
-private def nfaOf'a' : NFA :=
+private def nfaOf'a' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -231,7 +231,7 @@ private def nfaOf'a' : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def nfaOf'ab' : NFA :=
+private def nfaOf'ab' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -242,7 +242,7 @@ private def nfaOf'ab' : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def «nfaOf'a?'» : NFA :=
+private def «nfaOf'a?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -254,7 +254,7 @@ private def «nfaOf'a?'» : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def «nfaOf'ab?'» : NFA :=
+private def «nfaOf'ab?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -267,7 +267,7 @@ private def «nfaOf'ab?'» : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def «nfaOf'[a-b]'» : NFA :=
+private def «nfaOf'[a-b]'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -278,7 +278,7 @@ private def «nfaOf'[a-b]'» : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def «nfaOf'a|b'» : NFA :=
+private def «nfaOf'a|b'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -291,7 +291,7 @@ private def «nfaOf'a|b'» : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def «nfaOf'(a)'» : NFA :=
+private def «nfaOf'(a)'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -303,7 +303,7 @@ private def «nfaOf'(a)'» : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def «nfaOf'[a]{0,2}'» : NFA :=
+private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
@@ -320,7 +320,7 @@ private def «nfaOf'[a]{0,2}'» : NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def build (s : String) : Except String NFA := do
+private def build (s : String) : Except String Checked.NFA := do
   let re ← Regex.build s
   Except.ok re.nfa
 
