@@ -350,10 +350,10 @@ private def parse_set_class_range (pattern : String) (i : Nat)
     let (⟨n2, _⟩, prim2) ←  parse_set_class_item pattern (i + n1 + 1)
     let lit1 ←prim1.into_class_literal
     let lit2 ←prim2.into_class_literal
-    if lit1.c.val <= lit2.c.val
+    if h : lit1.c.val <= lit2.c.val
     then
       let range : ClassSetRange :=
-        ⟨⟨pattern, ⟨i⟩, ⟨i + n1 + n2 + 1⟩⟩, lit1, lit2⟩
+        ⟨⟨pattern, ⟨i⟩, ⟨i + n1 + n2 + 1⟩⟩, lit1, lit2, h⟩
       Except.ok (⟨1 + n1 + n2, by simp_arith[Nat.zero_lt_one_add _]⟩, ClassSetItem.Range range)
     else Except.error (toError pattern .ClassRangeInvalid)
 

@@ -96,7 +96,7 @@ def typeOfProperty : PropertyName -> PropertyType
   | .Math => .Binary
   | .Regional_Indicator => .Binary
 
-/-- Property name alias -/
+/-- Property name palias -/
 structure PropertyAlias where
   short : String
   long : String
@@ -122,10 +122,10 @@ private def propertyAliases : Array PropertyAlias := #[
   ⟨"ri", "Regional_Indicator", .Regional_Indicator⟩
 ]
 
-def matchPropertyAlias (s : String) (alias : PropertyAlias) : Bool :=
+def matchPropertyAlias (s : String) (palias : PropertyAlias) : Bool :=
   let sn := normalize s
-  let ln := normalize alias.long
-  sn = alias.short || sn = ln
+  let ln := normalize palias.long
+  sn = palias.short || sn = ln
 
 /-- part of [PropertyValueAliases](https://www.unicode.org/Public/12.1.0/ucd/PropertyValueAliases.txt),
     todo: read from file -/
@@ -133,23 +133,23 @@ private def propertyValueAliases : Array PropertyAlias := #[
   ⟨"ri", "Regional_Indicator", .Grapheme_Cluster_Break⟩
 ]
 
-private def matchPropertyValueAlias (name : PropertyName) (s : String) (alias : PropertyAlias)
+private def matchPropertyValueAlias (name : PropertyName) (s : String) (palias : PropertyAlias)
     : Bool :=
   let sn := normalize s
-  let ln := normalize alias.long
-  if alias.propertyName != name then false
-  else sn = alias.short || sn = ln
+  let ln := normalize palias.long
+  if palias.propertyName != name then false
+  else sn = palias.short || sn = ln
 
 /-- get PropertyValueAlias of property name and value -/
 def getPropertyValueAlias (name : PropertyName) (val : String) : Option PropertyAlias :=
   match propertyValueAliases.find? (matchPropertyValueAlias name val) with
-  | some alias => alias
+  | some palias => palias
   | none => none
 
 /-- get PropertyName of property name `s` -/
 def ofName? (s : String) : Option PropertyName :=
   match propertyAliases.find? (matchPropertyAlias s) with
-  | some alias => alias.propertyName
+  | some palias => palias.propertyName
   | none => none
 
 /-- get GeneralCategory of long property value `s` -/
@@ -209,7 +209,7 @@ def ofValue? (s : String) : Option PropertyName :=
     see [Compatibility_Properties](https://www.unicode.org/reports/tr18/#Compatibility_Properties) -/
 def ofCompatibilityPropertyName? (s : String)
     : Option $ Array (PropertyName × Option String) :=
-  /- alpha, lower, upper, space via alias -/
+  /- alpha, lower, upper, space via palias -/
   match normalize s with
   | "punct" => some #[(PropertyName.General_Category, GeneralCategory.P.toAbbrev)]
   | "digit" => some #[(PropertyName.General_Category, GeneralCategory.Nd.toAbbrev)]

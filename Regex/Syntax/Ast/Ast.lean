@@ -273,6 +273,8 @@ structure ClassSetRange where
     start: Literal
     /-- The end of this range. -/
     «end»: Literal
+    /-- assertion -/
+    isLe : start.c ≤ «end».c
 
 namespace ClassSetRange
 

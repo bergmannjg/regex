@@ -7,6 +7,7 @@ import Regex.Unicode.GraphemeBreakProperty
 import Regex.Unicode.DerivedCoreProperties
 import Regex.Unicode.Emoji
 import Regex.Unicode.Scripts
+import Regex.Data.Char.Basic
 
 /-!
 ## Unicode
@@ -63,7 +64,8 @@ def rangesOfGeneralCategory (category : GeneralCategory) : Except String $ Array
           else u.generalCategory = category)
       | ⟨major, none⟩ =>
         UnicodeData.data |> Array.filter (fun u => u.generalCategory.major = major)
-    let arr := fold data |> .map (fun (c1, c2) => ⟨c1, c2⟩)
+    let arr := fold data |> .filterMap (fun (c1, c2) =>
+                                        if h : c1 ≤ c2 then some ⟨c1, c2, h⟩ else none)
     let arr := if category = GeneralCategory.C then arr ++ getUnassigned else arr
     Except.ok arr
 
@@ -80,7 +82,7 @@ private def property_map (arr : Array (UInt32 × Option UInt32)) : Array (Range 
       | some m => if h : UInt32.isValidChar m then ⟨m, h⟩ else 'x'
       | none => a
     (a, b))
-  |> .map (fun (c1, c2) => ⟨c1, c2⟩)
+  |> .filterMap (fun (c1, c2) => if h : c1 ≤ c2 then some ⟨c1, c2, h⟩ else none)
 
 private def rangessOfPropertyName (name : PropertyName) (prop : String)
     : Except String $ Array (Range Char) := do
@@ -98,12 +100,14 @@ private def rangessOfPropertyName (name : PropertyName) (prop : String)
   | .Math => rangesOfDerivedCoreProperty "Math"
   | .Regional_Indicator => getWordBreak "Regional_Indicator"
   | .Script => rangesOfScript prop
-  | .ASCII_Hex_Digit => Except.ok #[⟨'0','9'⟩, ⟨'A','F'⟩, ⟨'a','f'⟩]
-  | .Hex_Digit => Except.ok #[⟨'0','9'⟩, ⟨'A','F'⟩, ⟨'a','f'⟩]
+  | .ASCII_Hex_Digit =>
+      Except.ok #[⟨'0','9', by simp_arith⟩, ⟨'A','F', by simp_arith⟩, ⟨'a','f', by simp_arith⟩]
+  | .Hex_Digit =>
+      Except.ok #[⟨'0','9', by simp_arith⟩, ⟨'A','F', by simp_arith⟩, ⟨'a','f', by simp_arith⟩]
   | .Numeric_Value => rangesOfGeneralCategory GeneralCategory.N
-  | .ASSIGNED => Except.ok (Interval.negate ⟨getUnassigned⟩).ranges
-  | .ASCII => Except.ok #[⟨'\x00', '\x7F'⟩]
-  | .ANY => Except.ok #[⟨'\u0000', ⟨0x10FFFF, by simp_arith⟩⟩]
+  | .ASSIGNED => Except.ok (Interval.negate (Interval.canonicalize getUnassigned)).ranges
+  | .ASCII => Except.ok #[⟨'\x00', '\x7F', by simp_arith⟩]
+  | .ANY => Except.ok #[⟨'\u0000', ⟨0x10FFFF, by simp_arith⟩, by simp_arith⟩]
   | .Default_Ignorable_Code_Point => Except.error s!"Property name {name} has no data"
   | .Noncharacter_Code_Point => Except.error s!"Property name {name} has no data"
 
@@ -144,7 +148,7 @@ private def inRangesOfProperty (c : Char) (prop : String) : Except String String
 def is_word_char (c : Char) : Bool :=
   match rangesOfProperty "Word" with
   | Except.ok arr =>
-      match Array.find? arr (fun ⟨c1, c2⟩ => c1.val <= c.val && c.val <= c2.val) with
+      match Array.find? arr (fun ⟨c1, c2, _⟩ => c1.val <= c.val && c.val <= c2.val) with
       | some _ => true
       | none => false
   | Except.error _ => false
@@ -153,11 +157,13 @@ def is_word_char (c : Char) : Bool :=
 def case_fold_char (c : Char) :  Array (Range Char) :=
   let data := getUnicodeData c
   match data.uppercaseMapping with
-  | some cUpper => #[⟨cUpper, cUpper⟩, ⟨c, c⟩]
+  | some cUpper =>
+      #[⟨cUpper, cUpper, by simp [Char.eq_le _]⟩, ⟨c, c, by simp [Char.eq_le _]⟩]
   | none =>
     match data.lowercaseMapping with
-    | some cLower => #[⟨c, c⟩, ⟨cLower, cLower⟩]
-    | none => #[⟨c, c⟩]
+    | some cLower =>
+      #[⟨c, c, by simp [Char.eq_le _]⟩, ⟨cLower, cLower, by simp [Char.eq_le _]⟩]
+    | none => #[⟨c, c, by simp [Char.eq_le _]⟩]
 
 private partial def loop (c : Char) (n count : UInt32) (acc : Array Char) : Array Char :=
   if n > count then acc

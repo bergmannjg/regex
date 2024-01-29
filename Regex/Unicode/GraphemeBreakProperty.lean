@@ -47,8 +47,8 @@ def rangesOfGraphemeBreak (s : String) : Except String $ Array (Range Char) :=
       p |> Array.map toRange)
   | none =>
     match getPropertyValueAlias PropertyName.Grapheme_Cluster_Break s with
-    | some alias =>
-      match GraphemeBreakProperty.data.find? (normalize ·.name = normalize alias.long) with
+    | some palias =>
+      match GraphemeBreakProperty.data.find? (normalize ·.name = normalize palias.long) with
       | some ⟨_, p⟩ => Except.ok (
           p |> Array.map toRange)
       | none => Except.error s!"GraphemeBreak property {s} not found"

@@ -17,46 +17,119 @@ instance : MonadLift (Except String) IO where
 
 namespace Test.Range
 
-example : (⟨'b', 'c'⟩ : Range Char) = Range.intersection ⟨'a', 'c'⟩ ⟨'b', 'e'⟩ := by rfl
+example : (⟨'b', 'c', by simp_arith⟩ : Range Char)
+  = Range.intersection ⟨'a', 'c', by simp_arith⟩ ⟨'b', 'e', by simp_arith⟩ := by rfl
 
 namespace Test.Range.Intersection
 
-def iv1 : IntervalSet Char := ⟨#[⟨'a', 'c'⟩, ⟨'g', 'k'⟩]⟩
-def iv2 : IntervalSet Char := ⟨#[⟨'b', 'e'⟩, ⟨'j', 'l'⟩, ⟨'m', 'n'⟩]⟩
-def iv : IntervalSet Char := ⟨#[⟨'b', 'c'⟩, ⟨'j', 'k'⟩]⟩
+def iv1 : Array $ Range Char := #[⟨'a', 'c', by simp_arith⟩, ⟨'g', 'k', by simp_arith⟩]
+def iv2 : Array $ Range Char :=
+            #[⟨'b', 'e', by simp_arith⟩, ⟨'j', 'l', by simp_arith⟩, ⟨'m', 'n', by simp_arith⟩]
+def iv : Array $ Range Char := #[⟨'b', 'c', by simp_arith⟩, ⟨'j', 'k', by simp_arith⟩]
 
-example : iv = Interval.intersection iv1 iv2 := by rfl
+example : iv =
+    (Interval.intersection (Interval.canonicalize iv1) (Interval.canonicalize iv2)).ranges  := by
+  native_decide
 
 end Test.Range.Intersection
 
 namespace Test.Range.Difference
 
-def iv1 : IntervalSet Char := ⟨#[⟨'a', 'e'⟩]⟩
-def iv2 : IntervalSet Char := ⟨#[⟨'b', 'c'⟩]⟩
-def iv : IntervalSet Char := ⟨#[⟨'a', 'a'⟩, ⟨'d', 'e'⟩]⟩
+def iv1 : Array $ Range Char := #[⟨'a', 'e', by simp_arith⟩]
+def iv2 : Array $ Range Char := #[⟨'b', 'c', by simp_arith⟩]
+def iv : Array $ Range Char := #[⟨'a', 'a', by simp_arith⟩, ⟨'d', 'e', by simp_arith⟩]
 
-example : iv = Interval.difference iv1 iv2 := by rfl
+example : iv =
+    (Interval.difference (Interval.canonicalize iv1) (Interval.canonicalize iv2)).ranges := by
+  native_decide
 
 end Test.Range.Difference
 
 namespace Test.Range.SymmetricDifference
 
-def iv1 : IntervalSet Char := ⟨#[⟨'a', 'c'⟩]⟩
-def iv2 : IntervalSet Char := ⟨#[⟨'b', 'd'⟩]⟩
-def iv : IntervalSet Char := ⟨#[⟨'a', 'a'⟩, ⟨'d', 'd'⟩]⟩
+def iv1 : Array $ Range Char := #[⟨'a', 'c', by simp_arith⟩]
+def iv2 : Array $ Range Char := #[⟨'b', 'd', by simp_arith⟩]
+def iv : Array $ Range Char := #[⟨'a', 'a', by simp_arith⟩, ⟨'d', 'd', by simp_arith⟩]
 
-example : iv = (Interval.symmetric_difference iv1 iv2) := by native_decide
+example : iv =
+    (Interval.symmetric_difference (Interval.canonicalize iv1) (Interval.canonicalize iv2)).ranges
+  := by native_decide
 
 end Test.Range.SymmetricDifference
 
 namespace Test.Range.Canonicalize
 
-def ivnc : IntervalSet Char := ⟨#[⟨'a', 'c'⟩, ⟨'b', 'd'⟩]⟩
-def iv : IntervalSet Char := ⟨#[⟨'a', 'd'⟩]⟩
+def ivnc : Array $ Range Char := #[⟨'a', 'c', by simp_arith⟩, ⟨'b', 'd', by simp_arith⟩]
+def iv : Array $ Range Char := #[⟨'a', 'd', by simp_arith⟩]
 
-example : iv = Interval.canonicalize ivnc := by native_decide
+example : iv = (Interval.canonicalize ivnc).ranges := by native_decide
+
+def ivnc2 : Array $ Range Char := #[
+      ⟨'b', 'b', by simp_arith⟩,
+      ⟨'C', 'C', by simp_arith⟩,
+      ⟨'B', 'B', by simp_arith⟩,
+      ⟨'c', 'c', by simp_arith⟩]
+def iv2 : Array $ Range Char := #[
+      ⟨'B', 'C', by simp_arith⟩,
+      ⟨'b', 'c', by simp_arith⟩]
+
+example : iv2 = (Interval.canonicalize ivnc2).ranges := by native_decide
+
+def ivnc3 : Array $ Range Char := #[⟨'a', 'c', by simp_arith⟩, ⟨'d', 'd', by simp_arith⟩]
+def iv3 : Array $ Range Char := #[⟨'a', 'd', by simp_arith⟩]
+
+example : iv3 = (Interval.canonicalize ivnc3).ranges := by native_decide
+
+def ivnc4 : Array $ Range Char := #[
+  /- 2275 2281 -/ ⟨'ࣣ', 'ࣩ', by simp_arith⟩,
+  /- 2275 2307 -/ ⟨'ࣣ', 'ः', by simp_arith⟩,
+  /- 2288 2306 -/ ⟨'ࣰ', 'ं', by simp_arith⟩,
+  /- 2307 2307 -/ ⟨'ः', 'ः', by simp_arith⟩,
+  /- 2308 2361 -/ ⟨'ऄ', 'ह', by simp_arith⟩,
+  /- 2362 2362 -/ ⟨'ऺ', 'ऺ', by simp_arith⟩,
+  /- 2362 2364 -/ ⟨'ऺ', '़', by simp_arith⟩,
+  /- 2363 2363 -/ ⟨'ऻ', 'ऻ', by simp_arith⟩]
+
+def iv4 : Array $ Range Char :=  #[⟨'ࣣ', '़', by simp_arith⟩]
+
+example : iv4 = (Interval.canonicalize ivnc4).ranges := by native_decide
 
 end Test.Range.Canonicalize
+
+namespace Test.Range.Unique
+
+def iv : Array $ Range Char := #[
+      ⟨'C', 'C', by simp_arith⟩,
+      ⟨'b', 'b', by simp_arith⟩,
+      ⟨'c', 'c', by simp_arith⟩]
+
+def iv1 : Array $ Range Char := #[
+      ⟨'C', 'C', by simp_arith⟩,
+      ⟨'b', 'b', by simp_arith⟩,
+      ⟨'b', 'b', by simp_arith⟩,
+      ⟨'c', 'c', by simp_arith⟩]
+
+example : iv = Ranges.unique iv1 := by native_decide
+
+def iv2 : Array $ Range Char := #[
+      ⟨'C', 'C', by simp_arith⟩,
+      ⟨'C', 'C', by simp_arith⟩,
+      ⟨'b', 'b', by simp_arith⟩,
+      ⟨'c', 'c', by simp_arith⟩]
+
+example : iv = Ranges.unique iv2 := by native_decide
+
+def iv3 : Array $ Range Char := #[
+      ⟨'C', 'C', by simp_arith⟩,
+      ⟨'C', 'C', by simp_arith⟩,
+      ⟨'b', 'b', by simp_arith⟩,
+      ⟨'b', 'b', by simp_arith⟩,
+      ⟨'c', 'c', by simp_arith⟩,
+      ⟨'c', 'c', by simp_arith⟩]
+
+example : iv = Ranges.unique iv3 := by native_decide
+
+end Test.Range.Unique
 
 end Test.Range
 
@@ -100,7 +173,8 @@ private def «astOf'[a-b]'» : Ast :=
         (ClassSet.Item (ClassSetItem.Range ⟨
             toSpan "[a-b]" 1 4,
             ⟨toSpan "[a-b]" 1 2, LiteralKind.Verbatim, 'a'⟩,
-            ⟨toSpan "[a-b]" 3 4, LiteralKind.Verbatim, 'b'⟩⟩)))
+            ⟨toSpan "[a-b]" 3 4, LiteralKind.Verbatim, 'b'⟩,
+            by simp_arith⟩)))
 
 private def «astOf'a|b'» : Ast :=
     Ast.Alternation
@@ -135,13 +209,13 @@ end Test.Ast
 namespace Test.Hir
 
 def cls : Syntax.ClassUnicode :=
-  let cls : ClassUnicodeRange := ⟨'b', 'c'⟩
-  ⟨⟨#[cls]⟩⟩
+  let cls : ClassUnicodeRange := ⟨'b', 'c', by simp_arith⟩
+  ⟨Interval.canonicalize #[cls]⟩
 
 def cls_neg : Syntax.ClassUnicode :=
-  let cls1 : ClassUnicodeRange := ⟨'\u0000', 'a'⟩
-  let cls2 : ClassUnicodeRange := ⟨'d', ⟨0x10FFFF, by simp_arith⟩⟩
-  ⟨⟨#[cls1, cls2]⟩⟩
+  let cls1 : ClassUnicodeRange := ⟨'\u0000', 'a', by simp_arith⟩
+  let cls2 : ClassUnicodeRange := ⟨'d', ⟨0x10FFFF, by simp_arith⟩, by simp_arith⟩
+  ⟨Interval.canonicalize #[cls1, cls2]⟩
 
 example : (Syntax.ClassUnicode.negate cls |> toString) = (cls_neg |> toString) := by native_decide
 
@@ -165,8 +239,13 @@ example : (build "a" |> toString) = hirOf'a'.toString 0 := by native_decide
 
 example : (build "(a)" |> toString) = «hirOf'(a)'».toString 0 := by native_decide
 
+private def _mkCls (arr : Array $ Char × Char) : Syntax.ClassUnicode :=
+  ⟨Interval.canonicalize
+    (arr |> Array.filterMap (fun (c1, c2) => if h : c1 ≤ c2 then some ⟨c1, c2, h⟩ else none))⟩
+
 private def mkCls (arr : Array $ Char × Char) : Hir :=
-    Hir.mk (HirKind.Class (Class.Unicode ⟨⟨arr |> Array.map (fun (c1, c2) => ⟨c1, c2⟩)⟩⟩)) default
+    Hir.mk (HirKind.Class
+      (Class.Unicode (_mkCls arr))) default
 
 private def mkConcat (hir : Hir) : Hir :=
   Hir.mk (HirKind.Concat #[hir]) default
@@ -196,7 +275,7 @@ example : (build "[0-9--4]" |> toString)
 example : (build r"[\&&&&]" |> toString) = (mkCls #[('&', '&')]).toString 0 := by native_decide
 
 example : (build "(?i)[abc&&b-c]" |> toString) =
-      (mkConcat (mkCls #[('B', 'B'), ('C', 'C'), ('b', 'b'), ('c', 'c')])).toString 0 := by
+      (mkConcat (mkCls #[('B', 'C'), ('b', 'c')])).toString 0 := by
     native_decide
 
 example : (build "[a-z&&b-y&&c-x]" |> toString) = (mkCls #[('c', 'x')]).toString 0 := by
