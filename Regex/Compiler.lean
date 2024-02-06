@@ -36,26 +36,26 @@ instance : ToString ThompsonRef where
 abbrev CompilerM := StateT (Array Unchecked.State) (Except String)
 
 /-- Add a transition from one state to another. -/
-private def patch («from» to : Unchecked.StateID) : CompilerM PUnit := do
+private def patch («from» «to» : Unchecked.StateID) : CompilerM PUnit := do
   let states ← get
   if h : «from» < states.size
   then
     match states.get ⟨«from», h⟩ with
-    | .Empty _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Empty to))
-    | .Look look _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Look look to))
-    | .ByteRange trans =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.ByteRange {trans with next := to}))
+    | .Empty _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Empty «to»))
+    | .Look look _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Look look «to»))
+    | .ByteRange t =>
+        set (states.set ⟨«from», h⟩ (Unchecked.State.ByteRange {t with «next» := «to»}))
     | .Capture _ pattern_id group_index slot =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.Capture to pattern_id group_index slot))
+        set (states.set ⟨«from», h⟩ (Unchecked.State.Capture «to» pattern_id group_index slot))
     | .BinaryUnion alt1 alt2 =>
-        if alt1 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion to alt2))
-        else if alt2 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion alt1 to))
+        if alt1 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion «to» alt2))
+        else if alt2 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion alt1 «to»))
         else Except.error "patch states, .BinaryUnion alt1 and alt2 not null"
     | .SparseTransitions _ => set states -- todo
     | .Union alternates =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.Union (alternates.push to)))
+        set (states.set ⟨«from», h⟩ (Unchecked.State.Union (alternates.push «to»)))
     | .UnionReverse alternates =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.UnionReverse (alternates.push to)))
+        set (states.set ⟨«from», h⟩ (Unchecked.State.UnionReverse (alternates.push «to»)))
     | .Match _ => Except.error s!"patch states .Match unexpected"
   else  Except.error s!"patch not valid, {«from»} ge size {states.size}"
 

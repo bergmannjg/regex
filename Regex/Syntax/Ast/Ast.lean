@@ -197,7 +197,7 @@ def spanToString (span : Substring) : String :=
 namespace Literal
 
 def toString (lit : Literal) : String :=
-  s!"Literal {spanToString lit.span} {lit.kind} '{intAsString lit.c.val}'"
+  s!"Literal {spanToString lit.span} {lit.kind} '{UInt32.intAsString lit.c.val}'"
 
 end Literal
 
@@ -780,7 +780,7 @@ mutual
 
 partial def toStringClassSetUnion (r : ClassSetUnion) (col : Nat) : String :=
   let col := col + 2
-  let pre := "\n" ++ (multiple ' ' col "")
+  let pre := "\n" ++ (Char.multiple ' ' col "")
 
   let ⟨_, items⟩ := r
   let lines :=
@@ -827,7 +827,7 @@ namespace ClassSet
 
 partial def toString (r : ClassSet) (col : Nat) : String :=
   let col := col + 2
-  let pre := "\n" ++ (multiple ' ' col "")
+  let pre := "\n" ++ (Char.multiple ' ' col "")
 
   match r with
   | .Item item => s!"{ClassSetItem.toStringClassSetItem item col}"
@@ -869,7 +869,7 @@ def span (ast : Ast) : Substring :=
 
 partial def toString (ast : Ast) (col : Nat) : String :=
   let col := col + 2
-  let pre := "\n" ++ (multiple ' ' col "")
+  let pre := "\n" ++ (Char.multiple ' ' col "")
   match ast with
   | .Empty => s!"Empty"
   | .Flags ⟨_, flags⟩  => s!"Flags {flags}"

@@ -141,54 +141,54 @@ private def toString (x : Except String Ast) : String :=
   | Except.error e => s!"Error {e}"
 
 private def astOf'a' : Ast :=
-    Ast.Literal ⟨toSpan "a" 0 1, LiteralKind.Verbatim, 'a'⟩
+    Ast.Literal ⟨String.toSpan "a" 0 1, LiteralKind.Verbatim, 'a'⟩
 
 private def astOf'a?' : Ast :=
     Ast.Repetition
       (Repetition.mk
-        (toSpan "a?" 0 2)
-        ⟨toSpan "a?" 1 2, RepetitionKind.ZeroOrOne⟩
+        (String.toSpan "a?" 0 2)
+        ⟨String.toSpan "a?" 1 2, RepetitionKind.ZeroOrOne⟩
         true
-        (Ast.Literal ⟨toSpan "a?" 0 1, LiteralKind.Verbatim, 'a'⟩))
+        (Ast.Literal ⟨String.toSpan "a?" 0 1, LiteralKind.Verbatim, 'a'⟩))
 
 private def astOf'ab' : Ast :=
     Ast.Concat
       (Concat.mk
-        (toSpan "ab" 0 2)
-        #[Ast.Literal ⟨toSpan "ab" 0 1, LiteralKind.Verbatim, 'a'⟩,
-          Ast.Literal ⟨toSpan "ab" 1 2, LiteralKind.Verbatim, 'b'⟩])
+        (String.toSpan "ab" 0 2)
+        #[Ast.Literal ⟨String.toSpan "ab" 0 1, LiteralKind.Verbatim, 'a'⟩,
+          Ast.Literal ⟨String.toSpan "ab" 1 2, LiteralKind.Verbatim, 'b'⟩])
 
 private def «astOf'[a]'» : Ast :=
     Ast.ClassBracketed
       (ClassBracketed.mk
-        (toSpan "[a]" 0 3)
+        (String.toSpan "[a]" 0 3)
         false
-        (ClassSet.Item (ClassSetItem.Literal ⟨toSpan "[a]" 1 2, LiteralKind.Verbatim, 'a'⟩)))
+        (ClassSet.Item (ClassSetItem.Literal ⟨String.toSpan "[a]" 1 2, LiteralKind.Verbatim, 'a'⟩)))
 
 private def «astOf'[a-b]'» : Ast :=
     Ast.ClassBracketed
       (ClassBracketed.mk
-        (toSpan "[a-b]" 0 5)
+        (String.toSpan "[a-b]" 0 5)
         false
         (ClassSet.Item (ClassSetItem.Range ⟨
-            toSpan "[a-b]" 1 4,
-            ⟨toSpan "[a-b]" 1 2, LiteralKind.Verbatim, 'a'⟩,
-            ⟨toSpan "[a-b]" 3 4, LiteralKind.Verbatim, 'b'⟩,
+            String.toSpan "[a-b]" 1 4,
+            ⟨String.toSpan "[a-b]" 1 2, LiteralKind.Verbatim, 'a'⟩,
+            ⟨String.toSpan "[a-b]" 3 4, LiteralKind.Verbatim, 'b'⟩,
             by simp_arith⟩)))
 
 private def «astOf'a|b'» : Ast :=
     Ast.Alternation
       (Alternation.mk
-        (toSpan "[a|b]" 0 3)
-        #[Ast.Literal ⟨toSpan "a|b" 0 1, LiteralKind.Verbatim, 'a'⟩,
-          Ast.Literal ⟨toSpan "a|b" 2 3, LiteralKind.Verbatim, 'b'⟩])
+        (String.toSpan "[a|b]" 0 3)
+        #[Ast.Literal ⟨String.toSpan "a|b" 0 1, LiteralKind.Verbatim, 'a'⟩,
+          Ast.Literal ⟨String.toSpan "a|b" 2 3, LiteralKind.Verbatim, 'b'⟩])
 
 private def «astOf'(a)'» : Ast :=
-    Ast.Group
-      (Group.mk
-        (toSpan "(a)" 0 3)
+    Syntax.Ast.Ast.Group
+      (Syntax.Ast.Group.mk
+        (String.toSpan "(a)" 0 3)
         (GroupKind.CaptureIndex 1)
-        (Ast.Literal ⟨toSpan "(a)" 1 2, LiteralKind.Verbatim, 'a'⟩))
+        (Ast.Literal ⟨String.toSpan "(a)" 1 2, LiteralKind.Verbatim, 'a'⟩))
 
 example : (parse "a" |> toString) = s!"{astOf'a'}" := by native_decide
 
@@ -481,7 +481,7 @@ end Captures
 
 instance : FromJson $ Array Captures := ⟨Captures.fromJson?⟩
 
-namespace Either
+namespace Sum
 
 def toString (json : Json) : Except String String :=
   fromJson? json
@@ -489,33 +489,33 @@ def toString (json : Json) : Except String String :=
 def toArray (json : Json) : Except String $ Array String :=
   fromJson? json
 
-def fromJson? (json : Json) : Except String $ Either String (Array String) := do
+def fromJson? (json : Json) : Except String $ Sum String (Array String) := do
   match toArray json with
-  | Except.ok arr => Except.ok (Either.Right arr)
+  | Except.ok arr => Except.ok (Sum.inr arr)
   | _ =>
     match toString json with
-    | Except.ok s => Except.ok (Either.Left s)
+    | Except.ok s => Except.ok (Sum.inl s)
     | Except.error e => Except.error e
 
-def val (v : Either String (Array String)) : String :=
+def val (v : Sum String (Array String)) : String :=
     match v with
-    | .Left s => s
-    | .Right arr => arr[0]!
+    | .inl s => s
+    | .inr arr => arr[0]!
 
-end Either
+end Sum
 
-instance : FromJson $ Either String (Array String) := ⟨Either.fromJson?⟩
+instance : FromJson $ Sum String (Array String) := ⟨Sum.fromJson?⟩
 
-instance : ToString $ Either String (Array String) where
+instance : ToString $ Sum String (Array String) where
   toString v :=
     match v with
-    | .Left s => s!"{s}"
-    | .Right arr => s!"{arr}"
+    | .inl s => s!"{s}"
+    | .inr arr => s!"{arr}"
 
 /-- A regex test describes the inputs and expected outputs of a regex match. -/
 structure RegexTest where
   name : String
-  regex : Either String (Array String)
+  regex : Sum String (Array String)
   haystack : String
   «matches» : Array Captures
   /-- An optional field whose value is a table with `start` and `end` fields-/
@@ -571,7 +571,7 @@ instance : ToString RegexTest where
     let str := str ++ (if s.«case-insensitive».isSome then " case-insensitive" else "")
     let str := str ++ (if s.unescape.isSome then " unescape" else "")
     let str := str ++ (if s.unicode.isSome && !s.unicode.getD true then " !unicode" else "")
-    let str := str ++ (if String.containsSubstr (Either.val s.regex) "(?" then " flags" else "")
+    let str := str ++ (if String.containsSubstr (Sum.val s.regex) "(?" then " flags" else "")
     let str := str ++ (if checkFlagIsFalse s.compiles then " !compiles" else "")
     str
 
@@ -582,7 +582,7 @@ def unescape (s : String) : String :=
   ⟨loop s.data []⟩
 where
   toChar (a b : Char) : Char :=
-    match decodeHexDigit a, decodeHexDigit b with
+    match Char.decodeHexDigit a, Char.decodeHexDigit b with
     | some n, some m =>
       let val := 16*n+m
       if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
@@ -597,7 +597,7 @@ where
 def compiles (t : RegexTest) : Bool :=
   let flags : Syntax.Flags := default
   let config : Compiler.Config := default
-  match Regex.build (Either.val t.regex) flags config with
+  match Regex.build (Sum.val t.regex) flags config with
   | Except.ok _ => true
   | Except.error _ => false
 
@@ -609,7 +609,7 @@ def captures (t : RegexTest) : Except String (Array Regex.Captures) := do
   let config := {config with unanchored_prefix := !t.anchored.getD false}
 
   let haystack := if t.unescape.getD false then unescape t.haystack else t.haystack
-  let re ← Regex.build (Either.val t.regex) flags config
+  let re ← Regex.build (Sum.val t.regex) flags config
   Except.ok (Regex.all_captures haystack.toSubstring re)
 
 def checkMatches (arr : Array Regex.Captures) (t : RegexTest) : Bool :=
@@ -664,7 +664,7 @@ def ignoreTest (t : RegexTest) : Bool :=
   || t.«line-terminator».isSome -- Config
   || t.«search-kind».any (· != "leftmost") -- only leftmost is valid for BoundedBacktracker
   || t.«match-kind».any (· = "all") -- Sets
-  || match t.regex with | .Right _ => true | .Left _ => false -- Sets
+  || match t.regex with | .inr _ => true | .inl _ => false -- Sets
 
 def testItem (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
   if checkFlagIsFalse t.compiles

@@ -1,46 +1,33 @@
+import Std.Data.List.Lemmas
+
 /-!
 ## Utils
 -/
 
-namespace String
-
-/-- get `i` char in `s`, tood: switch to String.Pos logic -/
-def getAtCodepoint (s : String) (i : Nat) : Char :=
-  if h : i < s.length then s.data.get ⟨i, h⟩ else default
-
-end String
-
-/-- get head element and array without head element -/
-def Array.head? (a : Array α) : Option (α × Array α) :=
-  match a.data with
-  | [] => none
-  | List.cons head tail => some (head, ⟨tail⟩)
-
-/-- get last element of non empty `Fin n` -/
-def Fin.lastMem (n : Nat) (h : n ≠ 0): Fin n := ⟨n.pred, Nat.pred_lt h⟩
-
-/-- get last element and array without last element -/
-def Array.pop? (a : Array α) : Option (α × Array α) :=
-  if h : a.size ≠ 0
-  then some ((a.get (Fin.lastMem a.size h)), a.pop)
-  else none
-
-/--  A simple binary sum type. -/
-inductive Either (α : Type u) (β : Type u) where
-  | Left : α -> Either α β
-  | Right : β -> Either α β
+namespace Char
 
 /-- make String with `n` `c` chars -/
 def multiple (c : Char) ( n : Nat) (acc : String ): String :=
   if n = 0 then acc else multiple c ( n - 1) (c.toString ++ acc)
 
-/-- compute the byte position of the codepoint position `p` in `s` -/
-def toBytePosition (s : String) (p : Nat) : String.Pos :=
-  ⟨String.utf8ByteSize ⟨s.data |> List.take p⟩⟩
+def decodeHexDigit (c : Char) : Option (UInt32) :=
+  if '0' ≤ c && c ≤ '9' then some (c.val - '0'.val)
+  else if 'a' ≤ c && c ≤ 'f' then some (10 + c.val - 'a'.val)
+  else if 'A' ≤ c && c ≤ 'F' then some (10 + c.val - 'A'.val)
+  else none
 
-/-- make Substring of String -/
-def toSpan (s : String) (startPos : Nat) (stopPos : Nat) : Substring :=
-  ⟨s, toBytePosition s startPos, toBytePosition s stopPos⟩
+def decodeHexDigits (chars : List Char) : Except String UInt32 :=
+  let l := chars |> List.filterMap (decodeHexDigit ·)
+  if l.length > 0 then
+    let (_, val) := l |> List.foldr (init := (1, 0)) (fun v (n, acc)  =>
+      (n*16, acc + n*v))
+    Except.ok val
+  --| [some u1, some u2, some u3, some u4] => Except.ok (4096*u1 + 256*u2 + 16*u3 + u4)
+  else Except.error s!"hexCharsToVal, invalid arg {chars}"
+
+end Char
+
+namespace UInt32
 
 def intAsString (val : UInt32) : String :=
   if h : isValidChar val
@@ -58,21 +45,24 @@ def intAsString (val : UInt32) : String :=
         "0x" ++ String.mk (zeroes ++ digits)
   else s!"invalid char {val}"
 
-def decodeHexDigit (c : Char) : Option (UInt32) :=
-  if '0' ≤ c && c ≤ '9' then some (c.val - '0'.val)
-  else if 'a' ≤ c && c ≤ 'f' then some (10 + c.val - 'a'.val)
-  else if 'A' ≤ c && c ≤ 'F' then some (10 + c.val - 'A'.val)
-  else none
+end UInt32
 
-def decodeHexDigits (chars : List Char) : Except String UInt32 :=
-  let l := chars |> List.filterMap (decodeHexDigit ·)
-  if l.length > 0 then
-    let (_, val) := l |> List.foldr (init := (1, 0)) (fun v (n, acc)  =>
-      (n*16, acc + n*v))
-    Except.ok val
-  --| [some u1, some u2, some u3, some u4] => Except.ok (4096*u1 + 256*u2 + 16*u3 + u4)
-  else Except.error s!"hexCharsToVal, invalid arg {chars}"
+namespace String
+
+/-- get `i` char in `s`, tood: switch to String.Pos logic -/
+def getAtCodepoint (s : String) (i : Nat) : Char :=
+  if h : i < s.length then s.data.get ⟨i, h⟩ else default
+
+/-- compute the byte position of the codepoint position `p` in `s` -/
+def toBytePosition (s : String) (p : Nat) : String.Pos :=
+  ⟨String.utf8ByteSize ⟨s.data |> List.take p⟩⟩
+
+/-- make Substring of String -/
+def toSpan (s : String) (startPos : Nat) (stopPos : Nat) : Substring :=
+  ⟨s, toBytePosition s startPos, toBytePosition s stopPos⟩
 
 def decodeHex (s : String) : Except String UInt32 :=
   let s := if s.startsWith "0x" then s.replace "0x" "" else s
-  decodeHexDigits s.data
+  Char.decodeHexDigits s.data
+
+end String

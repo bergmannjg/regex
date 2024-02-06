@@ -120,10 +120,10 @@ namespace State
 def toString : State -> String
   | .Empty next => s!"Empty => {next}"
   | .ByteRange trans =>
-      s!"byte-range {intAsString trans.start}-{intAsString trans.end} => {trans.next}"
+      s!"byte-range {UInt32.intAsString trans.start}-{UInt32.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
       let lines := String.join (trans.toList |> List.map (fun t =>
-            s!" {intAsString t.start}-{intAsString t.end} => {t.next}"))
+            s!" {UInt32.intAsString t.start}-{UInt32.intAsString t.end} => {t.next}"))
       s!"SparseTransitions [{lines} ]"
   | .Look look next =>
       s!"Look {look} => {next}"
@@ -221,10 +221,10 @@ namespace State
 def toString : State n -> String
   | .Empty next => s!"Empty => {next}"
   | .ByteRange trans =>
-      s!"byte-range {intAsString trans.start}-{intAsString trans.end} => {trans.next}"
+      s!"byte-range {UInt32.intAsString trans.start}-{UInt32.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
       let lines := String.join (trans.toList |> List.map (fun t =>
-            s!" {intAsString t.start}-{intAsString t.end} => {t.next}"))
+            s!" {UInt32.intAsString t.start}-{UInt32.intAsString t.end} => {t.next}"))
       s!"SparseTransitions [{lines} ]"
   | .Look look next =>
       s!"Look {look} => {next}"

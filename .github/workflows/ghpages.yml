@@ -35,6 +35,7 @@ jobs:
       - name: Build Regex
         run: |
           lake update
+          lake exe cache get
           lake build
       - name: run Regex tests
         run: |

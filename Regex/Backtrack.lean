@@ -277,7 +277,7 @@ end Visited
 
 private def encodeChar? (c: Option Char) : String :=
   match c with
-  | some curr => intAsString curr.val
+  | some curr => UInt32.intAsString curr.val
   | none => "none"
 
 /-- Returns true when [`Look::WordUnicode`] is satisfied `at` the given position in `haystack`. -/
@@ -435,10 +435,10 @@ private def encodeChar? (c: Option Char) : String :=
   else
     match Array.find? transitions
             (fun trans => state.at.curr?.any (Checked.Transition.matches trans)) with
-    | some trans =>
+    | some t =>
         let next := state.at.next
-        (withMsg (fun _ => s!"{state.sid}: SparseTransitions charpos {next} -> {trans.next}")
-            {state with sid := trans.next, «at» := next})
+        (withMsg (fun _ => s!"{state.sid}: SparseTransitions charpos {next} -> {t.next}")
+            {state with sid := t.next, «at» := next})
     | none =>
       (withMsg
         (fun _ =>
@@ -504,7 +504,7 @@ private def encodeChar? (c: Option Char) : String :=
   match state with
   | .Empty next => step_empty next searchState
   | .Look look next => step_look look next searchState
-  | .ByteRange trans => step_byterange trans searchState
+  | .ByteRange t => step_byterange t searchState
   | .SparseTransitions transitions => step_sparse_transitions nfa transitions searchState
   | .Union alts => step_union alts searchState
   | .UnionReverse alts => step_union_reverse alts searchState

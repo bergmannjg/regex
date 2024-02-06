@@ -141,7 +141,7 @@ private def inRangesOfProperty (c : Char) (prop : String) : Except String String
   match pairs.find? (fun p => p.start <= c && c <= p.end) with
   | some range =>
     Except.ok
-      s!"{c} {intAsString c.val} in range '{intAsString range.start.val} {intAsString range.end.val}'"
+      s!"{c} {UInt32.intAsString c.val} in range '{UInt32.intAsString range.start.val} {UInt32.intAsString range.end.val}'"
   | none => Except.error s!"{c} not found"
 
 /-- has `c` the word property -/

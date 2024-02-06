@@ -21,7 +21,7 @@ private def unescapeString (s : String) : String :=
   ⟨loop s.data []⟩
 where
   toChar (a b : Char) : Char :=
-    match decodeHexDigit a, decodeHexDigit b with
+    match Char.decodeHexDigit a, Char.decodeHexDigit b with
     | some n, some m =>
       let val := 16*n+m
       if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
@@ -39,7 +39,7 @@ private def captures (re haystack : String) (verbose : Bool := false) (all : Boo
   let haystack := if unescape then unescapeString haystack else haystack
 
   if verbose then
-    IO.println s!"re '{re}' haystack chars '{haystack.data|>List.map (intAsString ·.val)}'"
+    IO.println s!"re '{re}' haystack chars '{haystack.data|>List.map (UInt32.intAsString ·.val)}'"
 
   let regex ← Regex.build re
   if verbose then IO.println s!"nfa {regex.nfa}"

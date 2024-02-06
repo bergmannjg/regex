@@ -1,4 +1,5 @@
 import Std.Data.Nat.Lemmas
+import Regex.Data.Array.Basic
 import Regex.Syntax.Ast.Ast
 import Regex.Utils
 
@@ -99,10 +100,10 @@ private def parse_hex_brace (pattern : String) (i : Nat) (kind: HexLiteralKind)
   let chars := (pattern.data.drop (i + 1)).takeWhile (· != '}')
   if chars.all (is_hex ·) && chars.length > 0 && chars.length <= 6
   then
-    let val ← decodeHexDigits chars
+    let val ← Char.decodeHexDigits chars
     if h : isValidChar val
     then
-      Except.ok (chars.length + 2, ⟨(toSpan pattern i (i + chars.length + 1)),
+      Except.ok (chars.length + 2, ⟨(String.toSpan pattern i (i + chars.length + 1)),
         LiteralKind.HexBrace kind, ⟨val, h⟩⟩)
     else Except.error (toError pattern .EscapeHexInvalid)
   else Except.error (toError pattern .EscapeHexInvalidDigit)
@@ -115,7 +116,7 @@ private def parse_hex_digits (pattern : String) (i : Nat) (kind: HexLiteralKind)
     let chars := (pattern.data.drop i).take kind.digits
     if chars.all (is_hex ·)
     then
-      let n ← decodeHexDigits chars
+      let n ← Char.decodeHexDigits chars
       if h : isValidChar n
       then
         Except.ok (kind.digits, ⟨⟨pattern, ⟨i⟩, ⟨i + kind.digits⟩⟩, LiteralKind.Hex kind, ⟨n, h⟩⟩)
@@ -186,18 +187,18 @@ private def parse_unicode_class (negated : Bool) (pattern : String) (i : Nat)
       let cls : ClassUnicode :=
         match (⟨chars⟩ : String).splitOn "=" with
         | [n, v] =>
-            ⟨toSpan pattern (i - 2) (i + 1 + chars.length + 1),
+            ⟨String.toSpan pattern (i - 2) (i + 1 + chars.length + 1),
             negated,
             ClassUnicodeKind.NamedValue ClassUnicodeOpKind.Equal n v⟩
         | _ =>
-            ⟨toSpan pattern (i - 2) (i + 1 + chars.length + 1),
+            ⟨String.toSpan pattern (i - 2) (i + 1 + chars.length + 1),
             negated,
             ClassUnicodeKind.Named ⟨chars⟩ ⟩
         Except.ok (1 + 1 + chars.length, cls)
     else
       Except.error (toError pattern .EscapeUnexpectedEof)
   else
-    let cls : ClassUnicode := ⟨toSpan pattern (i - 2) (i + 1), negated, ClassUnicodeKind.OneLetter c⟩
+    let cls : ClassUnicode := ⟨String.toSpan pattern (i - 2) (i + 1), negated, ClassUnicodeKind.OneLetter c⟩
     Except.ok (1, cls)
 
 /-- Parse a Perl character class, e.g., `\d` or `\W`. -/
@@ -217,7 +218,7 @@ private def parse_perl_class (pattern : String) (i : Nat) : Except String ClassP
 /-- Parse an escape sequence as a primitive AST. -/
 private def parse_escape (pattern : String) (i : Nat) : Except String (NatPos × Primitive) := do
   let toVerbatim (c : Char) : Primitive :=
-    let lit : Literal := ⟨toSpan pattern (i - 1) (i + 1), LiteralKind.Verbatim, c⟩
+    let lit : Literal := ⟨String.toSpan pattern (i - 1) (i + 1), LiteralKind.Verbatim, c⟩
     Primitive.Literal lit
   let c := pattern.getAtCodepoint (i)
   match c with
@@ -241,20 +242,20 @@ private def parse_escape (pattern : String) (i : Nat) : Except String (NatPos ×
       match ← maybe_parse_special_word_boundary pattern i with
       | some (n, kind) =>
         Except.ok (NatPos.succ n,
-          Primitive.Assertion ⟨toSpan pattern i (i + n + 1), kind⟩)
+          Primitive.Assertion ⟨String.toSpan pattern i (i + n + 1), kind⟩)
       | none => Except.error (toError pattern .EscapeUnrecognized)
     else
       Except.ok (NatPos.succ 0,
-        Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.WordBoundary⟩)
+        Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.WordBoundary⟩)
   | 'z' =>
     Except.ok (NatPos.succ 0,
-      Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.EndText⟩)
+      Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.EndText⟩)
   | 'A' =>
     Except.ok (NatPos.succ 0,
-      Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.StartText⟩)
+      Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.StartText⟩)
   | 'B' =>
     Except.ok (NatPos.succ 0,
-      Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.NotWordBoundary⟩)
+      Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.NotWordBoundary⟩)
   | _ =>
     if is_meta_character c
     then Except.ok (NatPos.one, toVerbatim c)
@@ -291,7 +292,7 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
               Ast.Repetition
                 (Repetition.mk
                   (Syntax.Ast.span ast)
-                  ⟨(toSpan pattern (i) (i+n.val+2)),
+                  ⟨(String.toSpan pattern (i) (i+n.val+2)),
                   (RepetitionKind.Range (RepetitionRange.AtLeast count_start))⟩
                   greedy
                   ast
@@ -305,7 +306,7 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
                 Ast.Repetition
                   (Repetition.mk
                     (Syntax.Ast.span ast)
-                    ⟨(toSpan pattern (i) (i+n.val+2)),
+                    ⟨(String.toSpan pattern (i) (i+n.val+2)),
                     (RepetitionKind.Range (RepetitionRange.Bounded count_start count_end))⟩
                     greedy
                     ast
@@ -317,7 +318,7 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
             Ast.Repetition
               (Repetition.mk
                 (Syntax.Ast.span ast)
-                ⟨(toSpan pattern (i-1) (i+n.val+1)),
+                ⟨(String.toSpan pattern (i-1) (i+n.val+1)),
                 (RepetitionKind.Range (RepetitionRange.Exactly count_start))⟩
                 greedy
                 ast
@@ -360,7 +361,7 @@ private def parse_set_class_range (pattern : String) (i : Nat)
 /-- Parses the opening of a character class set. -/
 private def parse_set_class_open (pattern : String) (i : Nat)
     : Except String (NChars × ClassBracketed × ClassSetUnion) :=
-  let span := toSpan pattern i (i + 1)
+  let span := String.toSpan pattern i (i + 1)
   let union : ClassSetUnion := ⟨span, #[]⟩
   let item : ClassSetItem := ClassSetItem.Union union
   let c := pattern.getAtCodepoint (i + 1)
@@ -373,7 +374,7 @@ private def parse_set_class_open (pattern : String) (i : Nat)
     then (1, ⟨span, union.items.push (ClassSetItem.Literal ⟨span, LiteralKind.Verbatim, c⟩ )⟩)
     else (0, union)
 
-  let clsBracketed := ClassBracketed.mk (toSpan pattern i (i+1)) negated (ClassSet.Item item)
+  let clsBracketed := ClassBracketed.mk (String.toSpan pattern i (i+1)) negated (ClassSet.Item item)
   Except.ok (n + m, (clsBracketed, union))
 
 /-- Parse the opening of a character class and push the current class onto the parser's stack. -/
@@ -401,7 +402,7 @@ private def pop_class_op (rhs: ClassSet) : ParserM ClassSet := do
 
 /-- Parse the end of a character class set and pop the character class parser stack. -/
 private def pop_class (nested_union : ClassSetUnion)
-    : ParserM (Either ClassSetUnion ClassBracketed) := do
+    : ParserM (Sum ClassSetUnion ClassBracketed) := do
   let ⟨span, _⟩ := nested_union
   let item := ClassSet.Item nested_union.into_item
   let prevset ← pop_class_op item
@@ -412,11 +413,11 @@ private def pop_class (nested_union : ClassSetUnion)
     if stack.size = 0
     then
       set {parser with stack_class := stack}
-      pure (Either.Right clsset)
+      pure (Sum.inr clsset)
     else
       set {parser with stack_class := stack}
       let union : ClassSetUnion := ⟨uspan, uitems.push (ClassSetItem.Bracketed clsset)⟩
-      pure (Either.Left union)
+      pure (Sum.inl union)
   | some (ClassState.Op _ _, _) => throw "internal error: pop_class, unexpected ClassState.Op"
   | none => throw "internal error: pop_class unexpected empty character class stack"
 
@@ -468,11 +469,11 @@ private def parse_set_class_loop (pattern : String) (i : Nat) (union : ClassSetU
       parse_set_class_loop pattern (i + n + 1) union
     | ']' =>
       match ← pop_class union with
-      | .Left nested_union =>
+      | Sum.inl nested_union =>
         have : pattern.length - (i + 1) < pattern.length - i :=
           Nat.succ_lt_of_not_gt pattern.length i h₀
         parse_set_class_loop pattern (i + 1) nested_union
-      | .Right cls =>
+      | Sum.inr cls =>
         pure (i + 1, cls)
     | '&' =>
       if pattern.getAtCodepoint (i+1) = '&' then
@@ -504,7 +505,7 @@ termination_by _ => pattern.length - i
 /-- Parse a standard character class consisting primarily of characters or character ranges. -/
 private def parse_set_class (pattern : String) (i : Nat)
     : ParserM (NatPos × ClassBracketed) := do
-  let union : ClassSetUnion := ⟨toSpan pattern i (i+1), #[]⟩
+  let union : ClassSetUnion := ⟨String.toSpan pattern i (i+1), #[]⟩
   let (i', cls) ← parse_set_class_loop pattern i union
   let n := i' - i
   if h : 0 < n
@@ -518,11 +519,11 @@ private def parse_primitive (pattern : String) (i : Nat) : Except String (NatPos
   | '\\' =>
     let (⟨n, _⟩, p) ← parse_escape pattern (i + 1)
     Except.ok (⟨1 + n, Nat.zero_lt_one_add _⟩, p)
-  | '.' => Except.ok (⟨1, by simp⟩, Primitive.Dot (toSpan pattern i (i + 1)))
+  | '.' => Except.ok (⟨1, by simp⟩, Primitive.Dot (String.toSpan pattern i (i + 1)))
   | '^' => Except.ok (⟨1, by simp⟩,
-              Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.StartLine⟩)
+              Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.StartLine⟩)
   | '$' => Except.ok (⟨1, by simp⟩,
-              Primitive.Assertion ⟨toSpan pattern i (i + 1), AssertionKind.EndLine⟩)
+              Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.EndLine⟩)
   | _ =>
     let lit := ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, LiteralKind.Verbatim, c⟩
     Except.ok (⟨1, by simp⟩, Primitive.Literal lit)
@@ -535,7 +536,7 @@ private def parse_uncounted_repetition (pattern : String) (i : Nat) (kind: Repet
     let op : Ast.RepetitionOp := ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, kind⟩
     let c := pattern.getAtCodepoint (i + 1)
     let (n, greedy)  := if c = '?' then (1, false) else (0, true)
-    let r : Repetition := Repetition.mk (toSpan pattern i (i + 1)) op greedy ast
+    let r : Repetition := Repetition.mk (String.toSpan pattern i (i + 1)) op greedy ast
     let asts := asts.push (Ast.Repetition r)
     Except.ok (n, Concat.mk (concat.span) asts)
   | none => Except.error (toErrorAt pattern i .RepetitionMissing)
@@ -550,7 +551,7 @@ private def push_or_add_alternation (pattern : String) (i : Nat) (concat : Conca
     set {parser with stack_group := stack_group.push (GroupState.Alternation alt)}
     pure ()
   | _ =>
-    let alt := Alternation.mk (toSpan pattern i (i + 1)) #[concat.into_ast]
+    let alt := Alternation.mk (String.toSpan pattern i (i + 1)) #[concat.into_ast]
     set {parser with stack_group := parser.stack_group.push (GroupState.Alternation alt)}
     pure ()
 
@@ -558,7 +559,7 @@ private def push_or_add_alternation (pattern : String) (i : Nat) (concat : Conca
 private def push_alternate (pattern : String) (i : Nat) (concat : Concat)
     : ParserM Concat := do
   let _ ← push_or_add_alternation pattern i concat
-  pure (Concat.mk (toSpan pattern i (i + 1)) #[])
+  pure (Concat.mk (String.toSpan pattern i (i + 1)) #[])
 
 /-- Parse the current character as a flag. -/
 private def parse_flag (c : Char) : Except String Flag :=
@@ -576,19 +577,19 @@ private def parse_flag (c : Char) : Except String Flag :=
 private def parse_flags (pattern : String) (i : Nat)
     : Except String (NChars × Flags) := do
   let chars := (pattern.data.drop i).takeWhile (fun c => c != ':' && c != ')') |> List.toArray
-  let span := toSpan pattern i (i + 1)
+  let span := String.toSpan pattern i (i + 1)
   let items : Array FlagsItem ←
     chars |> Array.mapM (fun c => do
       if c = '-' then pure ⟨span, FlagsItemKind.Negation⟩
       else
         let f ← parse_flag c
         pure ⟨span, FlagsItemKind.Flag f⟩)
-  let flags : Flags := ⟨(toSpan pattern i chars.size), items⟩
+  let flags : Flags := ⟨(String.toSpan pattern i chars.size), items⟩
   Except.ok (chars.size, flags)
 
 /-- Parse a group (which contains a sub-expression) or a set of flags. -/
 private def parse_group (pattern : String) (i : Nat)
-    : ParserM (NChars × (Either SetFlags Group)) := do
+    : ParserM (NChars × (Sum SetFlags Group)) := do
   let parser ← get
   let c1 := pattern.getAtCodepoint i
   let c2 := pattern.getAtCodepoint (i + 1)
@@ -598,9 +599,9 @@ private def parse_group (pattern : String) (i : Nat)
     let n := chars.length + 3
     let parser := {parser with capture_index := parser.capture_index + 1 }
     -- todo: add CaptureName
-    let g := Group.mk (toSpan pattern i (i + n + 1)) (.CaptureIndex parser.capture_index) Ast.Empty
+    let g := Group.mk (String.toSpan pattern i (i + n + 1)) (.CaptureIndex parser.capture_index) Ast.Empty
     set parser
-    pure (n, Either.Right g)
+    pure (n, Sum.inr g)
   else if c1 = '?'
   then
     let (n, flags) ← parse_flags pattern (i + 1)
@@ -609,28 +610,28 @@ private def parse_group (pattern : String) (i : Nat)
     then
       if flags.items.size = 0 then Except.error (toError pattern .RepetitionMissing)
       else
-        let sf : SetFlags := ⟨toSpan pattern i (i + 1), flags⟩
-        pure (n + 2, Either.Left sf)
+        let sf : SetFlags := ⟨String.toSpan pattern i (i + 1), flags⟩
+        pure (n + 2, Sum.inl sf)
     else
-      let g := Group.mk (toSpan pattern i (i + 1)) (.NonCapturing flags) Ast.Empty
-      pure (n + 2, Either.Right g)
+      let g := Group.mk (String.toSpan pattern i (i + 1)) (.NonCapturing flags) Ast.Empty
+      pure (n + 2, Sum.inr g)
   else
     let parser := {parser with capture_index := parser.capture_index + 1 }
-    let g := Group.mk (toSpan pattern i (i + 1)) (.CaptureIndex parser.capture_index) Ast.Empty
+    let g := Group.mk (String.toSpan pattern i (i + 1)) (.CaptureIndex parser.capture_index) Ast.Empty
     set parser
-    pure (0, Either.Right g)
+    pure (0, Sum.inr g)
 
 /-- Parse and push a group AST. -/
 private def push_group (pattern : String) (i : Nat) (concat : Concat)
     : ParserM (NChars × Concat) := do
   let (n, group) ← parse_group pattern i
   match group with
-  | .Left flags =>
-    pure (n, Concat.mk (toSpan pattern i (i + 1)) (concat.asts.push (Ast.Flags flags)))
-  | .Right group =>
+  | .inl flags =>
+    pure (n, Concat.mk (String.toSpan pattern i (i + 1)) (concat.asts.push (Ast.Flags flags)))
+  | .inr group =>
     let parser ← get
     set {parser with stack_group := parser.stack_group.push (GroupState.Group concat group)}
-    pure (n, Concat.mk (toSpan pattern i (i + 1)) #[])
+    pure (n, Concat.mk (String.toSpan pattern i (i + 1)) #[])
 
 /-- Pop a group AST from the parser's internal stack and set the group's AST to the concatenation.-/
 private def pop_group (pattern : String) (i : Nat) (group_concat : Concat)
@@ -671,7 +672,7 @@ private def pop_group_end (pattern : String) (concat : Concat) (parser : Parser)
 
 /-- Parse the regular expression and return an abstract syntax tree. -/
 def parse (pattern : String) : Except String Ast := do
-  let concat : Concat := Concat.mk (toSpan pattern 0 pattern.length) #[]
+  let concat : Concat := Concat.mk (String.toSpan pattern 0 pattern.length) #[]
   let (concat, parser) ← loop pattern 0 concat default
   pop_group_end pattern concat parser
   where

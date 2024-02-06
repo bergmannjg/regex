@@ -18,7 +18,7 @@ structure ClassUnicode where
   set: IntervalSet Char
 
 instance : ToString (Range Char) where
-  toString r := s!"{intAsString r.start.val}-{intAsString r.end.val}"
+  toString r := s!"{UInt32.intAsString r.start.val}-{UInt32.intAsString r.end.val}"
 
 private def rangesToString (arr : Array (Range Char)) : String :=
   arr |> Array.map (fun r => s!"    {r.start}-{r.end},\n") |> Array.toList |> String.join
@@ -224,10 +224,10 @@ def toProperties (kind: HirKind) : Properties :=
 
 partial def toString (hir : Hir) (col : Nat): String :=
   let col := col + 2
-  let pre := "\n" ++ (multiple ' ' col "")
+  let pre := "\n" ++ (Char.multiple ' ' col "")
   match hir.kind with
   | .Empty => s!"Empty"
-  | .Literal c => s!"Literal '{intAsString c.val}'"
+  | .Literal c => s!"Literal '{UInt32.intAsString c.val}'"
   | .Class cls => s!"Class {cls}"
   | .Look look => s!"Look {look}"
   | .Repetition rep =>

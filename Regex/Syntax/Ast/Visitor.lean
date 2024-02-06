@@ -1,3 +1,4 @@
+import Regex.Data.Array.Basic
 import Regex.Syntax.Ast.Ast
 
 /-!
