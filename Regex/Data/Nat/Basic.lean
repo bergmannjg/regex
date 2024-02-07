@@ -22,3 +22,9 @@ theorem eq_pred_of_le_of_lt_succ {n m : Nat} (h0 : 0 < n) (h1 : n.pred ≤ m) (h
     rw [this] at h2
     simp [Nat.le_of_lt_succ h2]
   simp [Nat.le_antisymm h1 h]
+
+theorem succ_lt_lt {c1 c2 : Nat} (h : 1 + c1 < c2) : c1 < c2 := by
+  have h1 : c1 < 1 + c1 := by
+    rw [Nat.add_comm]
+    simp[Nat.lt_succ_self _]
+  simp[Nat.lt_trans h1 h]

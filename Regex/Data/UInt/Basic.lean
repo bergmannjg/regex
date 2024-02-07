@@ -83,3 +83,63 @@ theorem toUInt32_add_toUInt32 (n m : Nat) (hn : n < UInt32.size) (hm : m < UInt3
 theorem toUInt32_one_add (c : Nat) (h : c + 1 < UInt32.size)
     : c.toUInt32 + 1 = (c + 1).toUInt32 :=
   toUInt32_add_toUInt32 c 1 (by simp [Nat.lt_of_succ_lt h]) (by simp_arith) h
+
+theorem isValidChar_lt_0x110000 (u : UInt32) (h : UInt32.isValidChar u)
+    : u.val.val < 0x110000 := by
+  unfold UInt32.isValidChar at h
+  unfold Nat.isValidChar at h
+  unfold UInt32.toNat at h
+  cases h
+  · rename_i h
+    have hy : u.val.val < 0x110000 := Nat.lt_trans h (by simp_arith)
+    simp_all [hy]
+  · rename_i h
+    simp_all [ h.right]
+
+theorem isValidChar_lt_uintSize (u : UInt32) (h : UInt32.isValidChar u)
+    : u.val.val < UInt32.size := by
+  have hx : u.val.val < 0x110000 := UInt32.isValidChar_lt_0x110000 u h
+  have hy : u.val.val + 1 < 0x110000 + 1 := Nat.add_lt_add_right hx 1
+  have hz : 0x110000 + 1 < UInt32.size := by simp_arith
+  simp [Nat.lt_trans hy hz]
+
+theorem isValidChar_succ_lt_uintSize (u : UInt32) (h : UInt32.isValidChar u)
+    : u.val.val + 1 < UInt32.size := by
+  have hx : u.val.val < 0x110000 := UInt32.isValidChar_lt_0x110000 u h
+  have hy : u.val.val + 1 < 0x110000 + 1 := Nat.add_lt_add_right hx 1
+  have hz : 0x110000 + 1 < UInt32.size := by simp_arith
+  simp [Nat.lt_trans hy hz]
+
+theorem isValidChar_pred_lt_uintSize (u : UInt32) (h2 : UInt32.isValidChar u) (h3 : 1 ≤ u)
+    : u.val - 1 < UInt32.size := by
+
+  have hx1 : u.val.val < 0x110000 := UInt32.isValidChar_lt_0x110000 u h2
+  have hx2 : u.val < 0x110000 := UInt32.lt_def.mp hx1
+  have hx3 : 0x110000 < UInt32.size := by simp_arith
+  have hx4 : u.val < UInt32.size := Nat.lt_trans hx2 hx3
+
+  have h3 : u.val - 1 < UInt32.size := Nat.le_lt_sub_lt h3 hx4
+  simp [h3]
+
+theorem lt_succ_le {c1 c2 : UInt32} (h : c1 < c2) (hsucc : c1.val + 1 < UInt32.size)
+    : c1 + 1 ≤ c2 := by
+  have hx : c1.val < c2.val := UInt32.lt_def.mp h
+  have heq : c1.val.val + 1 ≤ c2.val.val := Nat.succ_le_of_lt hx
+  have ht : c1.val.val + 1 = (c1 + 1).val.val := UInt32.toNat_add_toNat c1 1 hsucc
+  rw [ht] at heq
+  simp [UInt32.le_def.mpr heq]
+
+theorem toNatUnfold (c1 c2 : UInt32) (heq : c2.toNat - c1.toNat = (c2 - c1).toNat)
+    : c2.val.val - c1.val.val = (c2 - c1).val.val := by
+  unfold UInt32.toNat at heq
+  simp_all [heq]
+
+theorem lt_pred_le {c1 c2 : UInt32} (h : c1 < c2) (h2 : c2.val < UInt32.size)
+    : c1 ≤ c2 - 1  := by
+  have hx : c1.val < c2.val := UInt32.lt_def.mp h
+  have heq : c1.val.val ≤ c2.val.val - 1 := Nat.le_pred_of_lt hx
+  let hnm : 1 ≤ c2 := UInt32.one_le_of_lt h
+  have ht' : c2.toNat - 1 = (c2 - 1).toNat := UInt32.toNat_sub_toNat hnm h2
+  have ht : c2.val.val - 1 = (c2 - 1).val.val := UInt32.toNatUnfold 1 c2 ht'
+  rw [ht] at heq
+  simp [UInt32.le_def.mpr heq]

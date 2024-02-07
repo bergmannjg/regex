@@ -1,6 +1,5 @@
 import Init.Data.Ord
 import Regex.Utils
-import Regex.Bound
 import Regex.Interval.Basic
 import Regex.Interval.Lemmas
 
@@ -98,7 +97,7 @@ def canonicalize (ranges : Array (Range Char)) : IntervalSet Char :=
 
   intervalSet
 
-/-- Negate a interval set. -/
+/-- Negate a interval set wrt the corresponding `Bound` . -/
 def negate (interval : IntervalSet Char) : IntervalSet Char :=
   if interval.ranges.size = 0
   then

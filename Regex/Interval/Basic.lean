@@ -6,16 +6,43 @@ import Std.Data.Int.Lemmas
 import Std.Data.List.Basic
 import Regex.Utils
 import Regex.Data.Array.Basic
-import Regex.Bound
 import Regex.Data.UInt.Basic
 import Regex.Data.Char.Basic
 
 /-!
 ## IntervalSet
 
-This file contains an implementation of interval sets (`IntervalSet`),
+This file contains the definition of interval sets (`IntervalSet`),
 a sorted set of non-overlapping ranges (`Range`).
 -/
+
+/-- A `Bound` defines a bounded set of values with min_value, max_value and increment
+    and decrement operators. Negation of ranges (`Range`) is defined wrt the
+    corresponding bound. -/
+class Bound (α : Type u) [Ord α] [LE α] where
+  min_value : α
+  max_value : α
+  increment : α -> α
+  decrement : α -> α
+  min_value_le_max_value : min_value ≤ max_value
+  min_value_le_decrement c : min_value ≤ decrement c
+  increment_le_max_value c : increment c ≤ max_value
+
+/-- a Bound of type Char -/
+instance : Bound Char where
+  min_value := Char.min
+  max_value := Char.max
+  increment (c : Char) := Char.increment c
+  decrement (c : Char) := Char.decrement c
+  min_value_le_max_value := by simp_arith
+  increment_le_max_value c := by
+    unfold Char.increment; simp_all; split <;> try simp_all
+    · simp [Char.le_max]
+    · simp [Char.le_max]
+  min_value_le_decrement c := by
+    unfold Char.decrement; simp_all; split <;> try simp_all
+    · simp [Char.min_le]
+    · simp [Char.min_le]
 
 /-- A closed range bounded inclusively below and above (`start..end`). -/
 structure Range (α : Type u) [Ord α] [LE α] [Bound α] where
@@ -35,8 +62,10 @@ instance : Inhabited $ Range Char where
 
 namespace Range
 
-/-- ranges `r1` and `r2` are non overlapping when they are sorted and
-    they are not overlapping or adjacent -/
+/-- Ranges `r1` and `r2` are non overlapping when they are sorted and
+    they are not overlapping or adjacent, i.e. the difference of `r2.start` and `r1.end`
+    is greater than one. Ranges with a difference of one are canonicalized
+    to a new range (`Interval.canonicalize`). -/
 def nonOverlapping {α : Type u} [Ord α] [LE α] [LT α] [Bound α] [HSub α α Nat]
     (r1 r2 : Range α) : Prop :=
    1 < ((r2.start - r1.end) : Nat)
@@ -68,7 +97,7 @@ def negate (r1 r2 : Range Char) (h : nonOverlapping r1 r2) : Range Char :=
     unfold instBoundCharInstOrdCharInstLEChar
     simp_all
     have h : 1 + r1.end.toNat < r2.start.toNat := by simp [Nat.add_lt_of_lt_sub h]
-    simp [Bound.Char.incr_le_decr h]⟩
+    simp [Char.incr_le_decr h]⟩
 
 end Range
 

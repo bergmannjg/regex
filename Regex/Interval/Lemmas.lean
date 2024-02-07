@@ -7,7 +7,6 @@ import Std.Data.List.Basic
 import Std.Data.Array.Init.Lemmas
 import Mathlib.Data.List.Chain
 import Regex.Utils
-import Regex.Bound
 import Regex.Data.UInt.Basic
 import Regex.Data.Char.Basic
 import Regex.Data.List.Lemmas

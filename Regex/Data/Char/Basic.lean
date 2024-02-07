@@ -58,3 +58,61 @@ theorem one_le_of_lt {c1 c2 : Char} (h : c1 < c2) : 1 ≤ c2.val :=
 
 theorem toNat_eq (c : Char) : c.val.toNat.toUInt32 = c.val := by
   simp [UInt32.toNat_toUInt_eq c.val]
+
+theorem succ_lt_lt {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2) : c1 < c2 := by
+  have h : Char.toNat c1 < Char.toNat c2 := Nat.succ_lt_lt h
+  exact h
+
+theorem succ_lt_succ_lt {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2)
+    (hs: UInt32.isValidChar (c1.val + 1)) : ⟨c1.val + 1, hs⟩ < c2 := by
+  rw [Char.lt_def]
+  have h : c1.toNat + 1 < Char.toNat c2 := by
+    rw [Nat.add_comm]
+    simp [h]
+  have hx : Char.toNat c1 + 1 < UInt32.size := UInt32.isValidChar_succ_lt_uintSize c1.val c1.valid
+  have hy : c1.toNat + 1 = (c1.val + 1).toNat := UInt32.toNat_add_toNat c1.val 1 hx
+  rw [hy] at h
+  have hz : c1.val + 1 < c2.val := h
+  simp [hz]
+
+theorem lt_pred_le {c1 c2 : Char} (h : c1 < c2) : c1.val ≤ c2.val - 1 := by
+  have h : c1.val < c2.val := Char.lt_def.mp h
+  have h2 : c2.val.val < UInt32.size := UInt32.isValidChar_lt_uintSize c2.val c2.valid
+  simp [UInt32.lt_pred_le h h2]
+
+theorem lt_succ_le {c1 c2 : Char} (h : c1 < c2) : c1.val + 1 ≤ c2.val := by
+  have h : c1.val < c2.val := Char.lt_def.mp h
+  have hsucc : c1.val.val + 1 < UInt32.size := UInt32.isValidChar_succ_lt_uintSize c1.val c1.valid
+  simp [UInt32.lt_succ_le h hsucc]
+
+theorem succ_add_le__pred {c1 c2 : Char} (h : 1 + c1.toNat < c2.toNat)
+  (hs: UInt32.isValidChar (c1.val + 1)) : c1.val + 1 ≤ c2.val - 1 := by
+  have h : ⟨c1.val + 1, hs⟩ < c2 := Char.succ_lt_succ_lt h hs
+  have h : c1.val + 1 ≤ c2.val - 1 := Char.lt_pred_le h
+  simp [h]
+
+theorem incr_le_decr {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2)
+    : Char.increment c1 ≤ Char.decrement c2 := by
+  unfold Char.increment
+  unfold Char.decrement
+  split <;> try simp_all
+  · split <;> try simp_all
+    · rename_i hs hp
+      let cs : Char := ⟨c1.val + 1, hs⟩
+      have hseq : cs = ⟨c1.val + 1, hs⟩ := by simp
+      let cp : Char := ⟨c2.val - 1, hp⟩
+      let hpeq : cp = ⟨c2.val - 1, hp⟩ := by simp
+      rw [← hseq, ← hpeq]
+      have h : cs.val ≤ cp.val := Char.succ_add_le__pred h hs
+      apply h
+    · rename_i hv _
+      have h : c1 < c2 := Char.succ_lt_lt h
+      have h : c1.val + 1 ≤ c2.val := by simp [Char.lt_succ_le h]
+      apply h
+  · split <;> try simp_all
+    · rename_i hv
+      have h : c1 < c2 := Char.succ_lt_lt h
+      have h : c1.val ≤ c2.val - 1 := by simp [Char.lt_pred_le h]
+      apply h
+    · have h : c1 < c2 := Char.succ_lt_lt h
+      simp [Char.lt_le h]
