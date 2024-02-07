@@ -37,8 +37,7 @@ The tests are run with
 
 The tests passed successfully except those with not yet supported features:
 
-- non unicode data
-- subtraction and intersection of sets of characters ([RL1.3](https://www.unicode.org/reports/tr18/#RL1.3)).
+- non unicode data.
 
 ## License
 
