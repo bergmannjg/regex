@@ -94,7 +94,7 @@ private def add_sparse (trans : Array Unchecked.Transition) : CompilerM Unchecke
 private def c_unicode_class (cls : ClassUnicode) : CompilerM ThompsonRef := do
   let «end» ← add_empty
   let trans : Array Unchecked.Transition :=
-    cls.set.ranges.map (fun r => ⟨r.start.val, r.end.val, «end»⟩)
+    cls.set.intervals.map (fun r => ⟨r.fst.val, r.snd.val, «end»⟩)
   let start ← add_sparse trans
   pure ⟨start, «end»⟩
 

@@ -41,7 +41,7 @@ private unsafe def SentenceBreakProperty.init : IO $ Array SentenceBreakProperty
 @[init SentenceBreakProperty.init]
 protected def SentenceBreakProperty.data : Array SentenceBreakProperty := #[]
 
-def rangesOfSentenceBreak (s : String) : Except String $ Array (Range Char) :=
+def rangesOfSentenceBreak (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match SentenceBreakProperty.data.find? (normalize ·.name = normalize s) with
   | some ⟨_, p⟩ => Except.ok (
       p |> Array.map toRange)

@@ -41,7 +41,7 @@ private unsafe def DerivedCoreProperty.init : IO $ Array DerivedCoreProperty := 
 @[init DerivedCoreProperty.init]
 protected def DerivedCoreProperties.data : Array DerivedCoreProperty := #[]
 
-def rangesOfDerivedCoreProperty (s : String) : Except String $ Array (Range Char) :=
+def rangesOfDerivedCoreProperty (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match DerivedCoreProperties.data.find? (normalize ·.name = normalize s) with
   | some ⟨_, p⟩ => Except.ok (
       p |> Array.map toRange)

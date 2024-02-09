@@ -41,7 +41,7 @@ private unsafe def GraphemeBreakProperty.init : IO $ Array GraphemeBreakProperty
 @[init GraphemeBreakProperty.init]
 protected def GraphemeBreakProperty.data : Array GraphemeBreakProperty := #[]
 
-def rangesOfGraphemeBreak (s : String) : Except String $ Array (Range Char) :=
+def rangesOfGraphemeBreak (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match GraphemeBreakProperty.data.find? (normalize ·.name = normalize s) with
   | some ⟨_, p⟩ => Except.ok (
       p |> Array.map toRange)

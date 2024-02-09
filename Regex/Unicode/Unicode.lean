@@ -17,7 +17,7 @@ Support for [Unicode Regular Expressions Level 1](https://unicode.org/reports/tr
 
 namespace Unicode
 
-private def getUnassigned : Array (Range Char) :=
+private def getUnassigned : Array (NonemptyInterval Char) :=
   let init : Option UInt32 × Array (UInt32 × UInt32) := (none, #[])
   let (prev, arr) := UnicodeData.data |> Array.foldl (init := init) (fun (prev, acc) d =>
     match prev with
@@ -48,7 +48,7 @@ private def fold (data : Array UnicodeData) : Array (Char × Char) :=
 
   pairs.push last
 
-def rangesOfGeneralCategory (category : GeneralCategory) : Except String $ Array (Range Char) :=
+def rangesOfGeneralCategory (category : GeneralCategory) : Except String $ Array (NonemptyInterval Char) :=
   if category = GeneralCategory.Cn
   then
     Except.ok getUnassigned
@@ -65,16 +65,16 @@ def rangesOfGeneralCategory (category : GeneralCategory) : Except String $ Array
       | ⟨major, none⟩ =>
         UnicodeData.data |> Array.filter (fun u => u.generalCategory.major = major)
     let arr := fold data |> .filterMap (fun (c1, c2) =>
-                                        if h : c1 ≤ c2 then some ⟨c1, c2, h⟩ else none)
+                                        if h : c1 ≤ c2 then some ⟨⟨c1, c2⟩, h⟩ else none)
     let arr := if category = GeneralCategory.C then arr ++ getUnassigned else arr
     Except.ok arr
 
-private def rangesOfCategory (s : String) : Except String $ Array (Range Char) :=
+private def rangesOfCategory (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match GeneralCategory.ofValue? s with
   | some category => rangesOfGeneralCategory category
   | none => Except.error s!"category {s} not found"
 
-private def property_map (arr : Array (UInt32 × Option UInt32)) : Array (Range Char) :=
+private def property_map (arr : Array (UInt32 × Option UInt32)) : Array (NonemptyInterval Char) :=
   arr.map (fun (n, m) =>
     let a : Char := if h : UInt32.isValidChar n then ⟨n, h⟩ else 'x'
     let b : Char :=
@@ -82,10 +82,10 @@ private def property_map (arr : Array (UInt32 × Option UInt32)) : Array (Range 
       | some m => if h : UInt32.isValidChar m then ⟨m, h⟩ else 'x'
       | none => a
     (a, b))
-  |> .filterMap (fun (c1, c2) => if h : c1 ≤ c2 then some ⟨c1, c2, h⟩ else none)
+  |> .filterMap (fun (c1, c2) => if h : c1 ≤ c2 then some ⟨⟨c1, c2⟩, h⟩ else none)
 
 private def rangessOfPropertyName (name : PropertyName) (prop : String)
-    : Except String $ Array (Range Char) := do
+    : Except String $ Array (NonemptyInterval Char) := do
   match name with
   | .General_Category => rangesOfCategory prop
   | .White_Space => Except.ok (property_map PropList.data.whiteSpace)
@@ -101,22 +101,22 @@ private def rangessOfPropertyName (name : PropertyName) (prop : String)
   | .Regional_Indicator => getWordBreak "Regional_Indicator"
   | .Script => rangesOfScript prop
   | .ASCII_Hex_Digit =>
-      Except.ok #[⟨'0','9', by simp_arith⟩, ⟨'A','F', by simp_arith⟩, ⟨'a','f', by simp_arith⟩]
+      Except.ok #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','F'⟩, by simp_arith⟩, ⟨⟨'a','f'⟩, by simp_arith⟩]
   | .Hex_Digit =>
-      Except.ok #[⟨'0','9', by simp_arith⟩, ⟨'A','F', by simp_arith⟩, ⟨'a','f', by simp_arith⟩]
+      Except.ok #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','F'⟩, by simp_arith⟩, ⟨⟨'a','f'⟩, by simp_arith⟩]
   | .Numeric_Value => rangesOfGeneralCategory GeneralCategory.N
-  | .ASSIGNED => Except.ok (Interval.negate (Interval.canonicalize getUnassigned)).ranges
-  | .ASCII => Except.ok #[⟨'\x00', '\x7F', by simp_arith⟩]
-  | .ANY => Except.ok #[⟨'\u0000', ⟨0x10FFFF, by simp_arith⟩, by simp_arith⟩]
+  | .ASSIGNED => Except.ok (IntervalSet.negate (IntervalSet.canonicalize getUnassigned)).intervals
+  | .ASCII => Except.ok #[⟨⟨'\x00', '\x7F'⟩, by simp_arith⟩]
+  | .ANY => Except.ok #[⟨⟨'\u0000', ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩]
   | .Default_Ignorable_Code_Point => Except.error s!"Property name {name} has no data"
   | .Noncharacter_Code_Point => Except.error s!"Property name {name} has no data"
 
-def rangesOfNamedProperty (name prop : String) : Except String $ Array (Range Char) := do
+def rangesOfNamedProperty (name prop : String) : Except String $ Array (NonemptyInterval Char) := do
   match ofName? name with
   | some p => rangessOfPropertyName p prop
   | _ => Except.error s!"Property name {name} not found"
 
-def rangesOfProperty (prop : String) : Except String $ Array (Range Char) := do
+def rangesOfProperty (prop : String) : Except String $ Array (NonemptyInterval Char) := do
   match ofName? prop with
   | some p => rangessOfPropertyName p ""
   | _ =>
@@ -125,8 +125,8 @@ def rangesOfProperty (prop : String) : Except String $ Array (Range Char) := do
     | none =>
       match ofCompatibilityPropertyName? prop with
       | some arr =>
-        let init : Array (Range Char) := #[]
-        let pairs : Array (Range Char) ←
+        let init : Array (NonemptyInterval Char) := #[]
+        let pairs : Array (NonemptyInterval Char) ←
           arr |> Array.foldlM (init := init) (fun acc (n, v) => do
             let elem ← rangessOfPropertyName n (v.getD "")
             pure (elem ++ acc))
@@ -138,32 +138,32 @@ def rangesOfProperty (prop : String) : Except String $ Array (Range Char) := do
 
 private def inRangesOfProperty (c : Char) (prop : String) : Except String String := do
   let pairs ← rangesOfProperty prop
-  match pairs.find? (fun p => p.start <= c && c <= p.end) with
+  match pairs.find? (fun p => p.fst <= c && c <= p.snd) with
   | some range =>
     Except.ok
-      s!"{c} {UInt32.intAsString c.val} in range '{UInt32.intAsString range.start.val} {UInt32.intAsString range.end.val}'"
+      s!"{c} {UInt32.intAsString c.val} in range '{UInt32.intAsString range.fst.val} {UInt32.intAsString range.snd.val}'"
   | none => Except.error s!"{c} not found"
 
 /-- has `c` the word property -/
 def is_word_char (c : Char) : Bool :=
   match rangesOfProperty "Word" with
   | Except.ok arr =>
-      match Array.find? arr (fun ⟨c1, c2, _⟩ => c1.val <= c.val && c.val <= c2.val) with
+      match Array.find? arr (fun ⟨⟨c1, c2⟩, _⟩ => c1.val <= c.val && c.val <= c2.val) with
       | some _ => true
       | none => false
   | Except.error _ => false
 
 /-- get ranges of case folds of char -/
-def case_fold_char (c : Char) :  Array (Range Char) :=
+def case_fold_char (c : Char) :  Array (NonemptyInterval Char) :=
   let data := getUnicodeData c
   match data.uppercaseMapping with
   | some cUpper =>
-      #[⟨cUpper, cUpper, by simp [Char.eq_le _]⟩, ⟨c, c, by simp [Char.eq_le _]⟩]
+      #[⟨⟨cUpper, cUpper⟩, by simp [Char.eq_le _]⟩, ⟨⟨c, c⟩, by simp [Char.eq_le _]⟩]
   | none =>
     match data.lowercaseMapping with
     | some cLower =>
-      #[⟨c, c, by simp [Char.eq_le _]⟩, ⟨cLower, cLower, by simp [Char.eq_le _]⟩]
-    | none => #[⟨c, c, by simp [Char.eq_le _]⟩]
+      #[⟨⟨c, c⟩ , by simp [Char.eq_le _]⟩, ⟨⟨cLower, cLower⟩, by simp [Char.eq_le _]⟩]
+    | none => #[⟨⟨c, c⟩, by simp [Char.eq_le _]⟩]
 
 private partial def loop (c : Char) (n count : UInt32) (acc : Array Char) : Array Char :=
   if n > count then acc
@@ -176,6 +176,6 @@ private partial def loop (c : Char) (n count : UInt32) (acc : Array Char) : Arra
     else loop c (n+1) count acc
 
 /-- get ranges of case folds of chars in range -/
-def case_fold_range (r : Range Char) : Array (Range Char) :=
-  loop r.start 0 (r.end.val - r.start.val) #[]
+def case_fold_range (r : NonemptyInterval Char) : Array (NonemptyInterval Char) :=
+  loop r.fst 0 (r.snd.val - r.fst.val) #[]
   |> Array.concatMap (fun c => case_fold_char c)

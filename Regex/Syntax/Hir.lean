@@ -10,63 +10,63 @@ A high-level intermediate representation `Syntax.Hir` for a regular expression.
 
 namespace Syntax
 
-abbrev ClassUnicodeRange := Range Char
+abbrev ClassUnicodeRange := NonemptyInterval Char
 
-instance : Inhabited ClassUnicodeRange := ⟨⟨0, by simp_arith⟩, ⟨0, by simp_arith⟩, by simp_arith⟩
+instance : Inhabited ClassUnicodeRange := ⟨⟨⟨0, by simp_arith⟩, ⟨0, by simp_arith⟩⟩, by simp_arith⟩
 
 structure ClassUnicode where
   set: IntervalSet Char
 
-instance : ToString (Range Char) where
-  toString r := s!"{UInt32.intAsString r.start.val}-{UInt32.intAsString r.end.val}"
+instance : ToString (NonemptyInterval Char) where
+  toString r := s!"{UInt32.intAsString r.fst.val}-{UInt32.intAsString r.snd.val}"
 
-private def rangesToString (arr : Array (Range Char)) : String :=
-  arr |> Array.map (fun r => s!"    {r.start}-{r.end},\n") |> Array.toList |> String.join
+private def rangesToString (arr : Array (NonemptyInterval Char)) : String :=
+  arr |> Array.map (fun r => s!"    {r.fst}-{r.snd},\n") |> Array.toList |> String.join
 
 instance : ToString (IntervalSet Char) where
-  toString set := s!"ranges: {set.ranges}"
+  toString set := s!"ranges: {set.intervals}"
 
 instance : ToString ClassUnicode where
   toString cls := s!"{cls.set}"
 
 /-- see UInt32.isValidChar -/
 instance : Inhabited ClassUnicode :=
-  let cls1 : Range Char := ⟨'\u0000', ⟨0xD7FF, by simp_arith⟩, by simp_arith⟩
-  let cls2 : Range Char := ⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩, by simp_arith⟩
+  let cls1 : NonemptyInterval Char := ⟨⟨'\u0000', ⟨0xD7FF, by simp_arith⟩⟩, by simp_arith⟩
+  let cls2 : NonemptyInterval Char := ⟨⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
   let ranges := #[cls1, cls2]
-  ⟨⟨Interval.canonicalize ranges⟩⟩
+  ⟨⟨IntervalSet.canonicalize ranges⟩⟩
 
 namespace ClassUnicode
 
 def empty : ClassUnicode :=
-  ⟨⟨#[], Ranges.empty_isNonOverlapping⟩⟩
+  ⟨⟨#[], Intervals.empty_isNonOverlapping⟩⟩
 
 def canonicalize (cls : ClassUnicode) : ClassUnicode :=
-  ⟨Interval.canonicalize cls.set.ranges⟩
+  ⟨IntervalSet.canonicalize cls.set.intervals⟩
 
 def union (cls1 cls2 : ClassUnicode) : ClassUnicode :=
-  ⟨Interval.union cls1.set cls2.set⟩
+  ⟨IntervalSet.union cls1.set cls2.set⟩
 
 def intersection (cls1 cls2 : ClassUnicode) : ClassUnicode :=
-  ⟨Interval.intersection cls1.set cls2.set⟩
+  ⟨IntervalSet.intersection cls1.set cls2.set⟩
 
 def difference (cls1 cls2 : ClassUnicode) : ClassUnicode :=
-  ⟨Interval.difference cls1.set cls2.set⟩
+  ⟨IntervalSet.difference cls1.set cls2.set⟩
 
 def symmetric_difference (cls1 cls2 : ClassUnicode) : ClassUnicode :=
-  ⟨Interval.symmetric_difference cls1.set cls2.set⟩
+  ⟨IntervalSet.symmetric_difference cls1.set cls2.set⟩
 
 def negate (cls : ClassUnicode) : ClassUnicode :=
-  ⟨Interval.negate cls.set⟩
+  ⟨IntervalSet.negate cls.set⟩
 
 def case_fold (cls : ClassUnicode) : ClassUnicode :=
-  let ranges := cls.set.ranges
-  let init : Array (Range Char) := #[]
+  let ranges := cls.set.intervals
+  let init : Array (NonemptyInterval Char) := #[]
   let ranges := ranges |> Array.foldl (init := init) (fun acc r =>
     let folded := Unicode.case_fold_range r
     acc ++ folded)
 
-  ⟨Interval.canonicalize ranges⟩
+  ⟨IntervalSet.canonicalize ranges⟩
 
 end ClassUnicode
 
@@ -217,7 +217,7 @@ def toProperties (kind: HirKind) : Properties :=
   match kind with
   | .Class (.Unicode cls) =>
       /- the length, in bytes, of the smallest string matched by this character class. -/
-      let min := if cls.set.ranges.size > 0 then some 1 else none
+      let min := if cls.set.intervals.size > 0 then some 1 else none
       ⟨min, none, #[]⟩
   | .Look look => ⟨none, none, #[look]⟩
   | _ => default
@@ -272,18 +272,18 @@ def dot (dot: Dot) : Hir :=
       let kind : HirKind := HirKind.Class (Class.Unicode default)
       Hir.mk kind (Hir.toProperties kind)
     | Dot.AnyCharExceptLF =>
-      let range1 : ClassUnicodeRange := ⟨'\u0000', '\u0009', by simp_arith⟩
-      let range2 : ClassUnicodeRange := ⟨'\u000B', ⟨0xD7FF, by simp_arith⟩, by simp_arith⟩
-      let range3 : ClassUnicodeRange := ⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩, by simp_arith⟩
-      let cls : ClassUnicode := ⟨Interval.canonicalize #[range1, range2, range3]⟩
+      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp_arith⟩
+      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', ⟨0xD7FF, by simp_arith⟩⟩, by simp_arith⟩
+      let range3 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
+      let cls : ClassUnicode := ⟨IntervalSet.canonicalize #[range1, range2, range3]⟩
       let kind : HirKind := HirKind.Class (Class.Unicode cls)
       Hir.mk kind (Hir.toProperties kind)
     | Dot.AnyCharExceptCRLF =>
-      let range1 : ClassUnicodeRange := ⟨'\u0000', '\u0009', by simp_arith⟩
-      let range2 : ClassUnicodeRange := ⟨'\u000B', '\u000C', by simp_arith⟩
-      let range3 : ClassUnicodeRange := ⟨'\u000E', ⟨0xD7FF, by simp_arith⟩, by simp_arith⟩
-      let range4 : ClassUnicodeRange := ⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩, by simp_arith⟩
-      let cls : ClassUnicode := ⟨Interval.canonicalize #[range1, range2, range3, range4]⟩
+      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp_arith⟩
+      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', '\u000C'⟩, by simp_arith⟩
+      let range3 : ClassUnicodeRange := ⟨⟨'\u000E', ⟨0xD7FF, by simp_arith⟩⟩, by simp_arith⟩
+      let range4 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
+      let cls : ClassUnicode := ⟨IntervalSet.canonicalize #[range1, range2, range3, range4]⟩
       let kind : HirKind := HirKind.Class (Class.Unicode cls)
       Hir.mk kind (Hir.toProperties kind)
 
@@ -303,7 +303,7 @@ namespace HirFrame
 def toString : HirFrame -> String
   | .Expr hir => s!"Expr '{hir}'"
   | .Literal c => s!"Literal {c}"
-  | .ClassUnicode cls => s!"ClassUnicode cls set size {cls.set.ranges.size}"
+  | .ClassUnicode cls => s!"ClassUnicode cls set size {cls.set.intervals.size}"
   | .Repetition => "Repetition"
   | .Group flags => s!"Group {flags}"
   | .Concat => "Concat"

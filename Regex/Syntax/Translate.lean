@@ -88,7 +88,7 @@ private def push_char (c : Char) (stack : Array HirFrame) : Array HirFrame :=
 
 private def unicode_fold_and_negate (ranges : Array ClassUnicodeRange) (flags : Flags) (negate : Bool)
     : ClassUnicode :=
-  let cls : ClassUnicode := ⟨Interval.canonicalize ranges⟩
+  let cls : ClassUnicode := ⟨IntervalSet.canonicalize ranges⟩
   let cls := if flags.is_case_insensitive then ClassUnicode.case_fold cls else cls
   if negate then ClassUnicode.negate cls else cls
 
@@ -163,23 +163,23 @@ private def hir_ascii_unicode_class (cls: Ast.ClassAscii) (flags : Flags)
     : Except String ClassUnicode := do
   let range : Array ClassUnicodeRange :=
     match cls.kind with
-    | .Alnum => #[⟨'0','9', by simp_arith⟩, ⟨'A','Z', by simp_arith⟩, ⟨'a','z', by simp_arith⟩]
-    | .Alpha => #[⟨'A','Z', by simp_arith⟩, ⟨'a','z', by simp_arith⟩]
-    | .Ascii => #[⟨'\x00', '\x7F', by simp_arith⟩]
-    | .Blank => #[⟨'\t','\t', by simp_arith⟩, ⟨' ',' ', by simp_arith⟩]
-    | .Cntrl => #[⟨'\x00', '\x1F', by simp_arith⟩, ⟨'\x7F', '\x7F', by simp_arith⟩]
-    | .Digit => #[⟨'0','9', by simp_arith⟩]
-    | .Graph => #[⟨'!','~', by simp_arith⟩]
-    | .Lower => #[⟨'a','z', by simp_arith⟩]
-    | .Print => #[⟨' ','~', by simp_arith⟩]
-    | .Punct => #[⟨'!','/', by simp_arith⟩, ⟨':','@', by simp_arith⟩, ⟨'[','`', by simp_arith⟩,
-        ⟨'{','~', by simp_arith⟩]
-    | .Space => #[⟨'\t','\t', by simp_arith⟩, ⟨'¬','¬', by simp_arith⟩,
-        ⟨'\x0B', '\x0C', by simp_arith⟩, ⟨'\r','\r', by simp_arith⟩, ⟨' ',' ', by simp_arith⟩]
-    | .Upper => #[⟨'A','Z', by simp_arith⟩]
-    | .Word => #[⟨'0','9', by simp_arith⟩, ⟨'A','Z', by simp_arith⟩, ⟨'_','_', by simp_arith⟩,
-        ⟨'a','z', by simp_arith⟩]
-    | .Xdigit => #[⟨'0','9', by simp_arith⟩, ⟨'A','F', by simp_arith⟩, ⟨'a','f', by simp_arith⟩]
+    | .Alnum => #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','Z'⟩, by simp_arith⟩, ⟨⟨'a','z'⟩, by simp_arith⟩]
+    | .Alpha => #[⟨⟨'A','Z'⟩, by simp_arith⟩, ⟨⟨'a','z'⟩, by simp_arith⟩]
+    | .Ascii => #[⟨⟨'\x00', '\x7F'⟩, by simp_arith⟩]
+    | .Blank => #[⟨⟨'\t','\t'⟩, by simp_arith⟩, ⟨⟨' ',' '⟩, by simp_arith⟩]
+    | .Cntrl => #[⟨⟨'\x00', '\x1F'⟩, by simp_arith⟩, ⟨⟨'\x7F', '\x7F'⟩, by simp_arith⟩]
+    | .Digit => #[⟨⟨'0','9'⟩, by simp_arith⟩]
+    | .Graph => #[⟨⟨'!','~'⟩, by simp_arith⟩]
+    | .Lower => #[⟨⟨'a','z'⟩, by simp_arith⟩]
+    | .Print => #[⟨⟨' ','~'⟩, by simp_arith⟩]
+    | .Punct => #[⟨⟨'!','/'⟩, by simp_arith⟩, ⟨⟨':','@'⟩, by simp_arith⟩, ⟨⟨'[','`'⟩, by simp_arith⟩,
+        ⟨⟨'{','~'⟩, by simp_arith⟩]
+    | .Space => #[⟨⟨'\t','\t'⟩, by simp_arith⟩, ⟨⟨'¬','¬'⟩, by simp_arith⟩,
+        ⟨⟨'\x0B', '\x0C'⟩, by simp_arith⟩, ⟨⟨'\r','\r'⟩, by simp_arith⟩, ⟨⟨' ',' '⟩, by simp_arith⟩]
+    | .Upper => #[⟨⟨'A','Z'⟩, by simp_arith⟩]
+    | .Word => #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','Z'⟩ , by simp_arith⟩, ⟨⟨'_','_'⟩ , by simp_arith⟩,
+        ⟨⟨'a','z'⟩ , by simp_arith⟩]
+    | .Xdigit => #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','F'⟩ , by simp_arith⟩, ⟨⟨'a','f'⟩ , by simp_arith⟩]
 
   Except.ok (unicode_fold_and_negate range flags cls.negated)
 
@@ -304,7 +304,7 @@ def visit_post (ast: Ast) : StateT Translator (Except String) PUnit := do
     let c ← ast_literal_to_scalar lit
     if t.flags.is_case_insensitive
     then
-      let ranges : IntervalSet Char := Interval.canonicalize (Unicode.case_fold_char c)
+      let ranges : IntervalSet Char := IntervalSet.canonicalize (Unicode.case_fold_char c)
       let cls : ClassUnicode := ClassUnicode.canonicalize ⟨ranges⟩
       let kind := (HirKind.Class (Class.Unicode cls))
       let expr := Hir.mk kind (Hir.toProperties kind)
@@ -318,7 +318,7 @@ def visit_post (ast: Ast) : StateT Translator (Except String) PUnit := do
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let cls := unicode_fold_and_negate cls.set.ranges t.flags ast.negate
+      let cls := unicode_fold_and_negate cls.set.intervals t.flags ast.negate
       let kind := (HirKind.Class (Class.Unicode cls))
       let expr := Hir.mk kind (Hir.toProperties kind)
       set {t with stack := stack.push (HirFrame.Expr expr)}
@@ -387,16 +387,16 @@ def visit_class_set_item_post (ast : ClassSetItem)
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let ranges := cls.set.ranges.push ⟨lit.c, lit.c, by simp [Char.eq_le _]⟩
-      let cls := ⟨ClassUnicode.set ⟨Interval.canonicalize ranges⟩⟩
+      let ranges := cls.set.intervals.push ⟨⟨lit.c, lit.c⟩ , by simp [Char.eq_le _]⟩
+      let cls := ⟨ClassUnicode.set ⟨IntervalSet.canonicalize ranges⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Literal in stack expected"
   | .Range range =>
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let ranges := cls.set.ranges.push ⟨range.start.c, range.end.c, range.isLe⟩
-      let cls := ⟨ClassUnicode.set ⟨Interval.canonicalize ranges⟩⟩
+      let ranges := cls.set.intervals.push ⟨⟨range.start.c, range.end.c⟩, range.isLe⟩
+      let cls := ⟨ClassUnicode.set ⟨IntervalSet.canonicalize ranges⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Range in stack expected"
   | .Ascii asciicls =>
@@ -404,7 +404,7 @@ def visit_class_set_item_post (ast : ClassSetItem)
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
       let xcls ← hir_ascii_unicode_class asciicls t.flags
-      let cls := ⟨ClassUnicode.set ⟨Interval.union cls.set xcls.set⟩⟩
+      let cls := ⟨ClassUnicode.set ⟨IntervalSet.union cls.set xcls.set⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Range in stack expected"
   | .Unicode cls =>
@@ -412,7 +412,7 @@ def visit_class_set_item_post (ast : ClassSetItem)
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let cls := ⟨ClassUnicode.set ⟨Interval.union cls.set xcls.set⟩⟩
+      let cls := ⟨ClassUnicode.set ⟨IntervalSet.union cls.set xcls.set⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Range in stack expected"
   | .Perl cls =>
@@ -420,7 +420,7 @@ def visit_class_set_item_post (ast : ClassSetItem)
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let cls := ⟨ClassUnicode.set ⟨Interval.union cls.set xcls.set⟩⟩
+      let cls := ⟨ClassUnicode.set ⟨IntervalSet.union cls.set xcls.set⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Range in stack expected"
   | .Bracketed ast =>
@@ -429,7 +429,7 @@ def visit_class_set_item_post (ast : ClassSetItem)
       match stack.pop? with
       | some (cls2, stack) =>
         let cls1 ← cls1.unwrap_class_unicode
-        let cls1 := unicode_fold_and_negate cls1.set.ranges t.flags ast.negate
+        let cls1 := unicode_fold_and_negate cls1.set.intervals t.flags ast.negate
         let cls2 ← cls2.unwrap_class_unicode
         set {t with stack :=
           stack.push (HirFrame.ClassUnicode (ClassUnicode.union cls1 cls2))}
@@ -461,9 +461,9 @@ def visit_class_set_binary_op_post (op: ClassSetBinaryOp)
       match stack.pop? with
       | some (cls, stack) =>
         let lhs ← lhs.unwrap_class_unicode
-        let lhs := unicode_fold_and_negate lhs.set.ranges t.flags false
+        let lhs := unicode_fold_and_negate lhs.set.intervals t.flags false
         let rhs ← rhs.unwrap_class_unicode
-        let rhs := unicode_fold_and_negate rhs.set.ranges t.flags false
+        let rhs := unicode_fold_and_negate rhs.set.intervals t.flags false
         let cls ← cls.unwrap_class_unicode
         let clsOfKind :=
           match op.kind with

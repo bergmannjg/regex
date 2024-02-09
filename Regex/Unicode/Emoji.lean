@@ -35,7 +35,7 @@ private unsafe def Emoji.init : IO $ Array Emoji := do
 @[init Emoji.init]
 protected def Emojis.data : Array Emoji := #[]
 
-def getEmoji (s : String) : Except String $ Array (Range Char) :=
+def getEmoji (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match Emojis.data.find? (normalize ·.name = normalize s) with
   | some ⟨_, p⟩ => Except.ok (
       p |> Array.map toRange)

@@ -3,6 +3,10 @@ import Regex.Data.UInt.Basic
 
 namespace Char
 
+theorem Char.le_def {a b : Char} : a ≤ b ↔ a.val ≤ b.val := .rfl
+
+theorem Fin.le_def {a b : Fin n} : a ≤ b ↔ a.val ≤ b.val := .rfl
+
 /-- max valid char -/
 def max : Char := ⟨0x10FFFF, by simp_arith⟩
 

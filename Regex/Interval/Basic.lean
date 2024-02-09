@@ -4,82 +4,69 @@ import Std.Data.Nat.Lemmas
 import Std.Data.Fin.Lemmas
 import Std.Data.Int.Lemmas
 import Std.Data.List.Basic
+import Mathlib.Order.BoundedOrder
+import Mathlib.Order.Interval
 import Regex.Utils
 import Regex.Data.Array.Basic
 import Regex.Data.UInt.Basic
 import Regex.Data.Char.Basic
 
 /-!
-## IntervalSet
+## Interval Set
 
 This file contains the definition of interval sets (`IntervalSet`),
-a sorted set of non-overlapping ranges (`Range`).
+a sorted set of non-overlapping intervals (`Interval.nonOverlapping`).
 -/
 
-/-- A `Bound` defines a bounded set of values with min_value, max_value and increment
-    and decrement operators. Negation of ranges (`Range`) is defined wrt the
-    corresponding bound. -/
-class Bound (α : Type u) [Ord α] [LE α] where
-  min_value : α
-  max_value : α
-  increment : α -> α
-  decrement : α -> α
-  min_value_le_max_value : min_value ≤ max_value
-  min_value_le_decrement c : min_value ≤ decrement c
-  increment_le_max_value c : increment c ≤ max_value
+/-- BoundedOrder is used to define negation of interval sets (`IntervalSet.negate`). -/
+instance : BoundedOrder Char where
+  bot := Char.min
+  bot_le := Char.min_le
+  top := Char.max
+  le_top := Char.le_max
 
-/-- a Bound of type Char -/
-instance : Bound Char where
-  min_value := Char.min
-  max_value := Char.max
-  increment (c : Char) := Char.increment c
-  decrement (c : Char) := Char.decrement c
-  min_value_le_max_value := by simp_arith
-  increment_le_max_value c := by
-    unfold Char.increment; simp_all; split <;> try simp_all
-    · simp [Char.le_max]
-    · simp [Char.le_max]
-  min_value_le_decrement c := by
-    unfold Char.decrement; simp_all; split <;> try simp_all
-    · simp [Char.min_le]
-    · simp [Char.min_le]
+theorem NonemptyInterval.eq_val_of_eq {α : Type*} [LE α] [DecidableEq α]
+  {x y : NonemptyInterval α} (h : x = y) : x.fst = y.fst ∧ x.snd = y.snd := by
+  simp_all
 
-/-- A closed range bounded inclusively below and above (`start..end`). -/
-structure Range (α : Type u) [Ord α] [LE α] [Bound α] where
-  start: α
-  «end»: α
-  isLe: start ≤ «end»
-deriving Repr, DecidableEq
+instance (α : Type*) [LE α] [DecidableEq α] : DecidableEq (NonemptyInterval α) :=
+  fun ⟨(a, b), _⟩ ⟨(a', b'), _⟩ =>
+    match decEq a a' with
+    | isTrue e₁ =>
+      match decEq b b' with
+      | isTrue e₂  => isTrue (e₁ ▸ e₂ ▸ rfl)
+      | isFalse n₂ => isFalse fun h => absurd (NonemptyInterval.eq_val_of_eq h).right n₂
+    | isFalse n₁ => isFalse fun h => absurd (NonemptyInterval.eq_val_of_eq h).left n₁
 
-instance (α : Type u) [Ord α] [LE α] [LT α] [Bound α]: LT $ Range α where
-  lt r1 r2 := r1.end < r2.start
+instance (α : Type*) [LE α] [LT α] : LT $ NonemptyInterval α where
+  lt r1 r2 := r1.snd < r2.fst
 
-instance : ToString $ Range Char where
-  toString s := s!"{s.start} {s.end}"
+instance : ToString $ NonemptyInterval Char where
+  toString s := s!"{s.fst} {s.snd}"
 
-instance : Inhabited $ Range Char where
-  default := ⟨default, default, of_decide_eq_true rfl⟩
+instance : Inhabited $ NonemptyInterval Char where
+  default := ⟨default, of_decide_eq_true rfl⟩
 
-namespace Range
+namespace Interval
 
-/-- Ranges `r1` and `r2` are non overlapping when they are sorted and
-    they are not overlapping or adjacent, i.e. the difference of `r2.start` and `r1.end`
-    is greater than one. Ranges with a difference of one are canonicalized
-    to a new range (`Interval.canonicalize`). -/
-def nonOverlapping {α : Type u} [Ord α] [LE α] [LT α] [Bound α] [HSub α α Nat]
-    (r1 r2 : Range α) : Prop :=
-   1 < ((r2.start - r1.end) : Nat)
+/-- Nonempty intervals `r1` and `r2` are non overlapping when they are sorted and
+    they are not overlapping or adjacent, i.e. the difference of `r2.fst` and `r1.snd`
+    is greater than one. Intervals with a difference of one are canonicalized
+    to a new NonemptyInterval (`IntervalSet.canonicalize`). -/
+def nonOverlapping {α : Type u} [LE α] [LT α] [HSub α α Nat]
+    (r1 r2 : NonemptyInterval α) : Prop :=
+   1 < ((r2.fst - r1.snd) : Nat)
 
-instance {α : Type u} [Ord α] [LE α] [LT α] [Bound α] [HSub α α Nat]
-    (r1 r2 : Range α) : Decidable (Range.nonOverlapping r1 r2) :=
-  inferInstanceAs (Decidable (LT.lt 1 ((r2.start - r1.end) : Nat)))
+instance {α : Type u} [LE α] [LT α]  [HSub α α Nat]
+    (r1 r2 : NonemptyInterval α) : Decidable (Interval.nonOverlapping r1 r2) :=
+  inferInstanceAs (Decidable (LT.lt 1 ((r2.fst - r1.snd) : Nat)))
 
-def intersection {α : Type u} [Ord α]
-    [LT α] [LE α] [Bound α] [(a b : α) → Decidable (a ≤ b)]
-    (r1 r2 : Range  α) : Option $ Range α :=
-  let lower := if r1.start ≤ r2.start then r2.start else r1.start
-  let upper := if r1.«end» ≤ r2.«end» then r1.«end» else r2.«end»
-  if h : lower ≤ upper then some ⟨lower, upper, h⟩
+/-- create intersection of intervals `r1` and `r2` if it exists. -/
+def intersection {α : Type u} [LT α] [LE α]
+    [(a b : α) → Decidable (a ≤ b)] (r1 r2 : NonemptyInterval  α) : Option $ NonemptyInterval α :=
+  let lower := if r1.fst ≤ r2.fst then r2.fst else r1.fst
+  let upper := if r1.snd ≤ r2.snd then r1.snd else r2.snd
+  if h : lower ≤ upper then some ⟨⟨lower, upper⟩, h⟩
   else none
 
 def Char.sub (c₁ c₂ : Char) := c₁.toNat - c₂.toNat
@@ -89,81 +76,79 @@ instance : HSub Char Char Nat where
 
 theorem Char.sub_def {a b : Char} : Char.sub a b = a - b := rfl
 
-def negate (r1 r2 : Range Char) (h : nonOverlapping r1 r2) : Range Char :=
-  ⟨Bound.increment r1.end, Bound.decrement r2.start, by
+/-- create interval between intervals `r1` and `r2`. -/
+def between (r1 r2 : NonemptyInterval Char) (h : nonOverlapping r1 r2) : NonemptyInterval Char :=
+  ⟨⟨Char.increment r1.snd, Char.decrement r2.fst⟩, by
     unfold nonOverlapping at h
-    unfold Bound.increment
-    unfold Bound.decrement
-    unfold instBoundCharInstOrdCharInstLEChar
-    simp_all
-    have h : 1 + r1.end.toNat < r2.start.toNat := by simp [Nat.add_lt_of_lt_sub h]
+    have h : 1 + r1.snd.toNat < r2.fst.toNat := by simp [Nat.add_lt_of_lt_sub h]
     simp [Char.incr_le_decr h]⟩
 
-end Range
+end Interval
 
-namespace Ranges
+namespace Intervals
 
-def unique (ranges: Array (Range Char)) : Array (Range Char) :=
-  match ranges.data with
+/-- remove duplicate -/
+def unique (intervals: Array (NonemptyInterval Char)) : Array (NonemptyInterval Char) :=
+  match intervals.data with
   | [] => #[]
   | [r] => #[r]
   | head :: tail  =>
     let (_, unique) := tail |> List.foldl (init := (head, #[head]))
       (fun (prev, unique) r =>
-        if prev = r then (r, unique)
+        if prev.fst = r.fst && prev.snd = r.snd then (r, unique)
         else (r, unique.push r))
     unique
 
-/-- a list of ranges is non overlapping when ranges are sorted
-    and no ranges are overlapping or adjacent -/
-def dataIsNonOverlapping {α : Type u} [Ord α] [LT α] [LE α] [Bound α] [HSub α α Nat]
-    (ranges: List (Range α)) : Prop :=
-  match ranges with
+/-- a list of intervals is non overlapping when intervals are sorted
+    and no intervals are overlapping or adjacent -/
+def dataIsNonOverlapping {α : Type u} [LT α] [LE α] [HSub α α Nat]
+    (intervals: List (NonemptyInterval α)) : Prop :=
+  match intervals with
   | [] => true
   | [_] => true
-  | head :: tail  => List.Chain (Range.nonOverlapping) head tail
+  | head :: tail  => List.Chain (Interval.nonOverlapping) head tail
 
-/-- an array of ranges is non overlapping when `ranges.data` is non overlapping -/
-def nonOverlapping {α : Type u} [Ord α] [LT α] [LE α] [Bound α] [HSub α α Nat]
-    (ranges: Array (Range α)) : Prop :=
-  dataIsNonOverlapping ranges.data
+/-- an array of intervals is non overlapping when `intervals.data` is non overlapping -/
+def nonOverlapping {α : Type u}[LT α] [LE α] [HSub α α Nat]
+    (intervals: Array (NonemptyInterval α)) : Prop :=
+  dataIsNonOverlapping intervals.data
 
-end Ranges
+end Intervals
 
-/-- A sorted set of non-overlapping ranges. -/
-structure IntervalSet (α : Type u) [Ord α] [LT α] [LE α] [Bound α] [HSub α α Nat]
+/-- A sorted set of non-overlapping intervals. -/
+structure IntervalSet (α : Type u)[LT α] [LE α] [HSub α α Nat]
     [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a = b)] where
-  ranges: Array (Range α)
-  isNonOverlapping: Ranges.nonOverlapping ranges
-deriving Repr
+  intervals: Array (NonemptyInterval α)
+  isNonOverlapping: Intervals.nonOverlapping intervals
 
 instance : ToString $ IntervalSet Char where
-  toString s := s!"{s.ranges}"
+  toString s := s!"{s.intervals}"
 
 namespace Interval
 
-/-- last element of array `ranges` is non overlapping with range `next` -/
-def nonOverlappingWithLast (ranges : Array $ Range Char) (next : Option (Range Char)) : Prop :=
-  match ranges.last?, next with
-  | some last, some next => Range.nonOverlapping last next
+/-- last element of array `intervals` is non overlapping with NonemptyInterval `next` -/
+def nonOverlappingWithLast (intervals : Array $ NonemptyInterval Char)
+    (next : Option (NonemptyInterval Char)) : Prop :=
+  match intervals.last?, next with
+  | some last, some next => Interval.nonOverlapping last next
   | none , some _ => true
   | none, none => true
   | some _, none => false
 
 /-- Accumulator for loop in canonicalize -/
 structure Acc where
-  next : Option (Range Char)
+  next : Option (NonemptyInterval Char)
   set : IntervalSet Char
-  nonOverlapping : nonOverlappingWithLast set.ranges next
+  nonOverlapping : nonOverlappingWithLast set.intervals next
 
-def Acc.push (acc : Acc) (next : Range Char)
-  (h : Ranges.nonOverlapping (Array.push acc.set.ranges next)) : IntervalSet Char :=
-  ⟨acc.set.ranges.push next, h⟩
+def Acc.push (acc : Acc) (next : NonemptyInterval Char)
+  (h : Intervals.nonOverlapping (Array.push acc.set.intervals next)) : IntervalSet Char :=
+  ⟨acc.set.intervals.push next, h⟩
 
-/-- is `next.start` equal to `n.start` -/
-def is_start_eq (next : Option (Range Char)) (n : Range Char) : Prop :=
+/-- is `next.fst` equal to `n.fst` -/
+def is_start_eq (next : Option (NonemptyInterval Char)) (n : NonemptyInterval Char) : Prop :=
   match next with
-  | some next  => next.start = n.start
+  | some next  => next.fst = n.fst
   | _ => true
 
 end Interval

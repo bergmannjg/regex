@@ -41,7 +41,7 @@ private unsafe def Script.init : IO $ Array Script := do
 @[init Script.init]
 protected def ScriptProperties.data : Array Script := #[]
 
-def rangesOfScript (s : String) : Except String $ Array (Range Char) :=
+def rangesOfScript (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match ScriptProperties.data.find? (normalize ·.name = normalize s) with
   | some ⟨_, p⟩ => Except.ok (
       p |> Array.map toRange)

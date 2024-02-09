@@ -19,7 +19,7 @@ def extract (data : Array (Array Substring)) : Array (String × UInt32 × (Optio
 def normalize (s : String) :=
   ((s.toLower).replace "_" "").replace " " ""
 
-def toRange (val : UInt32 × Option UInt32) : Range Char :=
+def toRange (val : UInt32 × Option UInt32) : NonemptyInterval Char :=
   let (u1, u2) := val
   let u2 := match u2 with | some u2 => u2 | none => u1
   if h1 : UInt32.isValidChar u1 then
@@ -27,7 +27,7 @@ def toRange (val : UInt32 × Option UInt32) : Range Char :=
       then
         let c1 : Char := ⟨u1, h1⟩
         let c2 : Char := ⟨u2, h2⟩
-        if h3 : c1 ≤ c2 then ⟨c1, c2, h3⟩
-        else ⟨default, default, by simp_arith⟩
-    else ⟨default, default, by simp_arith⟩
-  else ⟨default, default, by simp_arith⟩
+        if h3 : c1 ≤ c2 then ⟨⟨c1, c2⟩, h3⟩
+        else ⟨⟨default, default⟩, by simp_arith⟩
+    else ⟨⟨default, default⟩, by simp_arith⟩
+  else ⟨⟨default, default⟩, by simp_arith⟩

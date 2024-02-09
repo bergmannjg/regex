@@ -40,7 +40,7 @@ private unsafe def WordBreakProperty.init : IO $ Array WordBreakProperty := do
 @[init WordBreakProperty.init]
 protected def WordBreakProperty.data : Array WordBreakProperty := #[]
 
-def getWordBreak (s : String) : Except String $ Array (Range Char) :=
+def getWordBreak (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match WordBreakProperty.data.find? (normalize ·.name = normalize s) with
   | some ⟨_, p⟩ => Except.ok (
       p |> Array.map toRange)
