@@ -38,9 +38,6 @@ instance (α : Type*) [LE α] [DecidableEq α] : DecidableEq (NonemptyInterval �
       | isFalse n₂ => isFalse fun h => absurd (NonemptyInterval.eq_val_of_eq h).right n₂
     | isFalse n₁ => isFalse fun h => absurd (NonemptyInterval.eq_val_of_eq h).left n₁
 
-instance (α : Type*) [LE α] [LT α] : LT $ NonemptyInterval α where
-  lt r1 r2 := r1.snd < r2.fst
-
 instance : ToString $ NonemptyInterval Char where
   toString s := s!"{s.fst} {s.snd}"
 
@@ -53,16 +50,15 @@ namespace Interval
     they are not overlapping or adjacent, i.e. the difference of `r2.fst` and `r1.snd`
     is greater than one. Intervals with a difference of one are canonicalized
     to a new NonemptyInterval (`IntervalSet.canonicalize`). -/
-def nonOverlapping {α : Type u} [LE α] [LT α] [HSub α α Nat]
-    (r1 r2 : NonemptyInterval α) : Prop :=
+def nonOverlapping {α : Type u} [LE α] [HSub α α Nat] (r1 r2 : NonemptyInterval α) : Prop :=
    1 < ((r2.fst - r1.snd) : Nat)
 
-instance {α : Type u} [LE α] [LT α]  [HSub α α Nat]
+instance {α : Type u} [LE α] [HSub α α Nat]
     (r1 r2 : NonemptyInterval α) : Decidable (Interval.nonOverlapping r1 r2) :=
   inferInstanceAs (Decidable (LT.lt 1 ((r2.fst - r1.snd) : Nat)))
 
 /-- create intersection of intervals `r1` and `r2` if it exists. -/
-def intersection {α : Type u} [LT α] [LE α]
+def intersection {α : Type u} [LE α]
     [(a b : α) → Decidable (a ≤ b)] (r1 r2 : NonemptyInterval  α) : Option $ NonemptyInterval α :=
   let lower := if r1.fst ≤ r2.fst then r2.fst else r1.fst
   let upper := if r1.snd ≤ r2.snd then r1.snd else r2.snd
