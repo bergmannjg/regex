@@ -7,7 +7,8 @@ namespace NFA
 ## NFA
 
 A byte oriented [Thompson](https://en.wikipedia.org/wiki/Thompson%27s_construction)
-non-deterministic finite automaton (`Checked.NFA`).
+non-deterministic finite automaton (`Checked.NFA`),
+see also [Tagged NFA](https://en.wikipedia.org/wiki/Tagged_Deterministic_Finite_Automaton).
 -/
 
 /-- The identifier of a regex pattern, represented by a Nat -/
