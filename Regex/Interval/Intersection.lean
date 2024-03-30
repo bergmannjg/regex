@@ -94,7 +94,7 @@ def canonicalize (ranges : Array (NonemptyInterval Char)) : IntervalSet Char :=
     | some v =>
         match hn : acc.set.intervals.last? with
         | some _ => Interval.Acc.push acc v
-            (Intervals.nonOverlapping_of_push acc v hn (by simp[hm]; simp_all))
+            (Intervals.nonOverlapping_of_push acc v hn (by simp[hm]))
         | none => Intervals.singleton v
     | none => acc.set
 
@@ -112,10 +112,13 @@ def negate (interval : IntervalSet Char) : IntervalSet Char :=
         if h : 0 < i.val
         then
           let x := interval.intervals.get ⟨i - 1, Intervals.Fin.pred h⟩
-          let y := interval.intervals.get i
+          let y : NonemptyInterval Char := interval.intervals.get i
           Interval.between x y
-            (Intervals.nonOverlapping_of_pred interval.intervals i x y h
-                        (by simp) (by simp) interval.isNonOverlapping)
+            (Intervals.nonOverlapping_of_pred interval.intervals
+              i
+              (interval.intervals.get ⟨i - 1, Intervals.Fin.pred h⟩)
+              (interval.intervals.get i) h
+              (by simp_all) (by simp_all) interval.isNonOverlapping)
         else
           if Bot.bot < y.fst
           then ⟨⟨ Bot.bot, Char.decrement y.fst⟩ , by simp⟩
@@ -150,7 +153,7 @@ where
         else loop a (b+1) ra rb acc
       else acc
     else acc
-termination_by _ a b ra rb _ => (ra.size - a, rb.size - b)
+  termination_by (ra.size - a, rb.size - b)
 
 /-- Subtract the interval set `interval2` from `interval1`. -/
 def difference (interval1 interval2 : IntervalSet Char) : IntervalSet Char :=

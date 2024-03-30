@@ -310,6 +310,8 @@ def toCkecked (nfa : Unchecked.NFA) : Except String $ Checked.NFA :=
   match nfa.states |> Array.mapM (toCkeckedState? · n) with
   | some states =>
     if h : nfa.states.size = states.size -- todo: prove it
-    then Except.ok ⟨n, states, by simp_all⟩
+    then Except.ok ⟨n, states, by
+      have : n = nfa.states.size := by simp
+      simp_all⟩
     else Except.error "internal error: NFA.toCkecked failed"
   | none => Except.error "internal error: NFA.toCkecked failed"

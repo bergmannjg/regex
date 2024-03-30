@@ -5,7 +5,7 @@ import Regex.Utils
 import Lean.Util
 import Init.Core
 import Std.Data.Nat.Lemmas
-import Std.Tactic.Ext
+import Std.Tactic.Exact
 
 /-!
 ## BoundedBacktracker
@@ -578,7 +578,7 @@ where
         else state
       else {state with msgs := state.msgs.push "overflow visited array"}
     | (false, state) => state
-termination_by _ nfa state => unvisited state
+termination_by unvisited state
 
 theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n) (h : steps.loop nfa s = s1)
     : s.countVisited ≤ s1.countVisited := by
@@ -602,7 +602,7 @@ theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n) (h : steps.
     have h2 : s.countVisited = s1.countVisited ∧ s.stack = s1.stack :=
       toNextStepChecked_false_eq nfa s s1 heq
     simp [Nat.le_of_eq h2.left]
-termination_by _ => unvisited s
+termination_by unvisited s
 
 theorem steps_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n) (h : steps nfa s = s1)
   : s.countVisited < s1.countVisited
@@ -776,22 +776,20 @@ where
         else state
       else  {state with msgs := state.msgs.push "overflow visited array"}
     | (false, state) => state
-termination_by _ _ state =>
-    (unvisited state, state.stack.length)
+termination_by (unvisited state, state.stack.length)
 decreasing_by
-  simp_wf
-  unfold Prod.lexLt at this
-  cases this
-  · rename_i h1
-    simp at h1
-    apply Prod.Lex.left
-    simp [h1]
-  · rename_i h1
-    simp at h1
-    apply Prod.Lex.right'
-    · simp [Nat.le_of_eq h1.left]
-    · simp [h1.right]
-
+    simp_wf
+    unfold Prod.lexLt at this
+    cases this
+    · rename_i h1
+      simp at h1
+      apply Prod.Lex.left
+      simp_all [h1]
+    · rename_i h1
+      simp at h1
+      apply Prod.Lex.right'
+      · simp [Nat.le_of_eq h1.left]
+      · simp_all [h1.right]
 
 /-- build pairs of subsequent slots -/
 private def toPairs (slots : Array (Option String.Pos))

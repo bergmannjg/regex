@@ -500,7 +500,7 @@ private def parse_set_class_loop (pattern : String) (i : Nat) (union : ClassSetU
         parse_set_class_loop pattern (i + n + 1) union
       else handle_other_char span items h₀
     | _ => handle_other_char span items h₀
-termination_by _ => pattern.length - i
+termination_by pattern.length - i
 
 /-- Parse a standard character class consisting primarily of characters or character ranges. -/
 private def parse_set_class (pattern : String) (i : Nat)
@@ -730,4 +730,4 @@ def parse (pattern : String) : Except String Ast := do
         have : pattern.length - (i + n) < pattern.length - i := by
           simp [Nat.sum_lt_of_not_gt _ _ _ h₀ h₁]
         loop pattern (i+n) (Concat.mk (concat.span) asts)
-  termination_by _ => pattern.length - i
+  termination_by pattern.length - i

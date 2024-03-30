@@ -4,7 +4,7 @@ import Std.Data.Nat.Lemmas
 import Std.Data.Fin.Lemmas
 import Std.Data.Int.Lemmas
 import Std.Data.List.Basic
-import Std.Data.Array.Init.Lemmas
+import Std.Data.Array.Lemmas
 import Mathlib.Data.List.Chain
 import Mathlib.Order.BoundedOrder
 import Mathlib.Order.Interval
@@ -164,7 +164,6 @@ theorem nonOverlapping_of_push (acc : Acc) (next : NonemptyInterval Char)
       rw [← heq.left] at h2
       have hx : List.Chain Interval.nonOverlapping next [] := by simp_all
       simp [List.chain_cons.mpr ⟨h2, hx⟩]
-      simp [h2]
     · rw [h] at heq
       rename_i head' tail' _ head tail
       have hh : head = head' := List.head_eq_of_cons_eq heq
@@ -228,9 +227,11 @@ theorem nonOverlapping_of_nth (ranges : Array $ NonemptyInterval Char) (n : Nat)
     simp [hps]
   have : tail.get ⟨n-1+1, ht3⟩ = ranges.get ⟨n+1, hf⟩ := by
     let i := n-1+1
-    have h : i < tail.length := by simp [hps, ht0]
-    simp [Array.eq_succ_of_tail_nth ranges (by simp [hps, hf]) h3 h]
-    simp [hps]
+    have hi : i = n-1+1 := by simp
+    have hi' : i = n := by simp_all only [hi]
+    have h : i < tail.length := by simp_all [hps, ht0]
+    simp [Array.eq_succ_of_tail_nth ranges (by rw [← hi'] at hf; simp_all) h3 h]
+    simp_all [hps]
   simp_all
 
 theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin (Array.size ranges))
