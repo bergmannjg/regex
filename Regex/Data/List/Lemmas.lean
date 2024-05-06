@@ -47,7 +47,6 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
       simp [Nat.le_of_not_gt] at hx1
       have hn1 : n = l1.length - 1 := by
         simp [Nat.eq_pred_of_le_of_lt_succ hn1 hx1 h1]
-        rfl
       have hn2 : n = l2.length - 1 := by
         have hx2 : List.length l2 - 1 ≤ n := by
           rw [hl] at hx1

@@ -453,11 +453,11 @@ private def parse_set_class_loop (pattern : String) (i : Nat) (union : ClassSetU
       let maybe_parsed :=
         if (← get).stack_class.size > 0
         then
-          match ← maybe_parse_ascii_class pattern i with
-          | some (n, cls) =>
+          match maybe_parse_ascii_class pattern i with
+          | Except.ok (some (n, cls)) =>
             let union : ClassSetUnion := ⟨span, items.push (ClassSetItem.Ascii cls)⟩
             some (n, union)
-          | none => none
+          | _ => none
         else none
 
       let (n, union) ←

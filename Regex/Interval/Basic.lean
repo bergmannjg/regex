@@ -5,7 +5,7 @@ import Std.Data.Fin.Lemmas
 import Std.Data.Int.Lemmas
 import Std.Data.List.Basic
 import Mathlib.Order.BoundedOrder
-import Mathlib.Order.Interval
+import Mathlib.Order.Interval.Basic
 import Regex.Utils
 import Regex.Data.Array.Basic
 import Regex.Data.UInt.Basic

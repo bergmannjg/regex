@@ -29,6 +29,12 @@ abbrev CliMainM := ExceptT CliError MainM
 abbrev CliStateM := StateT RegexOptions CliMainM
 abbrev CliM := ArgsT CliStateM
 
+instance : MonadLift (Except String) CliMainM where
+  monadLift e :=
+    match e with
+    | Except.ok res => pure res
+    | Except.error e => throw $ .invalidEnv e
+
 def CliM.run (self : CliM α) (args : List String) : BaseIO ExitCode := do
   let main := self.run' args |>.run' {}
   let main := main.run >>= fun | .ok a => pure a | .error e => MonadError.error e.toString

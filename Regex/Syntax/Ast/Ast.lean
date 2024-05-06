@@ -691,7 +691,7 @@ def items (union : ClassSetUnion) : Array ClassSetItem :=
 /-- Return this union as a character class set item. -/
 def into_item (union : ClassSetUnion) : ClassSetItem :=
   let ⟨span, items⟩ := union
-  match h : items.size with
+  match items.size with
   | 0 => ClassSetItem.Empty span
   | 1 => if h: 0 < items.size then items[0]'h else ClassSetItem.Empty span
   | _ => ClassSetItem.Union union

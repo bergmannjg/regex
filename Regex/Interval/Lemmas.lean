@@ -7,7 +7,7 @@ import Std.Data.List.Basic
 import Std.Data.Array.Lemmas
 import Mathlib.Data.List.Chain
 import Mathlib.Order.BoundedOrder
-import Mathlib.Order.Interval
+import Mathlib.Order.Interval.Basic
 import Regex.Utils
 import Regex.Data.UInt.Basic
 import Regex.Data.Char.Basic
@@ -30,8 +30,6 @@ theorem single_isNonOverlapping (ranges : Array (NonemptyInterval Char)) (h : ra
   unfold nonOverlapping dataIsNonOverlapping
   split <;> try simp_all
   unfold Array.size at h
-  unfold List.length at h
-  split at h <;> try simp_all
   unfold List.length at h
   split at h <;> try simp_all
 
@@ -72,17 +70,13 @@ theorem nonOverlappingWithLast_of_empty (ranges : Array $ NonemptyInterval Char)
     : nonOverlappingWithLast ranges next  := by
   unfold nonOverlappingWithLast
   split <;> try simp_all
-  · unfold Array.size List.length at h2
-    split at h2 <;> try simp_all
-    rename_i heq' x heq
+  · rename_i heq'
     unfold Array.last? at heq'
     split at heq' <;> try simp_all
     rename_i h
     unfold List.length at h
     split at h <;> try simp_all
-  · unfold Array.size List.length at h2
-    split at h2 <;> try simp_all
-    rename_i heq' x heq
+  · rename_i heq'
     unfold Array.last? at heq'
     split at heq' <;> try simp_all
     rename_i h
@@ -252,7 +246,7 @@ theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin
     contradiction
   · rename_i head tail _ heq
     let ⟨h1, h2⟩ := List.chain_iff_get.mp hr
-    match hm : i with
+    match i with
     | ⟨0, h⟩ => contradiction
     | ⟨1, hf⟩ =>
       rename_i xt
@@ -268,7 +262,7 @@ theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin
         nonOverlapping_of_nth ranges (n+1) (by simp) hf heq h2
       simp [hx2]
 
-theorem nonOverlappingWithLast_of_push(acc : Acc) (h1 : acc.next = some l)
+theorem nonOverlappingWithLast_of_push(acc : Acc) (_ : acc.next = some l)
   (h2 : Intervals.nonOverlapping (Array.push acc.set.intervals l)) (h3 : Interval.nonOverlapping l r)
     : nonOverlappingWithLast (Acc.push acc l h2).intervals (some r) := by
   unfold Acc.push Array.push nonOverlappingWithLast
