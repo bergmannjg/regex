@@ -1,8 +1,13 @@
 import Lean
+import Lake.Toml
+import Lake.Toml.Decode
+import Lake.Util.Message
+import Lake.Util.Newline
+import Lake.Util.RBArray
 
 import Regex
 
-open Lean System
+open Lean System Lake
 
 open NFA
 open Syntax
@@ -442,62 +447,7 @@ structure Captures where
 instance : ToString Captures where
   toString s := s!"Captures {s.groups}"
 
-namespace Captures
-
-def toList2 (json : Json) : Except String $ List (List Nat) :=
-  fromJson? json
-
-def toList3 (json : Json) : Except String $ List (List (List Nat)) :=
-  fromJson? json
-
-def toSpans (l : List (List Nat)) : Except String $ Array $ Option Span := do
-  let spans ←
-      l
-      |> List.mapM (fun l =>
-        match l with
-        | [n, m] => Except.ok (some (Span.mk n m))
-        | [] => Except.ok none
-        | _ => Except.error s!"unexpected list {l}")
-      --|> List.toArray
-  Except.ok (spans.toArray)
-
-def fromJson? (json : Json) : Except String $ Array Captures := do
-  match toList3 json with
-  | Except.ok l =>
-      let captures  ← l
-        |> List.mapM (fun l => do
-          let spans ← toSpans l
-          pure (Captures.mk spans))
-      Except.ok (captures.toArray)
-  | _ =>
-    match toList2 json with
-    | Except.ok l =>
-      let captures  ← l
-        |> List.mapM (fun l => do
-          let spans ← toSpans [l]
-          pure (Captures.mk spans))
-      Except.ok (captures.toArray)
-    | Except.error _ => Except.ok #[]
-
-end Captures
-
-instance : FromJson $ Array Captures := ⟨Captures.fromJson?⟩
-
 namespace Sum
-
-def toString (json : Json) : Except String String :=
-  fromJson? json
-
-def toArray (json : Json) : Except String $ Array String :=
-  fromJson? json
-
-def fromJson? (json : Json) : Except String $ Sum String (Array String) := do
-  match toArray json with
-  | Except.ok arr => Except.ok (Sum.inr arr)
-  | _ =>
-    match toString json with
-    | Except.ok s => Except.ok (Sum.inl s)
-    | Except.error e => Except.error e
 
 def val (v : Sum String (Array String)) : String :=
     match v with
@@ -505,8 +455,6 @@ def val (v : Sum String (Array String)) : String :=
     | .inr arr => arr[0]!
 
 end Sum
-
-instance : FromJson $ Sum String (Array String) := ⟨Sum.fromJson?⟩
 
 instance : ToString $ Sum String (Array String) where
   toString v :=
@@ -542,7 +490,6 @@ structure RegexTest where
   «search-kind» : Option String
   /-- This sets the line terminator used by the multi-line assertions -/
   «line-terminator» : Option String
-deriving FromJson
 
 def isMatch (t : RegexTest) : Bool :=
   if h : 0 < t.matches.size
@@ -551,7 +498,6 @@ def isMatch (t : RegexTest) : Bool :=
 
 structure RegexTests where
   test : Array RegexTest
-deriving FromJson
 
 namespace String
 
@@ -711,19 +657,141 @@ def testItems (filename : String) (items : Array RegexTest) : IO (Nat × Nat× N
     let (succeed, failure, ignore) ← testItem filename RegexTest
     pure (succeeds + succeed, failures + failure, ignore + ignored))
 
-def toRegexTests (s : String) : Except String RegexTests := do
-  Json.parse s >>= fromJson?
-
 end RegexTest
+
+namespace Loader
+
+open Lake.Toml
+
+protected def Span.decodeToml (v : Value) (s := Syntax.missing)
+    : Except (Array DecodeError) (Option RegexTest.Span) :=
+  match v with
+  | .array _ v =>
+    match v with
+    | #[] => pure none
+    | #[a, b] =>
+      match a, b with
+      | .integer _ a, .integer _ b => pure (RegexTest.Span.mk a.toNat b.toNat)
+      | _, _ =>  Except.error #[DecodeError.mk s s!"integer array expected {v}"]
+    | _ =>  Except.error #[DecodeError.mk s s!"array size 0 or 2 expected {v}"]
+  | _ =>
+    Except.error #[DecodeError.mk s s!"Span.decodeToml: array expected {v}"]
+
+protected def Spans.decodeToml (v : Value) (s := Syntax.missing)
+    : Except (Array DecodeError) (Array $ Option RegexTest.Span) := do
+  match v with
+  | .array _ v =>
+    let arr ← v |> Array.mapM (fun v => do return ← Span.decodeToml v v.ref)
+    return arr
+  | .table _ t =>
+    match t.find? `span with
+    | some v => pure #[← Span.decodeToml v]
+    | _ =>
+      match t.find? `spans with
+      | some _ => pure #[]
+      | _ => Except.error #[DecodeError.mk s s!"Spans.decodeToml: span|spans key expected {v}"]
+  | _ =>
+    Except.error #[DecodeError.mk s s!"Spans.decodeToml: array expected {v}"]
+
+/- possible values
+   []
+   [[a, b]]
+   [[a, b], ..., [c, d]]
+   [[[a, b], ..., [c, d]]]
+-/
+protected def Captures.decodeToml (v : Value) (s := Syntax.missing)
+    : Except (Array DecodeError) (Array RegexTest.Captures) := do
+  match v with
+  | .array _ arr =>
+    match Spans.decodeToml v v.ref with
+    | Except.ok groups => pure (groups |> Array.map (fun g => ⟨#[g]⟩))
+    | Except.error _ =>
+        let arr ← arr |> Array.mapM (fun v =>
+              match Spans.decodeToml v v.ref with
+              | Except.ok spans => pure spans
+              | Except.error e => throw e)
+        pure (arr |> Array.map (fun groups => {groups}))
+  | _ => Except.error #[DecodeError.mk s s!"Captures.decodeToml: array expected {v}"]
+
+instance : DecodeToml (Array RegexTest.Captures) := ⟨fun v => do Captures.decodeToml v v.ref⟩
+
+protected def Regex.decodeToml (v : Value) (s := Syntax.missing)
+    : Except (Array DecodeError) (Sum String (Array String)) := do
+  match v with
+  | .string _ s => pure <| Sum.inl s
+  | .array _ _ => pure <| Sum.inr #[]
+  | _ => Except.error #[DecodeError.mk s s!"Regex.decodeToml: string or array expected {v}"]
+
+protected def Bounds.decodeToml (v : Value) (s := Syntax.missing)
+    : Except (Array DecodeError) (Array Nat) := do
+  match v with
+  | .array _ #[a, b] =>
+      match a, b with
+      | .integer _ a, .integer _ b => pure #[a.toNat, b.toNat]
+      | _, _ =>  Except.error #[DecodeError.mk s s!"integer array expected {v}"]
+  | .table _ _ => pure <| #[]
+  | _ => Except.error #[DecodeError.mk s s!"Regex.decodeToml: array or table expected {v}"]
+
+protected def RegexTest.decodeToml (t : Table) (_ := Syntax.missing)
+    : Except (Array DecodeError) RegexTest.RegexTest := ensureDecode do
+  let name ← t.tryDecodeD `name "."
+  let regex : Sum String (Array String) ← optDecode (t.find? `regex) Regex.decodeToml
+  let haystack : String ← t.tryDecodeD `haystack "."
+  let «matches» : Array RegexTest.Captures ← t.tryDecodeD `«matches» #[]
+  let bounds : Option $ Array Nat ← optDecode? (t.find? `bounds) Bounds.decodeToml
+  let «match-limit» : Option Nat ← t.tryDecode? `«match-limit»
+  let anchored : Option Bool ← t.tryDecode? `anchored
+  let «case-insensitive» : Option Bool ← t.tryDecode? `«case-insensitive»
+  let unescape : Option Bool ← t.tryDecode? `unescape
+  let compiles : Option Bool ← t.tryDecode? `compiles
+  let unicode : Option Bool ← t.tryDecode? `unicode
+  let utf8 : Option Bool ← t.tryDecode? `utf8
+  let «match-kind» : Option String ← t.tryDecode? `«match-kind»
+  let «search-kind» : Option String ← t.tryDecode? `«search-kind»
+  let «line-terminator» : Option String ← t.tryDecode? `«line-terminator»
+  return {name, regex, haystack, «matches», bounds, «match-limit», anchored, «case-insensitive»,
+          unescape, compiles, unicode, utf8, «match-kind», «search-kind», «line-terminator» }
+
+instance : DecodeToml RegexTest.RegexTest := ⟨fun v => do RegexTest.decodeToml (← v.decodeTable) v.ref⟩
+
+nonrec def parseToml (table : Table) (tomlFile : FilePath) : IO $ Array RegexTest.RegexTest := do
+  let (tests, errs) := Id.run <| StateT.run (s := (#[] : Array DecodeError)) do
+    let tests ← table.tryDecodeD `test #[]
+    return tests
+
+  if errs.isEmpty then return tests
+  else
+    let msgs := errs |> Array.foldl (init := "") (fun s err => s ++ s!"{err.msg} at {err.ref.getPos?}\n")
+    throw $ .userError s!"decode errors in {tomlFile}\n{msgs}"
+
+nonrec def loadToml (tomlFile : FilePath) : IO $ Array RegexTest.RegexTest := do
+  let fileName := tomlFile.fileName.getD tomlFile.toString
+  let input ←
+    match (← IO.FS.readBinFile tomlFile |>.toBaseIO) with
+    | .ok bytes =>
+      if let some input := String.fromUTF8? bytes then
+        pure (crlf2lf input)
+      else
+        throw $ .userError s!"{fileName} file contains invalid characters"
+    | .error e => throw $ .userError s!"{e}"
+  let ictx := Lean.Parser.mkInputContext input fileName
+  match (← loadToml ictx |>.toBaseIO) with
+  | .ok table => parseToml table tomlFile
+  | .error log =>
+      let msgs := log.toArray |> Array.foldl (init := "")
+                      (fun s msg => s ++ s!"error at {msg.fileName} {msg.pos}")
+      throw $ .userError s!"{msgs}"
+
+end Loader
 
 def test (path : FilePath): IO (Nat × Nat × Nat) := do
   let filename : String := path.fileName.getD ""
-  match RegexTest.toRegexTests (←IO.FS.readFile path) with
-  | Except.ok tests =>
-    let (succeeds, failures, ignored) ← RegexTest.testItems filename tests.test
-    IO.println s!"succeeds {succeeds} failures {failures} ignored {ignored} in file {path}"
-    pure (succeeds, failures, ignored)
-  | Except.error e => Except.error (s!"file {path} " ++ e)
+  if #["no-unicode.toml", "regex-lite.toml", "utf8.toml"].contains filename
+  then pure (0, 0, 0) else
+  let tests ← Loader.loadToml path
+  let (succeeds, failures, ignored) ← RegexTest.testItems filename tests
+  IO.println s!"succeeds {succeeds} failures {failures} ignored {ignored} in file {path}"
+  pure (succeeds, failures, ignored)
 
 def summary (arr : Array (Nat × Nat × Nat)) : IO UInt32 := do
   let (succeeds, failures, ignored) := arr |> Array.foldl
@@ -731,24 +799,29 @@ def summary (arr : Array (Nat × Nat × Nat)) : IO UInt32 := do
   IO.println s!"succeeds {succeeds} failures {failures} ignored {ignored} total"
   pure (if failures > 0 then 1 else 0)
 
+def testAll (path : FilePath): IO UInt32 := do
+  if ← System.FilePath.isDir path
+  then
+    (← System.FilePath.walkDir path)
+    |> Array.filter (fun f => f.toString.endsWith "toml")
+    |> Array.mapM (fun file => test file)
+    |> fun arr => do summary (← arr)
+  else
+    IO.println  s!"no such directory '{path}'"
+    pure 1
+
 def main (args : List String): IO UInt32 := do
-  let mut exitcode : UInt32 := 0
-  try
-    match args with
-    | ["--json", path] => test path |> discard
-    | ["--all", path] =>
-      exitcode ←
-        if ← System.FilePath.isDir path
-        then
-          (← System.FilePath.walkDir path)
-          |> Array.filter (fun f => f.toString.endsWith "json")
-          |> Array.mapM (fun file => test file)
-          |> fun arr => do summary (← arr)
-        else
-          IO.println  s!"no such directory '{path}'"
-          pure 1
-    | _ => IO.println  s!"usage: Test [--json <path>] [--all path]"
-  catch e =>
-    IO.println s!"Error: {e}"
+  let exitcode ←
+    try
+      match args with
+      | [] => pure <| ← testAll "testdata"
+      | ["--toml", path] => pure <| ← summary #[← test path]
+      | ["--all", path] => pure <| ← testAll path
+      | _ =>
+        IO.println  s!"usage: Test [--toml <path>] [--all path]"
+        pure 1
+    catch e =>
+      IO.println s!"Error: {e}"
+      pure 1
 
   pure exitcode

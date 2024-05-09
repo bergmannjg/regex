@@ -30,6 +30,7 @@ lean_exe benchmark {
   buildType := .debug
 }
 
+@[test_runner]
 lean_exe test {
   root := `Test
 }

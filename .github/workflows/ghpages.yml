@@ -38,8 +38,7 @@ jobs:
           lake build
       - name: run Regex tests
         run: |
-          lake build test
-          ./.lake/build/bin/test --all ./testdata/
+          lake test
       - name: Build Doc
         run: |
           lake -R -Kenv=dev update
