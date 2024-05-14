@@ -423,7 +423,7 @@ example : (build "[a-b]" |> toString) = «nfaOf'[a-b]'».toString := by native_d
 example : (build "a|b" |> toString) = «nfaOf'a|b'».toString := by native_decide
 
 example : (build "(a)" |> toString) = «nfaOf'(a)'».toString := by native_decide
-
+--#eval build "[a]{0,2}"
 example : (build "[a]{0,2}" |> toString) = «nfaOf'[a]{0,2}'».toString := by native_decide
 
 end Test.Compiler
@@ -462,6 +462,7 @@ instance : ToString $ Sum String (Array String) where
     | .inl s => s!"{s}"
     | .inr arr => s!"{arr}"
 
+set_option linter.dupNamespace false
 /-- A regex test describes the inputs and expected outputs of a regex match. -/
 structure RegexTest where
   name : String

@@ -1,7 +1,55 @@
+import Std.Data.Nat.Lemmas
+import Init.Data.List.Lemmas
+import Init.Data.Array.Mem
+
 import Regex.Data.List.Lemmas
 import Regex.Data.Array.Basic
 
 namespace Array
+
+theorem sizeOf_head?_of_mem [SizeOf α] {as : Array α} (h : Array.head? as = some (a, as'))
+    : sizeOf a < sizeOf as := by
+  unfold Array.head? at h
+  split at h <;> simp_all
+  exact Array.sizeOf_lt_of_mem <| (Array.mem_def a as).mpr (by simp_all)
+
+theorem sizeOf_head?_of_tail [SizeOf α] {as : Array α} (h : Array.head? as = some (a, as'))
+    : sizeOf as' < sizeOf as := by
+  unfold Array.head? at h
+  split at h <;> simp_all
+  cases as with | _ as =>
+  cases as' with | _ as' =>
+  simp_all
+  apply Nat.add_lt_add_left _
+  simp_arith
+
+theorem sizeOf_dropLast_cons [SizeOf α] (a : α) (as : List α)
+    : sizeOf (a :: as).dropLast < sizeOf (a :: as) := by
+  induction as generalizing a with
+  | nil => simp_arith
+  | cons a' as ih => apply Nat.add_lt_add_left _; exact ih a'
+
+theorem sizeOf_dropLast_non_empty [SizeOf α] (as : List α) (h : 0 < as.length)
+    : sizeOf as.dropLast < sizeOf as := by
+  unfold List.length at h
+  split at h <;> simp_all
+  exact sizeOf_dropLast_cons _ _
+
+theorem sizeOf_pop_non_empty [SizeOf α] (as : Array α) (h : 0 < as.data.length)
+    : sizeOf as.pop < sizeOf as := by
+  unfold Array.pop
+  cases as with | _ as =>
+  simp
+  apply Nat.add_lt_add_left _
+  exact sizeOf_dropLast_non_empty _ h
+
+theorem sizeOf_pop? [SizeOf α] {as : Array α} (h : Array.pop? as = some (a, as'))
+    : sizeOf as' < sizeOf as := by
+  unfold Array.pop? at h
+  split at h <;> simp_all
+  rename_i hl
+  rw [← h.right]
+  exact sizeOf_pop_non_empty as hl
 
 theorem size_one (a : α) : (#[a] : Array α).size = 1 := rfl
 

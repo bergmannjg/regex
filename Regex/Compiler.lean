@@ -1,3 +1,4 @@
+import Std.Data.Array.Basic
 import Regex.Syntax.Hir
 import Regex.Nfa
 
@@ -120,26 +121,33 @@ private def c_cap' (pattern_id slot: Nat) : CompilerM Unchecked.StateID  :=
 
 mutual
 
-private partial def c_concat (hirs : Array Hir) : CompilerM ThompsonRef := do
-  match hirs.head? with
+private def c_concat (hirs : Array Hir) : CompilerM ThompsonRef := do
+  match h : hirs.head? with
   | some (head, tail) =>
+    have : sizeOf head < sizeOf hirs := Array.sizeOf_head?_of_mem h
     let ⟨start, «end»⟩ ← c head
 
-    let hir ← tail.foldlM (init := «end»)
+    have : sizeOf tail < sizeOf hirs := Array.sizeOf_head?_of_tail h
+    let hir ← tail.attach.foldlM (init := «end»)
       (fun s h => do
-        let hir ← c h
+        have : sizeOf h.val < sizeOf tail := Array.sizeOf_lt_of_mem h.property
+        let hir ← c h.val
         patch s hir.start
         pure hir.end)
 
     pure ⟨start, hir⟩
   | none => c_empty
+termination_by sizeOf hirs
 
-private partial def c_alt_iter (hirs : Array Hir) : CompilerM ThompsonRef := do
-  match hirs.head? with
+private def c_alt_iter (hirs : Array Hir) : CompilerM ThompsonRef := do
+  match hHead : hirs.head? with
   | some (first, tail) =>
-    match tail.head? with
-    | some (second, tail) =>
+    have : sizeOf tail < sizeOf hirs := Array.sizeOf_head?_of_tail hHead
+    match hTail : tail.head? with
+    | some (second, tail') =>
+      have : sizeOf first < sizeOf hirs := Array.sizeOf_head?_of_mem hHead
       let first ← c first
+      have : sizeOf second < sizeOf tail := Array.sizeOf_head?_of_mem hTail
       let second ← c second
       let union ← add_union
       let «end» ← add_empty
@@ -149,118 +157,146 @@ private partial def c_alt_iter (hirs : Array Hir) : CompilerM ThompsonRef := do
       patch union second.start
       patch second.end «end»
 
-      tail.forM
+      have : sizeOf tail' < sizeOf tail := Array.sizeOf_head?_of_tail hTail
+      tail'.attach.forM
         (fun h => do
-          let compiled ← c h
+          have : sizeOf h.val < sizeOf tail' := Array.sizeOf_lt_of_mem h.property
+          let compiled ← c h.val
           patch union compiled.start
           patch compiled.end «end»)
 
       pure ⟨union, «end»⟩
     | none => Except.error "c_alt_iter, size > 1 expected"
   | none => Except.error "c_alt_iter, size > 0 expected"
+termination_by sizeOf hirs
 
-private partial def c_exactly (h : Hir) (n : Nat) : CompilerM ThompsonRef :=
-    c_concat ⟨List.replicate n h⟩
-
-private partial def c_zero_or_one (h : Hir) (greedy : Bool) : CompilerM ThompsonRef := do
-  let union ← if greedy then add_union else add_union_reverse
-  let compiled ← c h
-  let empty ← add_empty
-  patch union compiled.start
-  patch union empty
-  patch compiled.end empty
-  pure ⟨union, empty⟩
+private def c_exactly (hir : Hir) (n : Nat) : CompilerM ThompsonRef := do
+  if 0 < n then
+    let ⟨start, «end»⟩ ← c hir
+    let s ← (List.replicate (n-1) 0).foldlM (init := «end»)
+      (fun s _ => do
+        let ref ← c hir
+        patch s ref.start
+        pure ref.end)
+    pure ⟨start, s⟩
+  else c_empty
+termination_by sizeOf hir + sizeOf n
 
 /-- Compile the given expression such that it may be matched `n` or more times -/
-private partial def c_at_least (h : Hir) (n : Nat) (greedy : Bool) : CompilerM ThompsonRef := do
+private def c_at_least (hir : Hir) (n : Nat) (greedy : Bool) : CompilerM ThompsonRef := do
   if n = 0 then
-    let cannotMatchEmptyString : Bool :=
-       match h.properties.minimum_len with
-      | some n => n > 0
-      | none => false
+    /- compile x* as (x+)?, which preserves the correct preference order
+        if x can match the empty string. -/
+    let compiled ← c hir
+    let plus ← (if greedy then add_union else add_union_reverse)
+    patch compiled.end plus
+    patch plus compiled.start
 
-    if cannotMatchEmptyString
-    then
-      let union ← (if greedy then add_union else add_union_reverse)
-      let compiled ← c h
-      patch union compiled.start
-      patch compiled.end union
+    let question ← (if greedy then add_union else add_union_reverse)
+    let empty ← add_empty
+    patch question compiled.start
+    patch question empty
+    patch plus empty
 
-      pure ⟨union, union⟩
-    else
-      /- compile x* as (x+)?, which preserves the correct preference order
-         if x can match the empty string. -/
-      let compiled ← c h
-      let plus ← (if greedy then add_union else add_union_reverse)
-      patch compiled.end plus
-      patch plus compiled.start
-
-      let question ← (if greedy then add_union else add_union_reverse)
-      let empty ← add_empty
-      patch question compiled.start
-      patch question empty
-      patch plus empty
-
-      pure ⟨question, empty⟩
+    pure ⟨question, empty⟩
   else if n = 1 then
-    let compiled ← c h
+    let compiled ← c hir
     let union ← (if greedy then add_union else add_union_reverse)
     patch compiled.end union
     patch union compiled.start
 
     pure ⟨compiled.start, union⟩
   else
-    let «prefix» ← c_exactly h (n - 1)
-    let last ← c h
+    let «prefix» ← c_exactly hir (n-1)
+    let last ← c hir
     let union ← (if greedy then add_union else add_union_reverse)
     patch «prefix».end last.start
     patch last.end union
     patch union last.start
 
     pure ⟨«prefix».start, union⟩
+termination_by sizeOf hir + sizeOf n + 1
 
 /-- Compile the given expression such that it matches at least `min` times,
     but no more than `max` times.-/
-private partial def c_bounded (h : Hir) (min max : Nat) (greedy : Bool)
+private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (h : min ≤ max)
     : CompilerM ThompsonRef := do
-  let «prefix» ← c_exactly h min
-  if min = max then pure «prefix»
-  else
-    let empty ← add_empty
-    let prev_end ← (List.replicate (max-min) 0).foldlM (init := «prefix».end)
-      (fun prev_end _ => do
-        let union ← (if greedy then add_union else add_union_reverse)
-        let compiled ← c h
-        patch prev_end union
+  if h : 0 < max then
+    let «prefix» ← c_exactly hir min
+    if min = max then pure «prefix»
+    else
+      let empty ← add_empty
+      let prev_end ← (List.replicate (max-min) 0).foldlM (init := «prefix».end)
+        (fun prev_end _ => do
+          let union ← (if greedy then add_union else add_union_reverse)
+          let compiled ← c hir
+          patch prev_end union
+          patch union compiled.start
+          patch union empty
+          pure compiled.end)
+      patch prev_end empty
+      pure ⟨«prefix».start, empty⟩
+  else c_empty
+termination_by sizeOf hir + sizeOf min + sizeOf max
+
+private def c_repetition (rep : Repetition) : CompilerM ThompsonRef := do
+  match rep with
+  | .mk 0 (some 1) greedy h => do
+      let union ← if greedy then add_union else add_union_reverse
+      let compiled ← c h
+      let empty ← add_empty
+      patch union compiled.start
+      patch union empty
+      patch compiled.end empty
+      pure ⟨union, empty⟩
+  | .mk min none greedy sub => do
+      let cannotMatchEmptyString : Bool :=
+        match sub.properties.minimum_len with
+        | some n => n > 0
+        | none => false
+      if min = 0 && cannotMatchEmptyString
+      then
+        let union ← if greedy then add_union else add_union_reverse
+        let compiled ← c sub
         patch union compiled.start
-        patch union empty
-        pure compiled.end)
-    patch prev_end empty
-    pure ⟨«prefix».start, empty⟩
+        patch compiled.end union
+        pure ⟨union, union⟩
+      else c_at_least sub min greedy
+  | .mk min (some max) greedy sub =>
+      if h : min ≤ max then c_bounded sub min max greedy h else c_empty
+termination_by sizeOf rep
 
-private partial def c_repetition : Repetition -> CompilerM ThompsonRef
-  | .mk 0 (some 1) greedy sub => c_zero_or_one sub greedy
-  | .mk min none greedy sub => c_at_least sub min greedy
-  | .mk min (some max) greedy sub => c_bounded sub min max greedy
-
-private partial def c (hir : Hir) : CompilerM ThompsonRef :=
-  match hir.kind with
+private def c (hir : Hir) : CompilerM ThompsonRef :=
+  have : sizeOf hir.kind < sizeOf hir := Hir.sizeOfKindOfHir hir
+  match h : hir.kind with
   | .Empty => c_empty
   | .Literal c => c_literal c
   | .Class (.Unicode cls) => c_unicode_class cls
   | .Look look => c_look look
-  | .Repetition rep => c_repetition rep
-  | .Capture ⟨index, _, sub⟩  => c_cap index sub
-  | .Concat hirs => c_concat hirs
-  | .Alternation sub => c_alt_iter sub
+  | .Repetition rep =>
+    have : sizeOf rep < sizeOf hir.kind := by simp [h]
+    c_repetition rep
+  | .Capture cap =>
+    have : sizeOf cap < sizeOf hir.kind := by simp [h]
+    c_cap cap
+  | .Concat items =>
+    have : sizeOf items < sizeOf hir.kind := by simp [h]
+    c_concat items
+  | .Alternation sub =>
+    have : sizeOf sub < sizeOf hir.kind := by simp [h]
+    c_alt_iter sub
+termination_by sizeOf hir
 
-private partial def c_cap (pattern_id : Nat) (hir : Hir) : CompilerM ThompsonRef := do
-  let start ← c_cap' pattern_id (pattern_id * 2)
-  let inner ← c hir
-  let «end» ← c_cap' pattern_id (pattern_id * 2 + 1)
-  patch start inner.start
-  patch inner.end «end»
-  pure ⟨start, «end»⟩
+private def c_cap (hir : Capture) : CompilerM ThompsonRef := do
+  match hc : hir with
+    | .mk pattern_id name sub =>
+      let start ← c_cap' pattern_id (pattern_id * 2)
+      let inner ← c sub
+      let «end» ← c_cap' pattern_id (pattern_id * 2 + 1)
+      patch start inner.start
+      patch inner.end «end»
+      pure ⟨start, «end»⟩
+termination_by sizeOf hir
 
 end
 
@@ -274,8 +310,9 @@ private def startsWithStart (hir : Hir) : Bool :=
 
 /-- Compile the HIR expression given. -/
 private def compile' (anchored : Bool) (expr : Hir) : CompilerM PUnit := do
-  let unanchored_prefix ← if anchored then c_empty else c_at_least (dot Dot.AnyChar) 0 false
-  let one ← c_cap 0 expr
+  let unanchored_prefix ← if anchored then c_empty
+    else c_repetition <| Repetition.mk 0 none false (dot Dot.AnyChar)
+  let one ← c_cap (Capture.mk 0 none expr)
   let match_state_id ← add_match 0
   patch one.end match_state_id
   patch unanchored_prefix.end one.start

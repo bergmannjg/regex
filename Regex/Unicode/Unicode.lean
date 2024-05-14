@@ -1,3 +1,4 @@
+import Init.Data.Fin.Lemmas
 import UnicodeBasic
 import Regex.Interval
 import Regex.Unicode.Properties
@@ -165,17 +166,33 @@ def case_fold_char (c : Char) :  Array (NonemptyInterval Char) :=
       #[⟨⟨c, c⟩ , by simp [Char.eq_le _]⟩, ⟨⟨cLower, cLower⟩, by simp [Char.eq_le _]⟩]
     | none => #[⟨⟨c, c⟩, by simp [Char.eq_le _]⟩]
 
-private partial def loop (c : Char) (n count : UInt32) (acc : Array Char) : Array Char :=
-  if n > count then acc
+private def loop (c : Char) (n count : Nat) (acc : Array Char)
+    (h1 : n < UInt32.size) (h2 : count < UInt32.size) : Array Char :=
+  let nextVal := c.val + ⟨n, h1⟩
+  if h : UInt32.isValidChar nextVal
+  then
+    let nextChar : Char := ⟨nextVal, h⟩
+    if h : n + 1 ≤ count then
+      loop c (n+1) count (acc.push nextChar) (Nat.lt_of_le_of_lt h h2) h2
+    else acc.push nextChar
   else
-    let nextVal := c.val+n
-    if h : UInt32.isValidChar nextVal
-    then
-      let nextChar : Char := ⟨nextVal, h⟩
-      loop c (n+1) count (acc.push nextChar)
-    else loop c (n+1) count acc
+    if h : n + 1 ≤ count then
+      loop c (n+1) count acc (Nat.lt_of_le_of_lt h h2) h2
+    else acc
+termination_by count - n
+
+theorem Fin.sub_le_of_le {a b : Fin n} (h : a ≤ b) : b - a ≤ b := by
+  apply Fin.le_def.mpr
+  have : ↑(b - a) = b.val - a.val := Fin.coe_sub_iff_le.mpr h
+  rw [this]
+  apply Nat.sub_le
+
+theorem Uint32.sub_le_of_le {a b : UInt32} (h : a ≤ b) : b - a ≤ b := by
+  apply UInt32.le_def.mp at h
+  exact Fin.sub_le_of_le h
 
 /-- get ranges of case folds of chars in range -/
 def case_fold_range (r : NonemptyInterval Char) : Array (NonemptyInterval Char) :=
-  loop r.fst 0 (r.snd.val - r.fst.val) #[]
+  loop r.fst 0 (r.snd.val - r.fst.val).val.val #[] (by simp)
+    (Nat.lt_of_le_of_lt (Uint32.sub_le_of_le r.fst_le_snd) r.snd.val.val.isLt)
   |> Array.concatMap (fun c => case_fold_char c)

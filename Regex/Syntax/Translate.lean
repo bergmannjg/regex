@@ -238,12 +238,22 @@ def pop_concat_expr (stack : Array HirFrame) : Except String (Array HirFrame × 
     | .Alternation => Except.error "pop_concat_expr, unexpected frame .Alternation"
   | none => Except.ok (stack, none)
 
-partial def pop_concat_exprs (stack : Array HirFrame) (exprs : Array Hir)
+theorem sizeOf_pop_concat_expr {stack : Array HirFrame}
+  (h : pop_concat_expr  stack = Except.ok (stack', some hir))
+    : sizeOf stack' < sizeOf stack := by
+  unfold pop_concat_expr at h
+  split at h <;> try simp_all
+  split at h <;> try simp_all <;> (rename_i heq; exact Array.sizeOf_pop? heq)
+
+def pop_concat_exprs (stack : Array HirFrame) (exprs : Array Hir)
     : Except String (Array HirFrame × Array Hir) :=
-  match pop_concat_expr stack with
-  | Except.ok (stack, some hir) => pop_concat_exprs stack (exprs.push hir)
+  match h : pop_concat_expr stack with
+  | Except.ok (stack', some hir) =>
+    have : sizeOf stack' < sizeOf stack := sizeOf_pop_concat_expr h
+    pop_concat_exprs stack' (exprs.push hir)
   | Except.ok (stack, none) => Except.ok (stack, exprs)
   | Except.error e => Except.error e
+termination_by stack
 
 def pop_alt_expr (stack : Array HirFrame) : Except String (Array HirFrame × Option Hir) :=
   match Array.pop? stack with
@@ -255,12 +265,22 @@ def pop_alt_expr (stack : Array HirFrame) : Except String (Array HirFrame × Opt
     | __ => Except.error "pop_alt_expr, unexpected frame"
   | none => Except.ok (stack, none)
 
-partial def pop_alt_exprs (stack : Array HirFrame) (exprs : Array Hir)
+theorem sizeOf_pop_alt_expr {stack : Array HirFrame}
+  (h : pop_alt_expr stack = Except.ok (stack', some hir))
+    : sizeOf stack' < sizeOf stack := by
+  unfold pop_alt_expr at h
+  split at h <;> try simp_all
+  split at h <;> try simp_all <;> (rename_i heq; exact Array.sizeOf_pop? heq)
+
+def pop_alt_exprs (stack : Array HirFrame) (exprs : Array Hir)
     : Except String (Array HirFrame × Array Hir) := do
-  match pop_alt_expr stack with
-  | Except.ok (stack, some hir) =>  pop_alt_exprs stack (exprs.push hir)
+  match h : pop_alt_expr stack with
+  | Except.ok (stack', some hir) =>
+    have : sizeOf stack' < sizeOf stack := sizeOf_pop_alt_expr h
+    pop_alt_exprs stack' (exprs.push hir)
   | Except.ok (stack, none) => Except.ok (stack, exprs)
   | Except.error e => Except.error e
+termination_by stack
 
 private def finish (translator : Translator) : Except String Hir :=
   match Array.pop? translator.stack with

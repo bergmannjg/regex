@@ -1,3 +1,4 @@
+import Std.Data.Array.Basic
 import Regex.Utils
 
 /-!
@@ -712,6 +713,10 @@ def span (concat : Concat) : Substring := match concat with | .mk span _ => span
 
 def asts (concat : Concat) : Array Ast := match concat with | .mk _ asts => asts
 
+theorem sizeOfAstsOfConcat (concat : Concat) : sizeOf concat.asts < sizeOf concat := by
+  unfold Syntax.Ast.Concat.asts
+  split <;> simp_all; omega
+
 def into_ast (concat : Concat) : Ast :=
   match concat.asts.size with
   | 0 => Ast.Empty
@@ -721,6 +726,12 @@ def into_ast (concat : Concat) : Ast :=
 end Concat
 
 namespace Alternation
+
+def asts (concat : Alternation) : Array Ast := match concat with | .mk _ asts => asts
+
+theorem sizeOfAstsOfAlternation (alt : Alternation) : sizeOf alt.asts < sizeOf alt := by
+  unfold Syntax.Ast.Alternation.asts
+  split <;> simp_all; omega
 
 def into_ast (alt : Alternation) : Ast :=
   let ⟨_, asts⟩ := alt
@@ -761,6 +772,10 @@ def kind (g : Group) : GroupKind := match g with | .mk _ kind _ => kind
 
 def ast (g : Group) : Ast := match g with | .mk _ _ ast => ast
 
+theorem sizeOfAstOfGroup (g : Group) : sizeOf g.ast < sizeOf g := by
+  unfold Syntax.Ast.Group.ast
+  split <;> simp_all; omega
+
 end Group
 
 namespace ClassSetBinaryOp
@@ -778,21 +793,23 @@ namespace ClassSetItem
 
 mutual
 
-partial def toStringClassSetUnion (r : ClassSetUnion) (col : Nat) : String :=
+def toStringClassSetUnion (r : ClassSetUnion) (col : Nat) : String :=
   let col := col + 2
   let pre := "\n" ++ (Char.multiple ' ' col "")
 
   let ⟨_, items⟩ := r
   let lines :=
-      let asts := Array.mapIdx items (fun i s => (i, s))
+      let asts := Array.mapIdx items.attach (fun i s => (i, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
+          have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toStringClassSetItem ast col)))
       s!"ClassSetUnion {asts}"
 
   s!"{pre}{lines}"
+termination_by sizeOf r
 
-partial def toStringClassSetItem (r : ClassSetItem) (col : Nat) : String :=
+def toStringClassSetItem (r : ClassSetItem) (col : Nat) : String :=
   match r with
   | .Empty _ => s!"Empty"
   | .Literal lit => s!"{lit}"
@@ -802,6 +819,7 @@ partial def toStringClassSetItem (r : ClassSetItem) (col : Nat) : String :=
   | .Unicode cls => s!"{cls}"
   | .Bracketed ⟨_, neg, _⟩  => s!"Bracketed {neg}"
   | .Union union => s!"Union {toStringClassSetUnion union col}"
+termination_by sizeOf r
 
 end
 
@@ -825,7 +843,7 @@ end ClassSetBinaryOpKind
 
 namespace ClassSet
 
-partial def toString (r : ClassSet) (col : Nat) : String :=
+def toString (r : ClassSet) (col : Nat) : String :=
   let col := col + 2
   let pre := "\n" ++ (Char.multiple ' ' col "")
 
@@ -850,6 +868,10 @@ def greedy (rep : Repetition) : Bool := match rep with | .mk _ _ greedy _ => gre
 
 def ast (rep : Repetition) : Ast := match rep with | .mk _ _ _ ast => ast
 
+theorem sizeOfAstOfRepetition (rep : Repetition) : sizeOf rep.ast < sizeOf rep := by
+  unfold Syntax.Ast.Repetition.ast
+  split <;> simp_all; omega
+
 end Repetition
 
 def span (ast : Ast) : Substring :=
@@ -867,7 +889,7 @@ def span (ast : Ast) : Substring :=
   | .Group ⟨span, _, _⟩ => span
   | .Concat concat => concat.span
 
-partial def toString (ast : Ast) (col : Nat) : String :=
+def toString (ast : Ast) (col : Nat) : String :=
   let col := col + 2
   let pre := "\n" ++ (Char.multiple ' ' col "")
   match ast with
@@ -885,21 +907,25 @@ partial def toString (ast : Ast) (col : Nat) : String :=
     | .mk _ op greedy ast => s!"Repetition{pre}{op} greedy {greedy}{pre}{toString ast col}"
   | .Alternation alt =>
     match alt with
-    | .mk _ asts =>
-      let asts := Array.mapIdx asts (fun i s => (i, s))
+    | .mk _ items =>
+      let asts := Array.mapIdx items.attach (fun i s => (i, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
+          have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toString ast col)))
       s!"Alternation {asts}"
   | .Group g =>
     match g with
     | .mk _ kind ast => s!"Group{pre}{kind}{pre}{toString ast col}"
   | .Concat concat =>
-      let asts := Array.mapIdx concat.asts (fun i s => (i, s))
+      let asts := Array.mapIdx concat.asts.attach (fun i s => (i, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
+          have : sizeOf ast.val < sizeOf concat :=
+            Nat.lt_trans (Array.sizeOf_lt_of_mem ast.property) (Concat.sizeOfAstsOfConcat concat)
           pre ++ iv ++ ": " ++ (toString ast col)))
       s!"Concat {asts}"
+termination_by sizeOf ast
 
 instance : ToString Ast where
   toString ast := Ast.toString ast 0

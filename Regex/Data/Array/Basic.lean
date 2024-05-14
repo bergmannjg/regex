@@ -1,5 +1,3 @@
-import Std.Data.Nat.Lemmas
-
 namespace Array
 
 /-- get head element and array without head element -/

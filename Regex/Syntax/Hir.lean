@@ -1,3 +1,4 @@
+import Std.Data.Array.Basic
 import Regex.Utils
 import Regex.Interval
 import Regex.Unicode
@@ -189,7 +190,7 @@ instance : Inhabited Hir := ⟨Hir.mk HirKind.Empty default⟩
 
 namespace Hir
 
-partial def fold [Inhabited α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
+def fold [Inhabited α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
   let ⟨kind, _⟩ := hir
   match kind with
   | .Empty => f init hir
@@ -198,8 +199,15 @@ partial def fold [Inhabited α] (hir : Hir) (f : α -> Hir -> α) (init :  α): 
   | .Look _ => f init hir
   | .Repetition ⟨_, _, _, sub⟩  => fold sub f init
   | .Capture _ => f init hir
-  | .Concat hirs => hirs |> Array.foldl (init := init) (fun a h => fold h f a)
-  | .Alternation hirs => hirs |> Array.foldl (init := init) (fun a h => fold h f a)
+  | .Concat hirs => hirs.attach |> Array.foldl (init := init)
+      (fun a h =>
+        have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
+        fold h.val f a)
+  | .Alternation hirs => hirs.attach |> Array.foldl (init := init)
+      (fun a h =>
+        have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
+        fold h.val f a)
+termination_by sizeOf hir
 
 /-- check if an `hir` contains `look` -/
 def contains (hir : Hir) (look : Look) : Bool :=
@@ -210,6 +218,9 @@ def contains (hir : Hir) (look : Look) : Bool :=
       | _ => acc)
 
 def kind (hir : Hir) : HirKind := match hir with | .mk kind _ => kind
+
+theorem sizeOfKindOfHir (hir : Hir) : sizeOf hir.kind < sizeOf hir := by
+  unfold Hir.kind; split; simp_all; omega
 
 def properties (hir : Hir) : Properties := match hir with | .mk _ properties => properties
 
@@ -222,32 +233,44 @@ def toProperties (kind: HirKind) : Properties :=
   | .Look look => ⟨none, none, #[look]⟩
   | _ => default
 
-partial def toString (hir : Hir) (col : Nat): String :=
+def toString (hir : Hir) (col : Nat): String :=
   let col := col + 2
   let pre := "\n" ++ (Char.multiple ' ' col "")
-  match hir.kind with
+  have : sizeOf hir.kind < sizeOf hir := Hir.sizeOfKindOfHir hir
+  match hk : hir.kind with
   | .Empty => s!"Empty"
   | .Literal c => s!"Literal '{UInt32.intAsString c.val}'"
   | .Class cls => s!"Class {cls}"
   | .Look look => s!"Look {look}"
   | .Repetition rep =>
-    match rep with
-    | .mk min max greedy sub => s!"Repetition {min} {max} greedy {greedy}{pre}sub {toString sub col}"
+    match hr : rep with
+    | .mk min max greedy sub =>
+        have : sizeOf rep < sizeOf hir.kind := by simp [hk, hr]
+        have : sizeOf sub < sizeOf rep := by simp [hr]
+        s!"Repetition {min} {max} greedy {greedy}{pre}sub {toString sub col}"
   | .Capture c =>
-    match c with
-    | .mk index name sub => s!"Capture {index} {name}{pre}sub {toString sub col}"
-  | .Concat hirs =>
-      let hirs := Array.mapIdx hirs (fun i s => (i, s))
+    match hc : c with
+    | .mk index name sub =>
+        have : sizeOf c < sizeOf hir.kind := by simp [hk, hc]
+        have : sizeOf sub < sizeOf c := by simp [hc]; omega
+        s!"Capture {index} {name}{pre}sub {toString sub col}"
+  | .Concat items =>
+      let hirs := Array.mapIdx items.attach (fun i s => (i, s))
+      have : sizeOf items < sizeOf hir.kind := by simp [hk]
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
-          pre ++ iv ++ ": " ++ (toString ast col)))
+          have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
+          pre ++ iv ++ ": " ++ (toString ast.val col)))
       s!"Concat {hirs}"
-  | .Alternation hirs =>
-      let hirs := Array.mapIdx hirs (fun i s => (i, s))
+  | .Alternation items =>
+      let hirs := Array.mapIdx items.attach (fun i s => (i, s))
+      have : sizeOf items < sizeOf hir.kind := by simp [hk]
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
+          have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toString ast col)))
       s!"Alternation {hirs}"
+termination_by sizeOf hir
 
 end Hir
 
