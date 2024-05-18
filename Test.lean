@@ -302,10 +302,17 @@ namespace Test.Compiler
 
 open BoundedBacktracker
 
-private def toString (x : Except String Checked.NFA) : String :=
-  match x with
-  | Except.ok nfa => NFA.Checked.toString nfa
-  | Except.error e => s!"Error {e}"
+private def nfaOf'a'Checked : Checked.NFA :=
+  Checked.NFA.mk 7
+    #[.UnionReverse #[⟨2, by simp⟩, ⟨3, by simp⟩],
+      .Empty ⟨0, by simp⟩,
+      .SparseTransitions #[⟨0, 0xd7ff, ⟨1, by simp⟩⟩, ⟨0xe000, 0x10ffff, ⟨1, by simp⟩⟩],
+      .Capture ⟨4, by simp⟩ 0 0 0,
+      .ByteRange ⟨'a'.val, 'a'.val, ⟨5, by simp⟩⟩,
+      .Capture ⟨6, by simp⟩ 0 0 1,
+      .Match 0
+    ]
+    (by simp only [Array.size_toArray, List.length_cons, List.length_nil])
 
 private def nfaOf'a' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -406,25 +413,31 @@ private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
     .Match 0
     ], 2, 0⟩
 
-private def build (s : String) : Except String Checked.NFA := do
-  let re ← Regex.build s
-  Except.ok re.nfa
+open Regex.Notation
 
-example : (build "a" |> toString) = nfaOf'a'.toString := by native_decide
+/--
+error: failed to parse pattern a[, error: unclosed character class
+-/
+#guard_msgs in
+def re := regex% "a["
 
-example : (build "ab" |> toString) = nfaOf'ab'.toString := by native_decide
+example : NFA.Checked.toString nfaOf'a'Checked = nfaOf'a'.toString  := by native_decide
 
-example : (build "a?" |> toString) = «nfaOf'a?'».toString := by native_decide
+example : toString (regex% "a").nfa = nfaOf'a'.toString := by native_decide
 
-example : (build "ab?" |> toString) = «nfaOf'ab?'».toString := by native_decide
+example : toString (regex% "ab").nfa = nfaOf'ab'.toString := by native_decide
 
-example : (build "[a-b]" |> toString) = «nfaOf'[a-b]'».toString := by native_decide
+example : toString (regex% "a?").nfa = «nfaOf'a?'».toString := by native_decide
 
-example : (build "a|b" |> toString) = «nfaOf'a|b'».toString := by native_decide
+example : toString (regex% "ab?").nfa = «nfaOf'ab?'».toString := by native_decide
 
-example : (build "(a)" |> toString) = «nfaOf'(a)'».toString := by native_decide
---#eval build "[a]{0,2}"
-example : (build "[a]{0,2}" |> toString) = «nfaOf'[a]{0,2}'».toString := by native_decide
+example : toString (regex% "[a-b]").nfa = «nfaOf'[a-b]'».toString := by native_decide
+
+example : toString (regex% "a|b").nfa = «nfaOf'a|b'».toString := by native_decide
+
+example : toString (regex% "(a)").nfa = «nfaOf'(a)'».toString := by native_decide
+
+example : toString (regex% "[a]{0,2}").nfa = «nfaOf'[a]{0,2}'».toString := by native_decide
 
 end Test.Compiler
 

@@ -217,6 +217,18 @@ inductive State (n : Nat) where
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State n
 
+private partial def beq' :  State n → State n → Bool
+  | .Empty ⟨n1, _⟩ , .Empty ⟨n2, _⟩  => n1 = n2
+  | .ByteRange trans1 , .ByteRange trans2  =>
+      trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
+  | .SparseTransitions trans1 , .SparseTransitions trans2  => trans1.size = trans2.size
+  | .Capture ⟨n1, _⟩ p1 _ _,  .Capture ⟨n2, _⟩ p2 _ _  => n1 = n2 && p1 = p2
+  | .Match p1,  .Match p2 => p1 = p2
+  | _, _ => false
+
+instance : BEq (State n) where
+  beq := beq'
+
 namespace State
 
 def toString : State n -> String

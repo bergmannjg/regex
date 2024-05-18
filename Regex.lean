@@ -2,6 +2,7 @@ import Regex.Syntax.Hir
 import Regex.Nfa
 import Regex.Unicode
 import Regex.Regex
+import Regex.Notation
 
 /-!
 # Regex
@@ -265,6 +266,7 @@ Main api for Regex library
 - `Regex.build`: build a Regex from the given pattern
 - `Regex.captures`: searches for the first match of the regex
 - `Regex.all_captures`: searches all successive non-overlapping matches of the regex
+- `regex%`: build the regular expression at compile time
 
 ## Examples
 

@@ -25,6 +25,19 @@ require Regex from git
 
 The main documentation is in [Regex.lean](https://bergmannjg.github.io/regex/Regex.html)
 
+## Example
+
+```lean
+-- build `re` at compile time
+def re := regex% "a?b"
+-- searches for the first match in `re`
+#eval Regex.captures "b" re
+
+--Output is
+--fullMatch: 'b', 0, 1
+--groups: #[]
+```
+
 ## Test
 
 The library is tested with the [testdata](./testdata) of Rust Regex crate.
