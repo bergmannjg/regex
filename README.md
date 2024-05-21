@@ -27,16 +27,34 @@ The main documentation is in [Regex.lean](https://bergmannjg.github.io/regex/Reg
 
 ## Example
 
-```lean
--- build `re` at compile time
-def re := regex% "a?b"
--- searches for the first match in `re`
-#eval Regex.captures "b" re
+Get captures of "∀ (n : Nat), 0 ≤ n" :
 
---Output is
---fullMatch: 'b', 0, 1
---groups: #[]
+```lean
+def Main : IO Unit := do
+  let re := regex% r"^\p{Math}\s*([^,]+),\s*(\p{Nd})\s*(\p{Math})\s*([a-z])$"
+  let captures := Regex.captures "∀ (n : Nat), 0 ≤ n" re
+  IO.println s!"{captures}"
 ```
+
+Output is
+
+```lean
+fullMatch: '∀ (n : Nat), 0 ≤ n', 0, 22
+groups: #[(some ('(n : Nat)', 4, 13)), (some ('0', 15, 16)),
+          (some ('≤', 17, 20)), (some ('n', 21, 22))]
+```
+
+Api
+
+- *regex%* : notation to build the regular expression at compile time
+- *captures* : searches for the first match of the  regular expression
+
+Components of regular expression:
+
+- *^* : Assertion Start of line
+- *\p{Math}* : match all characters with the Math property
+- *\s\** : match white space
+- *(\p{Nd})* : capturing group of numeric characters
 
 ## Test
 
