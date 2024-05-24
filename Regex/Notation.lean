@@ -10,31 +10,23 @@ Notation `regex%` to build the regular expression at compile time.
 
 open Lean
 
-def toNumLit (n : Nat) : NumLit := Lean.Syntax.mkNumLit (ToString.toString n)
+def toNumLit (n : Nat) : NumLit :=
+  Lean.Syntax.mkNumLit (Nat.repr n)
 
-theorem eq_true_of_decide_ext (p : Prop) (inst : Decidable p) (h : decide p = true) : p = True :=
-  @eq_true_of_decide p inst h
-
-theorem of_eq_true_ext (p : Prop) (h : p = True) : p :=
-  @of_eq_true p h
+theorem of_decide_eq_true_ext (p : Prop) (inst : Decidable p) : Eq (decide p) true → p :=
+  @of_decide_eq_true p inst
 
 /-- proof of `n` < `m`
 
-  for example
-
-  @of_eq_true (1 < 300)
-    (@eq_true_of_decide (1 < 300) (Nat.decLt 1 300) (of_decide_eq_true (Eq.refl true)))
-  : 1 < 300
-
+  example : 1 < 300 := @of_decide_eq_true (1 < 300) (Nat.decLt 1 300) (Eq.refl true)
 -/
 private def mkTermOfDecideLt (n m : Nat) : Term :=
-  let eq_refl : Term := Syntax.mkApp (mkCIdent `Eq.refl) #[Quote.quote true]
-  let of_decide_eq_true := Syntax.mkApp (mkCIdent ``of_decide_eq_true) #[eq_refl]
-  let decLt := Syntax.mkApp (mkCIdent `Nat.decLt) #[toNumLit n, toNumLit m]
-  let lt_lt := Syntax.mkApp (mkCIdent `LT.lt) #[toNumLit n, toNumLit m]
-  let eq_true_of_decide := Syntax.mkApp (mkCIdent ``eq_true_of_decide_ext)
-                            #[lt_lt, decLt, of_decide_eq_true]
-  Syntax.mkApp (mkCIdent ``of_eq_true_ext) #[lt_lt, eq_true_of_decide]
+  let eq_refl : Term := Syntax.mkApp (mkCIdent ``Eq.refl) #[Quote.quote true]
+  let args := #[toNumLit n, toNumLit m]
+  let lt_lt := Syntax.mkApp (mkCIdent ``LT.lt) args
+  let decLt := Syntax.mkApp (mkCIdent ``Nat.decLt) args
+
+  Syntax.mkApp (mkCIdent ``of_decide_eq_true_ext) #[lt_lt, decLt, eq_refl]
 
 private def mkTermOfFin (f: Fin n) : Term :=
   Syntax.mkApp (mkCIdent ``Fin.mk)
@@ -101,18 +93,15 @@ instance : Quote (NFA.Checked.State n) where
 
 /-- proof of `n` = `list.toArray.size`
 
-  for example:
-
-  @of_eq_true (1 = #[1].size) ((congrArg (Eq 1) (Array.size_toArray [1])).trans (eq_self 1))
-  : 1 = #[1].size
-
+  example : 1 = #[1].size :=
+    of_eq_true (Eq.trans (congrArg (Eq 1) (Array.size_toArray [1])) (eq_self 1))
 -/
 private def mkTermIsEq (n : Nat) (list : Term) : Term :=
   let mkTermEq :=
-        Syntax.mkApp (mkCIdent ``Eq) #[Lean.Syntax.mkNumLit (ToString.toString n)]
+        Syntax.mkApp (mkCIdent ``Eq) #[toNumLit n]
 
   let mkTermEqSelf :=
-        Syntax.mkApp (mkCIdent ``eq_self) #[Lean.Syntax.mkNumLit (ToString.toString n)]
+        Syntax.mkApp (mkCIdent ``eq_self) #[toNumLit n]
 
   let mkTermSizeToArray :=
       Syntax.mkApp (mkCIdent ``Array.size_toArray) #[list]
@@ -137,6 +126,9 @@ private def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
 private def mkTermOfRegex (re : Regex.Regex) : Term :=
   Syntax.mkApp (mkCIdent `Regex.Regex.mk) #[mkTermOfNfa re.nfa]
 
+instance : Quote Regex.Regex where
+  quote := mkTermOfRegex
+
 declare_syntax_cat regex
 syntax str : regex
 syntax "regex%" regex : term
@@ -145,5 +137,5 @@ syntax "regex%" regex : term
 macro_rules
 | `(regex% $p:str) =>
     match Regex.build p.getString with
-    | Except.ok re => return mkTermOfRegex re
+    | Except.ok re => return @Quote.quote _ `term _ re
     | Except.error e => throw <| Lean.Macro.Exception.error p e

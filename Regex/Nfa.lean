@@ -173,9 +173,9 @@ namespace Checked
     falls in the inclusive range of chars specified. -/
 structure Transition (n : Nat) where
   /-- The inclusive start of the char range. -/
-  start: UInt32
+  start: Nat
   /-- The inclusive end of the char range. -/
-  «end»: UInt32
+  «end»: Nat
   /--  The identifier of the state to transition to. -/
   next: Fin n
 
@@ -183,7 +183,7 @@ namespace Transition
 
 /-- check if `c` falls in the inclusive range of chars specified in Transition `trans` -/
 def «matches» (trans : Transition n) (c : Char) : Bool :=
-  trans.start <= c.val && c.val <= trans.end
+  trans.start <= c.val.val && c.val.val <= trans.end
 
 end Transition
 
@@ -234,10 +234,10 @@ namespace State
 def toString : State n -> String
   | .Empty next => s!"Empty => {next}"
   | .ByteRange trans =>
-      s!"byte-range {UInt32.intAsString trans.start}-{UInt32.intAsString trans.end} => {trans.next}"
+      s!"byte-range {Nat.intAsString trans.start}-{Nat.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
       let lines := String.join (trans.toList |> List.map (fun t =>
-            s!" {UInt32.intAsString t.start}-{UInt32.intAsString t.end} => {t.next}"))
+            s!" {Nat.intAsString t.start}-{Nat.intAsString t.end} => {t.next}"))
       s!"SparseTransitions [{lines} ]"
   | .Look look next =>
       s!"Look {look} => {next}"
@@ -285,9 +285,10 @@ end Checked
 private def toFin? (i n : Nat) : Option $ Fin n :=
   if h : i < n then some ⟨i, h⟩ else none
 
-private def toCkeckedTransition? (t : Unchecked.Transition) (n : Nat) : Option $ Checked.Transition n :=
+private def toCkeckedTransition? (t : Unchecked.Transition) (n : Nat)
+    : Option $ Checked.Transition n :=
   if h : t.next < n
-  then some $ ⟨t.start, t.end, ⟨t.next, h⟩⟩
+  then some $ ⟨t.start.val, t.end.val, ⟨t.next, h⟩⟩
   else none
 
 private def toCkeckedState? (s : Unchecked.State) (n : Nat) : Option $ Checked.State n :=

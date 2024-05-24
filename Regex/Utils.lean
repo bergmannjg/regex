@@ -27,23 +27,33 @@ def decodeHexDigits (chars : List Char) : Except String UInt32 :=
 
 end Char
 
+namespace Nat
+
+def intAsString (val : Nat) : String :=
+  if hu : val < UInt32.size
+  then
+    if h : Nat.isValidChar val
+    then
+      if '0'.val.val <= val && val <= 'z'.val.val
+      then
+        let c : Char := ⟨⟨val, hu⟩, h⟩
+        c.toString
+      else
+        let n := val
+        if n = 0 then "0x00"
+        else
+          let digits := (Nat.toDigits 16 n)
+          let zeroes := List.replicate (if digits.length = 1 then 1 else 0) '0'
+          "0x" ++ String.mk (zeroes ++ digits)
+    else s!"invalid char {val}"
+  else s!"invalid uint32 {val}"
+
+end Nat
+
 namespace UInt32
 
 def intAsString (val : UInt32) : String :=
-  if h : isValidChar val
-  then
-    if '0'.val <= val && val <= 'z'.val
-    then
-      let c : Char := ⟨val, h⟩
-      c.toString
-    else
-      let n := val.toNat
-      if n = 0 then "0x00"
-      else
-        let digits := (Nat.toDigits 16 n)
-        let zeroes := List.replicate (if digits.length = 1 then 1 else 0) '0'
-        "0x" ++ String.mk (zeroes ++ digits)
-  else s!"invalid char {val}"
+  Nat.intAsString val.val
 
 end UInt32
 
