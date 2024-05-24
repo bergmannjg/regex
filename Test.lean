@@ -11,7 +11,7 @@ open Lean System Lake
 
 open NFA
 open Syntax
-open Ast
+open AstItems
 open Regex
 
 instance : MonadLift (Except String) IO where
@@ -191,8 +191,8 @@ private def «astOf'a|b'» : Ast :=
           Ast.Literal ⟨String.toSpan "a|b" 2 3, LiteralKind.Verbatim, 'b'⟩])
 
 private def «astOf'(a)'» : Ast :=
-    Syntax.Ast.Ast.Group
-      (Syntax.Ast.Group.mk
+    Syntax.AstItems.Ast.Group
+      (Syntax.AstItems.Group.mk
         (String.toSpan "(a)" 0 3)
         (GroupKind.CaptureIndex 1)
         (Ast.Literal ⟨String.toSpan "(a)" 1 2, LiteralKind.Verbatim, 'a'⟩))
@@ -232,7 +232,7 @@ private def toString (x : Except String Hir) : String :=
   | Except.error e => s!"Error {e}"
 
 private def build (s : String) : Except String Hir := do
-  let ast ← Syntax.Ast.parse s
+  let ast ← Syntax.AstItems.parse s
   let hir ← Syntax.translate default ast
   Except.ok hir
 
@@ -475,13 +475,14 @@ instance : ToString $ Sum String (Array String) where
     | .inl s => s!"{s}"
     | .inr arr => s!"{arr}"
 
-set_option linter.dupNamespace false
+end RegexTest
+
 /-- A regex test describes the inputs and expected outputs of a regex match. -/
 structure RegexTest where
   name : String
   regex : Sum String (Array String)
   haystack : String
-  «matches» : Array Captures
+  «matches» : Array RegexTest.Captures
   /-- An optional field whose value is a table with `start` and `end` fields-/
   bounds : Option $ Array Nat
   /--  An optional field that specifies a limit on the number of matches. -/
@@ -504,6 +505,8 @@ structure RegexTest where
   «search-kind» : Option String
   /-- This sets the line terminator used by the multi-line assertions -/
   «line-terminator» : Option String
+
+namespace RegexTest
 
 def isMatch (t : RegexTest) : Bool :=
   if h : 0 < t.matches.size
@@ -540,7 +543,7 @@ instance : ToString RegexTest where
 instance : ToString RegexTests where
   toString s := s!"{s.test}"
 
-def unescape (s : String) : String :=
+def unescapeStr (s : String) : String :=
   ⟨loop s.data []⟩
 where
   toChar (a b : Char) : Char :=
@@ -556,7 +559,7 @@ where
     | '\\' :: 'n' :: tail => '\n' :: (loop tail acc)
     | head :: tail => head :: (loop tail acc)
 
-def compiles (t : RegexTest) : Bool :=
+def checkCompiles (t : RegexTest) : Bool :=
   let flags : Syntax.Flags := default
   let config : Compiler.Config := default
   match Regex.build (Sum.val t.regex) flags config with
@@ -570,7 +573,7 @@ def captures (t : RegexTest) : Except String (Array Regex.Captures) := do
   let flags := {flags with case_insensitive := t.«case-insensitive»}
   let config := {config with unanchored_prefix := !t.anchored.getD false}
 
-  let haystack := if t.unescape.getD false then unescape t.haystack else t.haystack
+  let haystack := if t.unescape.getD false then unescapeStr t.haystack else t.haystack
   let re ← Regex.build (Sum.val t.regex) flags config
   Except.ok (Regex.all_captures haystack.toSubstring re)
 
@@ -631,7 +634,7 @@ def ignoreTest (t : RegexTest) : Bool :=
 def testItem (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
   if checkFlagIsFalse t.compiles
   then
-    if compiles t
+    if checkCompiles t
     then
       IO.println s!"RegexTest: {t}"
       IO.println s!"  should not compile"
@@ -746,8 +749,8 @@ protected def Bounds.decodeToml (v : Value) (s := Syntax.missing)
   | .table _ _ => pure <| #[]
   | _ => Except.error #[DecodeError.mk s s!"Regex.decodeToml: array or table expected {v}"]
 
-protected def RegexTest.decodeToml (t : Table) (_ := Syntax.missing)
-    : Except (Array DecodeError) RegexTest.RegexTest := ensureDecode do
+protected def RegexTest.decodeToml (t : Table)
+    : Except (Array DecodeError) RegexTest := ensureDecode do
   let name ← t.tryDecodeD `name "."
   let regex : Sum String (Array String) ← optDecode (t.find? `regex) Regex.decodeToml
   let haystack : String ← t.tryDecodeD `haystack "."
@@ -766,9 +769,9 @@ protected def RegexTest.decodeToml (t : Table) (_ := Syntax.missing)
   return {name, regex, haystack, «matches», bounds, «match-limit», anchored, «case-insensitive»,
           unescape, compiles, unicode, utf8, «match-kind», «search-kind», «line-terminator» }
 
-instance : DecodeToml RegexTest.RegexTest := ⟨fun v => do RegexTest.decodeToml (← v.decodeTable) v.ref⟩
+instance : DecodeToml RegexTest := ⟨fun v => do RegexTest.decodeToml (← v.decodeTable)⟩
 
-nonrec def parseToml (table : Table) (tomlFile : FilePath) : IO $ Array RegexTest.RegexTest := do
+nonrec def parseToml (table : Table) (tomlFile : FilePath) : IO $ Array RegexTest := do
   let (tests, errs) := Id.run <| StateT.run (s := (#[] : Array DecodeError)) do
     let tests ← table.tryDecodeD `test #[]
     return tests
@@ -778,7 +781,7 @@ nonrec def parseToml (table : Table) (tomlFile : FilePath) : IO $ Array RegexTes
     let msgs := errs |> Array.foldl (init := "") (fun s err => s ++ s!"{err.msg} at {err.ref.getPos?}\n")
     throw $ .userError s!"decode errors in {tomlFile}\n{msgs}"
 
-nonrec def loadToml (tomlFile : FilePath) : IO $ Array RegexTest.RegexTest := do
+nonrec def loadToml (tomlFile : FilePath) : IO $ Array RegexTest := do
   let fileName := tomlFile.fileName.getD tomlFile.toString
   let input ←
     match (← IO.FS.readBinFile tomlFile |>.toBaseIO) with

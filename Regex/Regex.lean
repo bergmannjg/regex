@@ -4,9 +4,16 @@ import Regex.Utils
 import Regex.Syntax.Ast.Parse
 import Regex.Syntax.Translate
 
-namespace Regex
-
 open NFA
+
+/-- A compiled regular expression for searching Unicode haystacks. -/
+structure Regex where
+  nfa : Checked.NFA
+
+instance : ToString Regex where
+  toString m := s!"{m.nfa}"
+
+namespace Regex
 
 /-!
 ## Regex
@@ -45,18 +52,10 @@ end Captures
 instance : ToString Captures where
   toString c := s!"fullMatch: {c.fullMatch}\ngroups: {c.groups}"
 
-set_option linter.dupNamespace false
-/-- A compiled regular expression for searching Unicode haystacks. -/
-structure Regex where
-  nfa : Checked.NFA
-
-instance : ToString Regex where
-  toString m := s!"{m.nfa}"
-
 /-- Build a Regex from the given pattern. -/
 def build (s : String) (flags : Syntax.Flags := default) (config : Compiler.Config := default)
     : Except String Regex := do
-  let nfa ← Syntax.Ast.parse s >>= Syntax.translate flags >>= Compiler.compile config
+  let nfa ← Syntax.AstItems.parse s >>= Syntax.translate flags >>= Compiler.compile config
   Except.ok ⟨nfa⟩
 
 namespace Log

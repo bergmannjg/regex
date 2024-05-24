@@ -17,7 +17,7 @@ into a high level intermediate representation `Syntax.Hir`.
 
 namespace Syntax
 
-open Ast
+open AstItems
 
 /-- Translator state -/
 structure Translator where
@@ -43,7 +43,7 @@ def is_crlf (f : Flags) : Bool :=
 def is_swap_greed (f : Flags) : Bool :=
   f.swap_greed.getD false
 
-private def from_ast (ast: Syntax.Ast.Flags) : Syntax.Flags :=
+private def from_ast (ast: Syntax.AstItems.Flags) : Syntax.Flags :=
   let init : Bool × Syntax.Flags := (true, default)
   let (_, flags) := ast.items |> Array.foldl (init := init)
     (fun (enabled, acc) f =>
@@ -76,11 +76,11 @@ private def merge (flags previous : Syntax.Flags) : Syntax.Flags :=
 end Flags
 
 /-- Set the flags of this translator from the flags set in the given AST.-/
-private def set_flags (ast_flags : Syntax.Ast.Flags) (t : Translator) : Translator :=
+private def set_flags (ast_flags : Syntax.AstItems.Flags) (t : Translator) : Translator :=
   {t with flags := Flags.merge (Flags.from_ast ast_flags) t.flags}
 
 /-- Convert an Ast literal to its scalar representation. -/
-private def ast_literal_to_scalar (lit: Ast.Literal) : Except String Char :=
+private def ast_literal_to_scalar (lit: AstItems.Literal) : Except String Char :=
   Except.ok lit.c
 
 private def push_char (c : Char) (stack : Array HirFrame) : Array HirFrame :=
@@ -92,7 +92,7 @@ private def unicode_fold_and_negate (ranges : Array ClassUnicodeRange) (flags : 
   let cls := if flags.is_case_insensitive then ClassUnicode.case_fold cls else cls
   if negate then ClassUnicode.negate cls else cls
 
-private def hir_repetition (r : Ast.Repetition) (expr: Hir) (flags : Flags): Hir :=
+private def hir_repetition (r : AstItems.Repetition) (expr: Hir) (flags : Flags): Hir :=
   let (min, max) :=
     match r.op.kind with
     | .ZeroOrOne => (0, some 1)
@@ -132,7 +132,7 @@ private def range_of_named_property (name property : String)
   let pairs ← Unicode.rangesOfNamedProperty name property
   Except.ok pairs
 
-private def hir_unicode_class (cls : Ast.ClassUnicode) (flags : Flags)
+private def hir_unicode_class (cls : AstItems.ClassUnicode) (flags : Flags)
     : Except String ClassUnicode := do
   let range ←
     match cls.kind with
@@ -146,7 +146,7 @@ private def hir_unicode_class (cls : Ast.ClassUnicode) (flags : Flags)
       let range ← range_of_named_property n s
       Except.ok (unicode_fold_and_negate range flags cls.negated)
 
-private def hir_perl_unicode_class (cls : Ast.ClassPerl) (flags : Flags)
+private def hir_perl_unicode_class (cls : AstItems.ClassPerl) (flags : Flags)
     : Except String ClassUnicode := do
   match cls.kind with
   | .Digit =>
@@ -159,7 +159,7 @@ private def hir_perl_unicode_class (cls : Ast.ClassPerl) (flags : Flags)
     let range : Array ClassUnicodeRange ← range_of_property "Word"
     Except.ok (unicode_fold_and_negate range flags cls.negated)
 
-private def hir_ascii_unicode_class (cls: Ast.ClassAscii) (flags : Flags)
+private def hir_ascii_unicode_class (cls: AstItems.ClassAscii) (flags : Flags)
     : Except String ClassUnicode := do
   let range : Array ClassUnicodeRange :=
     match cls.kind with
@@ -183,7 +183,7 @@ private def hir_ascii_unicode_class (cls: Ast.ClassAscii) (flags : Flags)
 
   Except.ok (unicode_fold_and_negate range flags cls.negated)
 
-private def hir_assertion (ast : Ast.Assertion) (flags : Syntax.Flags) : Hir :=
+private def hir_assertion (ast : AstItems.Assertion) (flags : Syntax.Flags) : Hir :=
   let multi_line := flags.is_multi_line
   let crlf := flags.is_crlf
 
@@ -213,7 +213,7 @@ private def hir_assertion (ast : Ast.Assertion) (flags : Syntax.Flags) : Hir :=
 
   ⟨kind, Syntax.Hir.toProperties kind⟩
 
-private def hir_capture (g : Ast.Group) (expr: Hir) : Hir :=
+private def hir_capture (g : AstItems.Group) (expr: Hir) : Hir :=
   let (index, name) : Option Nat × Option String :=
     match g.kind with
     | .CaptureIndex captureIndex => (some captureIndex, none)
@@ -459,14 +459,12 @@ def visit_class_set_item_post (ast : ClassSetItem)
   | .Empty _ => pure ()
 
 /-- This method is called on every [`ClassSetBinaryOp`] before descending into  child nodes. -/
-def visit_class_set_binary_op_pre (_: ClassSetBinaryOp)
-    : StateT Translator (Except String) PUnit := do
+def visit_class_set_binary_op_pre : StateT Translator (Except String) PUnit := do
   let t ← get
   set {t with stack := t.stack.push (HirFrame.ClassUnicode ClassUnicode.empty)}
 
 /-- This method is called between the left hand and right hand child nodes. -/
-def visit_class_set_binary_op_in (_: ClassSetBinaryOp)
-    : StateT Translator (Except String) PUnit := do
+def visit_class_set_binary_op_in : StateT Translator (Except String) PUnit := do
   let t ← get
   set {t with stack := t.stack.push (HirFrame.ClassUnicode ClassUnicode.empty)}
 
@@ -496,15 +494,15 @@ def visit_class_set_binary_op_post (op: ClassSetBinaryOp)
     | none => Except.error "visit_class_set_binary_op_post stack empty for lhs"
   | none => Except.error "visit_class_set_binary_op_post stack empty for rhs"
 
-instance : Ast.Visitor Hir Translator where
+instance : AstItems.Visitor Hir Translator where
   finish := finish
   start := start
   visit_pre := visit_pre
   visit_post := visit_post
   visit_class_set_item_pre := visit_class_set_item_pre
   visit_class_set_item_post := visit_class_set_item_post
-  visit_class_set_binary_op_pre := visit_class_set_binary_op_pre
-  visit_class_set_binary_op_in := visit_class_set_binary_op_in
+  visit_class_set_binary_op_pre := (fun _ => visit_class_set_binary_op_pre)
+  visit_class_set_binary_op_in := (fun _ => visit_class_set_binary_op_in)
   visit_class_set_binary_op_post := visit_class_set_binary_op_post
 
 /-- Translate the given abstract syntax tree into a high level intermediate representation. -/

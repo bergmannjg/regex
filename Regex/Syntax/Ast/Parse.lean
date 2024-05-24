@@ -3,7 +3,7 @@ import Regex.Data.Array.Basic
 import Regex.Syntax.Ast.Ast
 import Regex.Utils
 
-namespace Syntax.Ast
+namespace Syntax.AstItems
 
 /-!
 ## Parse
@@ -291,13 +291,13 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
           let asts := asts.push (
               Ast.Repetition
                 (Repetition.mk
-                  (Syntax.Ast.span ast)
+                  (Syntax.AstItems.span ast)
                   ⟨(String.toSpan pattern (i) (i+n.val+2)),
                   (RepetitionKind.Range (RepetitionRange.AtLeast count_start))⟩
                   greedy
                   ast
               ))
-          Except.ok (1 +(n.val+1), (Concat.mk (Syntax.Ast.span ast) asts))
+          Except.ok (1 +(n.val+1), (Concat.mk (Syntax.AstItems.span ast) asts))
         else
           let (m, count_end) ← parse_decimal pattern (i+n.val+1)
           let c := pattern.getAtCodepoint (i+n.val+1+m.val)
@@ -305,25 +305,25 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
             let asts := asts.push (
                 Ast.Repetition
                   (Repetition.mk
-                    (Syntax.Ast.span ast)
+                    (Syntax.AstItems.span ast)
                     ⟨(String.toSpan pattern (i) (i+n.val+2)),
                     (RepetitionKind.Range (RepetitionRange.Bounded count_start count_end))⟩
                     greedy
                     ast
                 ))
-            Except.ok (1 + (n.val+m.val+1), (Concat.mk (Syntax.Ast.span ast) asts))
+            Except.ok (1 + (n.val+m.val+1), (Concat.mk (Syntax.AstItems.span ast) asts))
           else Except.error (toError pattern .RepetitionCountUnclosed)
       else if c = '}' then
         let asts := asts.push (
             Ast.Repetition
               (Repetition.mk
-                (Syntax.Ast.span ast)
+                (Syntax.AstItems.span ast)
                 ⟨(String.toSpan pattern (i-1) (i+n.val+1)),
                 (RepetitionKind.Range (RepetitionRange.Exactly count_start))⟩
                 greedy
                 ast
             ))
-        Except.ok (1 + n.val, (Concat.mk (Syntax.Ast.span ast) asts))
+        Except.ok (1 + n.val, (Concat.mk (Syntax.AstItems.span ast) asts))
       else Except.error (toError pattern .RepetitionCountUnclosed)
   | none => Except.error (toErrorAt pattern i .RepetitionMissing)
 
@@ -533,7 +533,7 @@ private def parse_uncounted_repetition (pattern : String) (i : Nat) (kind: Repet
     (concat : Concat) : Except String (NChars × Concat) := do
   match Array.pop? concat.asts with
   | some (ast, asts) =>
-    let op : Ast.RepetitionOp := ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, kind⟩
+    let op : AstItems.RepetitionOp := ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, kind⟩
     let c := pattern.getAtCodepoint (i + 1)
     let (n, greedy)  := if c = '?' then (1, false) else (0, true)
     let r : Repetition := Repetition.mk (String.toSpan pattern i (i + 1)) op greedy ast

@@ -4,10 +4,10 @@ import Regex.Utils
 /-!
 ## Abstract syntax tree for a single regular expression.
 
-The abstract syntax tree `Syntax.Ast.Ast`.
+The abstract syntax tree `Syntax.AstItems.Ast`.
 -/
 
-namespace Syntax.Ast
+namespace Syntax.AstItems
 
 /-- The type of an error that occurred while building an AST. -/
 inductive ErrorKind
@@ -588,7 +588,7 @@ inductive SetFlags where
 
 /-- A primitive is an expression with no sub-expressions. -/
 inductive Primitive where
-  | Literal : Ast.Literal -> Primitive
+  | Literal : AstItems.Literal -> Primitive
   | Dot : Substring -> Primitive
   | Assertion : Assertion -> Primitive
   | Unicode : ClassUnicode -> Primitive
@@ -714,7 +714,7 @@ def span (concat : Concat) : Substring := match concat with | .mk span _ => span
 def asts (concat : Concat) : Array Ast := match concat with | .mk _ asts => asts
 
 theorem sizeOfAstsOfConcat (concat : Concat) : sizeOf concat.asts < sizeOf concat := by
-  unfold Syntax.Ast.Concat.asts
+  unfold Syntax.AstItems.Concat.asts
   split <;> simp_all; omega
 
 def into_ast (concat : Concat) : Ast :=
@@ -730,7 +730,7 @@ namespace Alternation
 def asts (concat : Alternation) : Array Ast := match concat with | .mk _ asts => asts
 
 theorem sizeOfAstsOfAlternation (alt : Alternation) : sizeOf alt.asts < sizeOf alt := by
-  unfold Syntax.Ast.Alternation.asts
+  unfold Syntax.AstItems.Alternation.asts
   split <;> simp_all; omega
 
 def into_ast (alt : Alternation) : Ast :=
@@ -759,7 +759,7 @@ def into_class_set_item (p : Primitive) : Except String ClassSetItem :=
   | .Unicode cls => Except.ok (ClassSetItem.Unicode cls)
   | _ => Except.error "into_class_set_item, unexpected entry"
 
-def into_class_literal (p : Primitive) : Except String Syntax.Ast.Literal :=
+def into_class_literal (p : Primitive) : Except String Syntax.AstItems.Literal :=
   match p with
   | .Literal lit => Except.ok lit
   | _ => Except.error "into_class_literal, unexpected entry"
@@ -773,7 +773,7 @@ def kind (g : Group) : GroupKind := match g with | .mk _ kind _ => kind
 def ast (g : Group) : Ast := match g with | .mk _ _ ast => ast
 
 theorem sizeOfAstOfGroup (g : Group) : sizeOf g.ast < sizeOf g := by
-  unfold Syntax.Ast.Group.ast
+  unfold Syntax.AstItems.Group.ast
   split <;> simp_all; omega
 
 end Group
@@ -869,7 +869,7 @@ def greedy (rep : Repetition) : Bool := match rep with | .mk _ _ greedy _ => gre
 def ast (rep : Repetition) : Ast := match rep with | .mk _ _ _ ast => ast
 
 theorem sizeOfAstOfRepetition (rep : Repetition) : sizeOf rep.ast < sizeOf rep := by
-  unfold Syntax.Ast.Repetition.ast
+  unfold Syntax.AstItems.Repetition.ast
   split <;> simp_all; omega
 
 end Repetition
@@ -928,4 +928,4 @@ def toString (ast : Ast) (col : Nat) : String :=
 termination_by sizeOf ast
 
 instance : ToString Ast where
-  toString ast := Ast.toString ast 0
+  toString ast := AstItems.toString ast 0

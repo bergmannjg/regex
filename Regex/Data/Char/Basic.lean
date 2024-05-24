@@ -3,10 +3,6 @@ import Regex.Data.UInt.Basic
 
 namespace Char
 
-theorem Char.le_def {a b : Char} : a ≤ b ↔ a.val ≤ b.val := .rfl
-
-theorem Fin.le_def {a b : Fin n} : a ≤ b ↔ a.val ≤ b.val := .rfl
-
 /-- max valid char -/
 def max : Char := ⟨0x10FFFF, by simp_arith⟩
 
@@ -81,7 +77,7 @@ theorem succ_lt_succ_lt {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2)
 
 theorem lt_pred_le {c1 c2 : Char} (h : c1 < c2) : c1.val ≤ c2.val - 1 := by
   have h : c1.val < c2.val := Char.lt_def.mp h
-  have h2 : c2.val.val < UInt32.size := UInt32.isValidChar_lt_uintSize c2.val c2.valid
+  have h2 : c2.val.val < UInt32.size := UInt32.isValidChar_lt_uintSize c2.val
   simp [UInt32.lt_pred_le h h2]
 
 theorem lt_succ_le {c1 c2 : Char} (h : c1 < c2) : c1.val + 1 ≤ c2.val := by

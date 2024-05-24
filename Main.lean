@@ -106,14 +106,14 @@ where
 def ast : CliM PUnit := do
   match ← takeArg? with
   | some re =>
-      let ast ← Ast.parse re
+      let ast ← AstItems.parse re
       IO.println s!"Ast\n{ast}"
   | none => throw <| CliError.missingArg "re"
 
 def hir : CliM PUnit := do
   match ← takeArg? with
   | some re =>
-      let ast ← Ast.parse re
+      let ast ← AstItems.parse re
       let hir ← Syntax.translate default ast
       IO.println s!"Hir\n{hir}"
   | none => throw <| CliError.missingArg "re"

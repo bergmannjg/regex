@@ -29,6 +29,8 @@ jobs:
       - id: lean-action
         name: Build and test
         uses: leanprover/lean-action@v1-beta
+        with:
+          lint-module: Regex
       - name: Build Doc
         run: |
           lake -R -Kenv=dev update

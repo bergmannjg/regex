@@ -20,7 +20,7 @@ namespace Intervals
 
 open Interval
 
-theorem empty_isNonOverlapping {α : Type u} [LT α] [LE α] [BoundedOrder α] [HSub α α Nat]
+theorem empty_isNonOverlapping {α : Type u} [LE α] [HSub α α Nat]
     : nonOverlapping (#[] : Array (NonemptyInterval α)) := by
   unfold nonOverlapping dataIsNonOverlapping
   split <;> simp_all
@@ -33,7 +33,7 @@ theorem single_isNonOverlapping (ranges : Array (NonemptyInterval Char)) (h : ra
   unfold List.length at h
   split at h <;> try simp_all
 
-instance (α : Type u) [LT α] [LE α] [BoundedOrder α] [HSub α α Nat]
+instance (α : Type u) [LT α] [LE α] [HSub α α Nat]
     [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a = b)]
     : Inhabited $ IntervalSet α where
   default := ⟨#[], Intervals.empty_isNonOverlapping⟩
@@ -252,7 +252,6 @@ theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin
       rename_i xt
       have hx1 : 0 < ranges.size := by simp [Nat.lt_trans h hf]
       have hx2 : 0 < tail.length := by cases tail <;> simp_all
-      have : Interval.nonOverlapping head (List.get tail { val := 0, isLt := hx2}) := h1 hx2
       have : head = ranges.get ⟨0, hx1⟩  := Array.eq_head_of_get_first ranges hx1 heq
       have : tail.get ⟨0, hx2⟩  = ranges.get ⟨1, hf⟩ := Array.eq_succ_of_tail_nth ranges hf heq hx2
       simp_all
@@ -262,7 +261,7 @@ theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin
         nonOverlapping_of_nth ranges (n+1) (by simp) hf heq h2
       simp [hx2]
 
-theorem nonOverlappingWithLast_of_push(acc : Acc) (_ : acc.next = some l)
+theorem nonOverlappingWithLast_of_push(acc : Acc)
   (h2 : Intervals.nonOverlapping (Array.push acc.set.intervals l)) (h3 : Interval.nonOverlapping l r)
     : nonOverlappingWithLast (Acc.push acc l h2).intervals (some r) := by
   unfold Acc.push Array.push nonOverlappingWithLast

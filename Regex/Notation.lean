@@ -123,10 +123,10 @@ private def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
   Syntax.mkApp (mkCIdent `NFA.Checked.NFA.mk)
       #[Lean.Syntax.mkNumLit (ToString.toString nfa.n), states, mkTermIsEq nfa.n data]
 
-private def mkTermOfRegex (re : Regex.Regex) : Term :=
-  Syntax.mkApp (mkCIdent `Regex.Regex.mk) #[mkTermOfNfa re.nfa]
+private def mkTermOfRegex (re : Regex) : Term :=
+  Syntax.mkApp (mkCIdent `Regex.mk) #[mkTermOfNfa re.nfa]
 
-instance : Quote Regex.Regex where
+instance : Quote Regex where
   quote := mkTermOfRegex
 
 declare_syntax_cat regex

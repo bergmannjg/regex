@@ -9,7 +9,7 @@ Visit (`Syntax.Ast.visit`) every item in an abstract syntax tree `Syntax.Ast.Ast
 using the class `Syntax.Ast.Visitor`.
 -/
 
-namespace Syntax.Ast
+namespace Syntax.AstItems
 
 open Syntax Ast
 

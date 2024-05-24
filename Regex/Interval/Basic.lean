@@ -25,7 +25,7 @@ instance : BoundedOrder Char where
   top := Char.max
   le_top := Char.le_max
 
-theorem NonemptyInterval.eq_val_of_eq {α : Type*} [LE α] [DecidableEq α]
+theorem NonemptyInterval.eq_val_of_eq {α : Type*} [LE α]
   {x y : NonemptyInterval α} (h : x = y) : x.fst = y.fst ∧ x.snd = y.snd := by
   simp_all
 
@@ -97,7 +97,7 @@ def unique (intervals: Array (NonemptyInterval Char)) : Array (NonemptyInterval 
 
 /-- a list of intervals is non overlapping when intervals are sorted
     and no intervals are overlapping or adjacent -/
-def dataIsNonOverlapping {α : Type u} [LT α] [LE α] [HSub α α Nat]
+def dataIsNonOverlapping {α : Type u} [LE α] [HSub α α Nat]
     (intervals: List (NonemptyInterval α)) : Prop :=
   match intervals with
   | [] => true
@@ -105,7 +105,7 @@ def dataIsNonOverlapping {α : Type u} [LT α] [LE α] [HSub α α Nat]
   | head :: tail  => List.Chain (Interval.nonOverlapping) head tail
 
 /-- an array of intervals is non overlapping when `intervals.data` is non overlapping -/
-def nonOverlapping {α : Type u}[LT α] [LE α] [HSub α α Nat]
+def nonOverlapping {α : Type u} [LE α] [HSub α α Nat]
     (intervals: Array (NonemptyInterval α)) : Prop :=
   dataIsNonOverlapping intervals.data
 

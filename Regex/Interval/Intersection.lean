@@ -27,7 +27,7 @@ def Acc.with_next_set (acc : Interval.Acc) (l r : NonemptyInterval Char)
               Intervals.nonOverlapping_of_push acc l hm h2
     {acc with next := r,
               set := Interval.Acc.push acc l this,
-              nonOverlapping := Intervals.nonOverlappingWithLast_of_push acc h2 this h1}
+              nonOverlapping := Intervals.nonOverlappingWithLast_of_push acc this h1}
   | none =>
     {acc with next := r, set := Intervals.singleton l,
               nonOverlapping := Intervals.nonOverlappingWithLast_of_singleton l r h1}

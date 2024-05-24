@@ -96,12 +96,8 @@ theorem isValidChar_lt_0x110000 (u : UInt32) (h : UInt32.isValidChar u)
   · rename_i h
     simp_all [ h.right]
 
-theorem isValidChar_lt_uintSize (u : UInt32) (h : UInt32.isValidChar u)
-    : u.val.val < UInt32.size := by
-  have hx : u.val.val < 0x110000 := UInt32.isValidChar_lt_0x110000 u h
-  have hy : u.val.val + 1 < 0x110000 + 1 := Nat.add_lt_add_right hx 1
-  have hz : 0x110000 + 1 < UInt32.size := by simp_arith
-  simp [Nat.lt_trans hy hz]
+theorem isValidChar_lt_uintSize (u : UInt32) : u.val.val < UInt32.size := by
+  simp [Nat.lt_trans _ _]
 
 theorem isValidChar_succ_lt_uintSize (u : UInt32) (h : UInt32.isValidChar u)
     : u.val.val + 1 < UInt32.size := by
