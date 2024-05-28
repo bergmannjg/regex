@@ -30,7 +30,11 @@ lean_exe benchmark {
   buildType := .debug
 }
 
+lean_lib Test where
+  srcDir := "test"
+  roots := #[`Test, `RegexTest, `TomlLoader]
+
 @[test_runner]
-lean_exe test {
+lean_exe test where
+  srcDir := "test"
   root := `Test
-}
