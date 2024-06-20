@@ -11,7 +11,7 @@ A [regular expression](https://en.wikipedia.org/wiki/Regular_expression) engine 
 [Lean 4](https://github.com/leanprover/lean4).
 
 This library is based on the [Rust regex crate](https://docs.rs/regex/latest/regex/)
-and extended for compatibility with [Pcre](https://www.pcre.org/).
+and extended for compatibility with [PCRE2](https://www.pcre.org/).
 
 Contents:
 
@@ -26,10 +26,10 @@ Contents:
 
 There are to syntax flavors:
 
-- Pcre : compatibility with [Pcre](https://www.pcre.org/),
+- Pcre : compatibility with [PCRE2](https://www.pcre.org/) (default),
 - Rust : compatibility with [Rust](https://docs.rs/regex/latest/regex/#syntax).
 
-The following feature are not yet implemented in the Pcre flavor:
+The following features are not yet implemented in the Pcre flavor:
 
 * [subroutines](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC26),
 * [conditional patterns](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#TOC1),

@@ -4,7 +4,8 @@ A [regular expression](https://en.wikipedia.org/wiki/Regular_expression) engine 
 [Lean 4](https://github.com/leanprover/lean4).
 
 This library is based on the [Rust regex crate](https://docs.rs/regex/latest/regex/)
-and extended for compatibility with [Pcre](https://www.pcre.org/).
+and extended for compatibility with [PCRE2](https://www.pcre.org/)
+(see [Syntax](https://bergmannjg.github.io/regex/Regex.html#Syntax)).
 
 Main restrictions:
 
