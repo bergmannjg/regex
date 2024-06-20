@@ -75,6 +75,7 @@ usage: inspect [OPTIONS] <COMMAND>
 COMMANDS:
   ast <re>                    print the abstract syntax tree
   hir <re>                    print the high level intermediate representation
+  compile <re>                print the nfa
   captures <re> <s>           get first or all captures of <re> in <s>
 
 OPTIONS:
@@ -101,19 +102,20 @@ where
     | '\\' :: 'x' :: a :: b :: tail => (toChar a b) :: (loop tail acc)
     | '\\' :: 'n' :: tail => '\n' :: (loop tail acc)
     | '\\' :: 'r' :: tail => '\r' :: (loop tail acc)
+    | '\\' :: 't' :: tail => '\t' :: (loop tail acc)
     | head :: tail => head :: (loop tail acc)
 
 def ast : CliM PUnit := do
   match ← takeArg? with
   | some re =>
-      let ast ← AstItems.parse re
+      let ast ← AstItems.parse re default
       IO.println s!"Ast\n{ast}"
   | none => throw <| CliError.missingArg "re"
 
 def hir : CliM PUnit := do
   match ← takeArg? with
   | some re =>
-      let ast ← AstItems.parse re
+      let ast ← AstItems.parse re default
       let hir ← Syntax.translate default ast
       IO.println s!"Hir\n{hir}"
   | none => throw <| CliError.missingArg "re"
@@ -121,7 +123,7 @@ def hir : CliM PUnit := do
 def compile : CliM PUnit := do
   match ← takeArg? with
   | some pat =>
-    let re ← build pat default ⟨true⟩
+    let re ← build pat default default ⟨true⟩
     IO.println s!"{re.nfa}"
   | none => throw <| CliError.missingArg "re"
 

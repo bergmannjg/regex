@@ -61,18 +61,18 @@ private def «astOf'(a)'» : Ast :=
         (GroupKind.CaptureIndex 1)
         (Ast.Literal ⟨String.toSpan "(a)" 1 2, LiteralKind.Verbatim, 'a'⟩))
 
-example : (parse "a" |> toString) = s!"{astOf'a'}" := by native_decide
+example : (parse "a" Syntax.Flavor.Rust |> toString) = s!"{astOf'a'}" := by native_decide
 
-example : (parse "a?" |> toString) = s!"{astOf'a?'}" := by native_decide
+example : (parse "a?" Syntax.Flavor.Rust |> toString) = s!"{astOf'a?'}" := by native_decide
 
-example : (parse "ab" |> toString) = s!"{astOf'ab'}" := by native_decide
+example : (parse "ab" Syntax.Flavor.Rust |> toString) = s!"{astOf'ab'}" := by native_decide
 
-example : (parse "[a]" |> toString) = s!"{«astOf'[a]'»}" := by native_decide
+example : (parse "[a]" Syntax.Flavor.Rust |> toString) = s!"{«astOf'[a]'»}" := by native_decide
 
-example : (parse "[a-b]" |> toString) = s!"{«astOf'[a-b]'»}" := by native_decide
+example : (parse "[a-b]" Syntax.Flavor.Rust |> toString) = s!"{«astOf'[a-b]'»}" := by native_decide
 
-example : (parse "a|b" |> toString) = s!"{«astOf'a|b'»}" := by native_decide
+example : (parse "a|b" Syntax.Flavor.Rust |> toString) = s!"{«astOf'a|b'»}" := by native_decide
 
-example : (parse "(a)" |> toString) = s!"{«astOf'(a)'»}" := by native_decide
+example : (parse "(a)" Syntax.Flavor.Rust |> toString) = s!"{«astOf'(a)'»}" := by native_decide
 
 end Test.Ast

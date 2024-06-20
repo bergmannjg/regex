@@ -1,4 +1,4 @@
-import Std.Data.Array.Basic
+import Batteries.Data.Array.Basic
 import Regex.Utils
 import Regex.Interval
 import Regex.Unicode
@@ -86,6 +86,8 @@ inductive Look where
   | Start : Look
   /-- Match the end of text. -/
   | End : Look
+  /-- Match the end of text (before optional newline). -/
+  | EndWithOptionalLF : Look
   /-- Match the beginning of a line or the beginning of text. -/
   | StartLF : Look
   /-- Match the end of a line or the end of text. -/
@@ -113,6 +115,7 @@ namespace Look
 def toString : Look -> String
   | .Start => s!"Start"
   | .End => s!"End"
+  | .EndWithOptionalLF => s!"EndWithOptionalLF"
   | .StartLF => s!"StartLF"
   | .EndLF => s!"EndLF"
   | .StartCRLF => s!"StartCRLF"
@@ -153,6 +156,13 @@ instance : ToString Flags where
 
 mutual
 
+/-- The high-level intermediate representation for a look-around assertion. -/
+inductive Lookaround where
+  | PositiveLookahead : Hir -> Lookaround
+  | NegativeLookahead : Hir -> Lookaround
+  | PositiveLookbehind : Nat -> Hir -> Lookaround
+  | NegativeLookbehind : Nat -> Hir -> Lookaround
+
 /-- A concatenation of regular expressions. -/
 inductive Repetition where
   | mk (min: Nat) (max: Option Nat) (greedy : Bool) (sub: Hir) : Repetition
@@ -167,10 +177,14 @@ inductive HirKind where
   | Empty : HirKind
   /-- A literal string that matches exactly these bytes. -/
   | Literal : Char -> HirKind
+  /-- A backrefence to a capturung group. -/
+  | BackRef : Bool -> Nat -> HirKind
   /-- A single character class that matches any of the characters in the class. -/
   | Class : Class -> HirKind
   /-- A look-around assertion. A look-around match always has zero length. -/
   | Look : Look -> HirKind
+  /-- A complex look-around assertion. -/
+  | Lookaround : Lookaround -> HirKind
   /-- A repetition operation applied to a sub-expression. -/
   | Repetition : Repetition -> HirKind
   /-- A capturing group, which contains a sub-expression. -/
@@ -195,8 +209,15 @@ def fold [Inhabited α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
   match kind with
   | .Empty => f init hir
   | .Literal _ => f init hir
+  | .BackRef _ _ => f init hir
   | .Class _ => f init hir
   | .Look _ => f init hir
+  | .Lookaround look =>
+      match look with
+      | .PositiveLookahead sub => fold sub f init
+      | .NegativeLookahead sub => fold sub f init
+      | .PositiveLookbehind _ sub => fold sub f init
+      | .NegativeLookbehind _  sub => fold sub f init
   | .Repetition ⟨_, _, _, sub⟩  => fold sub f init
   | .Capture _ => f init hir
   | .Concat hirs => hirs.attach |> Array.foldl (init := init)
@@ -240,8 +261,27 @@ def toString (hir : Hir) (col : Nat): String :=
   match hk : hir.kind with
   | .Empty => s!"Empty"
   | .Literal c => s!"Literal '{UInt32.intAsString c.val}'"
+  | .BackRef f n => s!"BackRef {if f then "case_insensitive" else ""}'{n}'"
   | .Class cls => s!"Class {cls}"
   | .Look look => s!"Look {look}"
+  | .Lookaround lk  =>
+    match hr: lk with
+    | .PositiveLookahead sub =>
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
+        have : sizeOf sub < sizeOf lk := by simp [hr]
+        s!"PositiveLookahead {toString sub col}"
+    | .NegativeLookahead sub =>
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
+        have : sizeOf sub < sizeOf lk := by simp [hr]
+        s!"NegativeLookahead {toString sub col}"
+    | .PositiveLookbehind i sub =>
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
+        have : sizeOf sub < sizeOf lk := by simp [hr]; omega
+        s!"PositiveLookbehind Length {i} {toString sub col}"
+    | .NegativeLookbehind i sub =>
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
+        have : sizeOf sub < sizeOf lk := by simp [hr]; omega
+        s!"NegativeLookbehind Length {i} {toString sub col}"
   | .Repetition rep =>
     match hr : rep with
     | .mk min max greedy sub =>
@@ -315,6 +355,7 @@ def dot (dot: Dot) : Hir :=
 inductive HirFrame where
   | Expr : Hir -> HirFrame
   | Literal : Char -> HirFrame
+  | BackRef : Bool -> Nat -> HirFrame
   | ClassUnicode : ClassUnicode -> HirFrame
   | Repetition : HirFrame
   | Group : (old_flags: Syntax.Flags) -> HirFrame
@@ -326,6 +367,7 @@ namespace HirFrame
 def toString : HirFrame -> String
   | .Expr hir => s!"Expr '{hir}'"
   | .Literal c => s!"Literal {c}"
+  | .BackRef f n => s!"BackRef {if f then "case_insensitive" else ""} {n}"
   | .ClassUnicode cls => s!"ClassUnicode cls set size {cls.set.intervals.size}"
   | .Repetition => "Repetition"
   | .Group flags => s!"Group {flags}"
@@ -336,6 +378,7 @@ def unwrap_expr (frame : HirFrame) : Except String Hir :=
   match frame with
   | .Expr expr => Except.ok expr
   | .Literal c => Except.ok ⟨HirKind.Literal c, default⟩
+  | .BackRef f n => Except.ok ⟨HirKind.BackRef f n, default⟩
   | _ => Except.error "unwrap_expr, Literal or Expr expected"
 
 /-- Assert that the current stack frame is a Unicode class expression and return it.-/

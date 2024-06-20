@@ -5,3 +5,5 @@ compile_flags.txt
 benchmark/run_output.yaml
 benchmark/*.txt
 x.txt
+y.txt
+testdata/pcre/JSON-PP-4.16

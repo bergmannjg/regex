@@ -101,7 +101,7 @@ private def visit_class [Inhabited α] (ast: ClassBracketed)
 def visit_loop {α σ: Type} [Inhabited α] (β : Visitor α σ) (ast : Ast) : M σ String PUnit := do
   β.visit_pre ast
   let res ← match h : ast with
-    | .Empty | .Flags _ | .Literal _ | .Dot _ | .Assertion _ | .ClassUnicode _ | .ClassPerl _ =>
+    | .Empty | .Flags _ | .Literal _ | .BackRef _ | .Dot _ | .Assertion _ | .ClassUnicode _ | .ClassPerl _ =>
       pure default
     | .ClassBracketed cls =>
       visit_class cls β

@@ -1,4 +1,4 @@
-import Std.Data.Fin.Basic
+import Batteries.Data.Fin.Basic
 import Regex.Utils
 
 namespace NFA
@@ -20,6 +20,8 @@ inductive Look where
   | Start : Look
   /-- Match the end of text. -/
   | End : Look
+  /-- Match the end of text (before optional newline). -/
+  | EndWithOptionalLF : Look
   /-- Match the beginning of a line or the beginning of text. -/
   | StartLF : Look
   /-- Match of a line or the end of text. -/
@@ -45,6 +47,7 @@ namespace Look
 def toString : Look -> String
   | .Start => s!"Start"
   | .End => s!"End"
+  | .EndWithOptionalLF => s!"EndWithOptionalLF"
   | .StartLF => s!"StartLF"
   | .EndLF => s!"EndLF"
   | .StartCRLF => s!"StartCRLF"
@@ -91,6 +94,17 @@ inductive State where
   /-- An empty state whose only purpose is to forward the automaton to
       another state via an unconditional epsilon transition. -/
   | Empty (next: StateID) : State
+  /-- use netx char -/
+  | NextChar (offset : Nat) (next: StateID) : State
+  /-- Fail, force backtrack -/
+  | Fail : State
+  /-- change Frame.Step in stack and force backtrack -/
+  | ChangeFrameStep («from» to: StateID) : State
+  /-- remove Frame.Step in stack and force backtrack -/
+  | RemoveFrameStep (sid : StateID) : State
+  /--  A state with a single transition may only be followed if the currunt chars match the
+    backrefence to the capturung group. -/
+  | BackRef (n : Nat) (case_insensitive : Bool) (sid : StateID) : State
   /-- A state with a single transition that can only be taken if the current
       input symbol is in a particular range of chars. -/
   | ByteRange (trans : Transition) : State
@@ -120,6 +134,12 @@ namespace State
 
 def toString : State -> String
   | .Empty next => s!"Empty => {next}"
+  | .NextChar offset next => s!"NextChar offset  {offset} => {next}"
+  | .Fail => s!"Fail"
+  | .ChangeFrameStep «from» to => s!"ChangeFrameStep from {«from»} to {to}"
+  | .RemoveFrameStep sid => s!"RemoveFrameStep {sid}"
+  | .BackRef b f sid =>
+      s!"backreference {b} {if f then "case_insensitive" else ""} => {sid}"
   | .ByteRange trans =>
       s!"byte-range {UInt32.intAsString trans.start}-{UInt32.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
@@ -192,6 +212,17 @@ inductive State (n : Nat) where
   /-- An empty state whose only purpose is to forward the automaton to
       another state via an unconditional epsilon transition. -/
   | Empty (next: Fin n) : State n
+  /-- use netx char -/
+  | NextChar (offset : Nat) (next: Fin n) : State n
+  /-- Fail, force backtracking -/
+  | Fail : State n
+  /-- change Frame.Step in stack and force backtracking -/
+  | ChangeFrameStep (fr to: Fin n) : State n
+  /-- remove Frame.Step in stack and force backtrack -/
+  | RemoveFrameStep (sid : Fin n) : State n
+  /--  A state with a single transition may only be followed if the currunt chars match the
+      backrefence to the capturung group. -/
+  | BackRef (b : Nat) (case_insensitive : Bool) (sid : Fin n) : State n
   /-- A state with a single transition that can only be taken if the current
       input symbol is in a particular range of chars. -/
   | ByteRange (trans : Transition n) : State n
@@ -233,6 +264,12 @@ namespace State
 
 def toString : State n -> String
   | .Empty next => s!"Empty => {next}"
+  | .NextChar offset next => s!"NextChar offset {offset} => {next}"
+  | .Fail => s!"Fail"
+  | .ChangeFrameStep f t => s!"ChangeFrameStep from {f} to {t}"
+  | .RemoveFrameStep sid => s!"RemoveFrameStep {sid}"
+  | .BackRef b f sid =>
+      s!"backreference {b} {if f then "case_insensitive" else ""} => {sid}"
   | .ByteRange trans =>
       s!"byte-range {Nat.intAsString trans.start}-{Nat.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
@@ -294,6 +331,14 @@ private def toCkeckedTransition? (t : Unchecked.Transition) (n : Nat)
 private def toCkeckedState? (s : Unchecked.State) (n : Nat) : Option $ Checked.State n :=
   match s with
   | .Empty next => (toFin? next n) |> Option.map (Checked.State.Empty ·)
+  | .NextChar offset next => (toFin? next n) |> Option.map (Checked.State.NextChar offset ·)
+  | .Fail => some Checked.State.Fail
+  | .ChangeFrameStep f t =>
+        match (toFin? f n), (toFin? t n) with
+        | some f, some t => some (Checked.State.ChangeFrameStep f t)
+        |_, _ => none
+  | .RemoveFrameStep sid => (toFin? sid n) |> Option.map (Checked.State.RemoveFrameStep ·)
+  | .BackRef b f sid => (toFin? sid n) |> Option.map (Checked.State.BackRef b f ·)
   | .ByteRange trans => (toCkeckedTransition? trans n) |> Option.map (Checked.State.ByteRange ·)
   | .SparseTransitions trans =>
         trans

@@ -56,7 +56,7 @@ def main (args : List String): IO Unit := do
           IO.println s!"re {re} haystack {haystack}"
           let nl := "\n"
 
-          let regex ← build re default ⟨true⟩
+          let regex ← build re default default ⟨true⟩
           match Regex.Log.captures haystack.toSubstring regex default (logEnabled := false) with
           | (msgs, none) =>
             if msgs.size > 0 then IO.println s!"msgs {msgs |> Array.map (· ++ nl)}"
@@ -75,7 +75,7 @@ def main (args : List String): IO Unit := do
           let haystack := a
           IO.println s!"re {re} haystack {haystack}"
 
-          let regex ← build re default ⟨true⟩
+          let regex ← build re default default ⟨true⟩
 
           let count :=
             m.fold (init := 0) (fun acc _ =>

@@ -10,7 +10,8 @@ import Regex.Notation
 A [regular expression](https://en.wikipedia.org/wiki/Regular_expression) engine written in
 [Lean 4](https://github.com/leanprover/lean4).
 
-This library is heavily based on the [Rust regex crate](https://docs.rs/regex/latest/regex/).
+This library is based on the [Rust regex crate](https://docs.rs/regex/latest/regex/)
+and extended for compatibility with [Pcre](https://www.pcre.org/).
 
 Contents:
 
@@ -23,195 +24,17 @@ Contents:
 
 ## Syntax
 
-The [syntax](https://docs.rs/regex/latest/regex/#syntax) of the Rust regex crate is documented below.
-The syntax is similar to Perl-style regular expressions, but lacks a few features like
+There are to syntax flavors:
 
-* [back references](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC25),
-* [look around assertions](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22).
+- Pcre : compatibility with [Pcre](https://www.pcre.org/),
+- Rust : compatibility with [Rust](https://docs.rs/regex/latest/regex/#syntax).
 
-This library supports the Rust regex syntax except
-* non unicode mode,
-* verbose mode.
+The following feature are not yet implemented in the Pcre flavor:
 
-### Matching one character
-
-<pre>
-.             any character except new line (includes new line with s flag)
-[0-9]         any ASCII digit
-\d            digit (\p{Nd})
-\D            not digit
-\pX           Unicode character class identified by a one-letter name
-\p{Greek}     Unicode character class (general category or script)
-\PX           Negated Unicode character class identified by a one-letter name
-\P{Greek}     negated Unicode character class (general category or script)
-</pre>
-
-### Character classes
-
-<pre>
-[xyz]           A character class matching either x, y or z (union).
-[^xyz]          A character class matching any character except x, y and z.
-[a-z]           A character class matching any character in range a-z.
-[[:alpha:]]     ASCII character class ([A-Za-z])
-[[:^alpha:]]    Negated ASCII character class ([^A-Za-z])
-[x[^xyz]]       Nested character class (matching any character except y and z)
-[a-y&&xyz]      Intersection (matching x or y)
-[0-9&&[^4]]     Subtraction using intersection and negation (matching 0-9 except 4)
-[0-9--4]        Direct subtraction (matching 0-9 except 4)
-[a-g~~b-h]      Symmetric difference (matching `a` and `h` only)
-[\\[\\]]          Escaping in character classes (matching [ or ])
-[a&&b]          An empty character class matching nothing
-</pre>
-
-### Composites
-
-<pre>
-xy    concatenation (x followed by y)
-x|y   alternation (x or y, prefer x)
-</pre>
-
-### Repetitions
-
-<pre>
-x*        zero or more of x (greedy)
-x+        one or more of x (greedy)
-x?        zero or one of x (greedy)
-x*?       zero or more of x (ungreedy/lazy)
-x+?       one or more of x (ungreedy/lazy)
-x??       zero or one of x (ungreedy/lazy)
-x{n,m}    at least n x and at most m x (greedy)
-x{n,}     at least n x (greedy)
-x{n}      exactly n x
-x{n,m}?   at least n x and at most m x (ungreedy/lazy)
-x{n,}?    at least n x (ungreedy/lazy)
-x{n}?     exactly n x
-</pre>
-
-### Empty matches
-
-<pre>
-^               the beginning of a haystack (or start-of-line with multi-line mode)
-$               the end of a haystack (or end-of-line with multi-line mode)
-\A              only the beginning of a haystack (even with multi-line mode enabled)
-\z              only the end of a haystack (even with multi-line mode enabled)
-\b              a Unicode word boundary (\w on one side and \W, \A, or \z on other)
-\B              not a Unicode word boundary
-\b{start}       a Unicode start-of-word boundary (\W|\A on the left, \w on the right)
-\b{end}         a Unicode end-of-word boundary (\w on the left, \W|\z on the right))
-\b{start-half}  half of a Unicode start-of-word boundary (\W|\A on the left)
-\b{end-half}    half of a Unicode end-of-word boundary (\W|\z on the right)
-</pre>
-
-The empty regex is valid and matches the empty string. For example, the
-empty regex matches `abc` at positions `0`, `1`, `2` and `3`.
-
-### Grouping and flags
-
-<pre>
-(exp)          numbered capture group (indexed by opening parenthesis)
-(?P&lt;name&gt;exp)  named (also numbered) capture group (names must be alpha-numeric)
-(?&lt;name&gt;exp)   named (also numbered) capture group (names must be alpha-numeric)
-(?:exp)        non-capturing group
-(?flags)       set flags within current group
-(?flags:exp)   set flags for exp (non-capturing)
-</pre>
-
-Capture group names must be any sequence of alpha-numeric Unicode codepoints,
-in addition to `.`, `_`, `[` and `]`. Names must start with either an `_` or
-an alphabetic codepoint. Alphabetic codepoints correspond to the `Alphabetic`
-Unicode property, while numeric codepoints correspond to the union of the
-`Decimal_Number`, `Letter_Number` and `Other_Number` general categories.
-
-Flags are each a single character. For example, `(?x)` sets the flag `x`
-and `(?-x)` clears the flag `x`. Multiple flags can be set or cleared at
-the same time: `(?xy)` sets both the `x` and `y` flags and `(?x-y)` sets
-the `x` flag and clears the `y` flag.
-
-All flags are by default disabled unless stated otherwise. They are:
-
-<pre>
-i     case-insensitive: letters match both upper and lower case
-m     multi-line mode: ^ and $ match begin/end of line
-s     allow . to match \n
-R     enables CRLF mode: when multi-line mode is enabled, \r\n is used
-U     swap the meaning of x* and x*?
-u     Unicode support (always enabled, *-u* is ignored)
--u    non unicode support (*-u* is ignored)
-x     verbose mode, allow line comments (not implemented)
-</pre>
-
-Multi-line mode means `^` and `$` no longer match just at the beginning/end of
-the input, but also at the beginning/end of lines:
-
-### Escape sequences
-
-Note that this includes all possible escape sequences, even ones that are
-documented elsewhere.
-
-<pre>
-\*              literal *, applies to all ASCII except [0-9A-Za-z<>]
-\a              bell (\x07)
-\f              form feed (\x0C)
-\t              horizontal tab
-\n              new line
-\r              carriage return
-\v              vertical tab (\x0B)
-\A              matches at the beginning of a haystack
-\z              matches at the end of a haystack
-\b              word boundary assertion
-\B              negated word boundary assertion
-\b{start}, \<   start-of-word boundary assertion
-\b{end}, \>     end-of-word boundary assertion
-\b{start-half}  half of a start-of-word boundary assertion
-\b{end-half}    half of a end-of-word boundary assertion
-\123            octal character code, up to three digits (when enabled)
-\x7F            hex character code (exactly two digits)
-\x{10FFFF}      any hex character code corresponding to a Unicode code point
-\u007F          hex character code (exactly four digits)
-\u{7F}          any hex character code corresponding to a Unicode code point
-\U0000007F      hex character code (exactly eight digits)
-\U{7F}          any hex character code corresponding to a Unicode code point
-\p{Letter}      Unicode character class
-\P{Letter}      negated Unicode character class
-\d, \s, \w      Perl character class
-\D, \S, \W      negated Perl character class
-</pre>
-
-### Perl character classes (Unicode friendly)
-
-These classes are based on the definitions provided in
-[UTS#18](https://www.unicode.org/reports/tr18/#Compatibility_Properties):
-
-<pre>
-\d     digit (\p{Nd})
-\D     not digit
-\s     whitespace (\p{White_Space})
-\S     not whitespace
-\w     word character (\p{Alphabetic} + \p{M} + \d + \p{Pc} + \p{Join_Control})
-\W     not word character
-</pre>
-
-### ASCII character classes
-
-These classes are based on the definitions provided in
-[UTS#18](https://www.unicode.org/reports/tr18/#Compatibility_Properties):
-
-<pre>
-[[:alnum:]]    alphanumeric ([0-9A-Za-z])
-[[:alpha:]]    alphabetic ([A-Za-z])
-[[:ascii:]]    ASCII ([\x00-\x7F])
-[[:blank:]]    blank ([\t ])
-[[:cntrl:]]    control ([\x00-\x1F\x7F])
-[[:digit:]]    digits ([0-9])
-[[:graph:]]    graphical ([!-~])
-[[:lower:]]    lower case ([a-z])
-[[:print:]]    printable ([ -~])
-[[:punct:]]    punctuation ([!-\/:-@\[-`{-~])
-[[:space:]]    whitespace ([\t\n\v\f\r ])
-[[:upper:]]    upper case ([A-Z])
-[[:word:]]     word characters ([0-9A-Za-z_])
-[[:xdigit:]]   hex digit ([0-9A-Fa-f])
-</pre>
+* [subroutines](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC26),
+* [conditional patterns](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#TOC1),
+* [backtracking control](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC28),
+* [variable length look behind](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22).
 
 ## Unicode
 
@@ -274,7 +97,7 @@ Get captures of "∀ (n : Nat), 0 ≤ n" :
 
 <pre>
 def Main : IO Unit := do
-  let re ← Regex.build r"^\p{Math}\s*([^,]+),\s*(\p{Nd})\s*(\p{Math})\s*(\w)$"
+  let re := regex% r"^\p{Math}\s*(.(?<=\()([a-z])[^,]+),\s*(\p{Nd})\s*(\p{Math})\s*\2$"
   let captures := Regex.captures "∀ (n : Nat), 0 ≤ n" re
   IO.println s!"{captures}"
 </pre>
@@ -283,16 +106,16 @@ Output is
 
 <pre>
 fullMatch: '∀ (n : Nat), 0 ≤ n', 0, 22
-groups: #[(some ('(n : Nat)', 4, 13)), (some ('0', 15, 16)), (some ('≤', 17, 20)), (some ('n', 21, 22))]
+groups: #[(some ('(n : Nat)', 4, 13)), (some ('n', 5, 6)),
+          (some ('0', 15, 16)), (some ('≤', 17, 20))]
 </pre>
 
 Components of regular expression:
 
-- *^* : Assertion Start of line
 - *\p{Math}* : match all characters with the Math property
-- *\s\** : match white space
-- *(\w)* : capturing group of word characters
+- *(?<=\\()* : lookbehind of char '('
 - *(\p{Nd})* : capturing group of numeric characters
+- *\2* : backreference to second capturing group
 
 ## Performance
 

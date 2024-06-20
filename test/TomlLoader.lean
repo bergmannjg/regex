@@ -7,7 +7,9 @@ import RegexTest
 
 open Lean System Lake Lake.Toml
 
-namespace Loader
+namespace Loader.Toml
+
+/-- load toml files from Rust testdata -/
 
 protected def Span.decodeToml (v : Value) (s := Syntax.missing)
     : Except (Array DecodeError) (Option RegexTest.Span) :=
@@ -17,7 +19,7 @@ protected def Span.decodeToml (v : Value) (s := Syntax.missing)
     | #[] => pure none
     | #[a, b] =>
       match a, b with
-      | .integer _ a, .integer _ b => pure (RegexTest.Span.mk a.toNat b.toNat)
+      | .integer _ a, .integer _ b => pure (RegexTest.Span.mk a.toNat b.toNat none)
       | _, _ =>  Except.error #[DecodeError.mk s s!"integer array expected {v}"]
     | _ =>  Except.error #[DecodeError.mk s s!"array size 0 or 2 expected {v}"]
   | _ =>
@@ -95,8 +97,10 @@ protected def RegexTest.decodeToml (t : Table)
   let «match-kind» : Option String ← t.tryDecode? `«match-kind»
   let «search-kind» : Option String ← t.tryDecode? `«search-kind»
   let «line-terminator» : Option String ← t.tryDecode? `«line-terminator»
+  let «only-full-match» : Option Bool ← t.tryDecode? `«only-full-match»
   return {name, regex, haystack, «matches», bounds, «match-limit», anchored, «case-insensitive»,
-          unescape, compiles, unicode, utf8, «match-kind», «search-kind», «line-terminator» }
+          unescape, compiles, unicode, utf8, «match-kind», «search-kind», «line-terminator»,
+          «only-full-match» }
 
 instance : DecodeToml RegexTest := ⟨fun v => do RegexTest.decodeToml (← v.decodeTable)⟩
 
@@ -111,7 +115,7 @@ nonrec def parseToml (table : Table) (tomlFile : FilePath) : IO $ Array RegexTes
     throw $ .userError s!"decode errors in {tomlFile}\n{msgs}"
 
 /-- load testdata toml files of Rust Regex crate -/
-nonrec def loadToml (tomlFile : FilePath) : IO $ Array RegexTest := do
+nonrec def load (tomlFile : FilePath) : IO $ Array RegexTest := do
   let fileName := tomlFile.fileName.getD tomlFile.toString
   let input ←
     match (← IO.FS.readBinFile tomlFile |>.toBaseIO) with
@@ -129,4 +133,4 @@ nonrec def loadToml (tomlFile : FilePath) : IO $ Array RegexTest := do
                       (fun s msg => s ++ s!"error at {msg.fileName} {msg.pos}")
       throw $ .userError s!"{msgs}"
 
-end Loader
+end Loader.Toml

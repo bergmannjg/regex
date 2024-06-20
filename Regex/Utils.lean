@@ -1,4 +1,4 @@
-import Std.Data.List.Lemmas
+import Batteries.Data.List.Lemmas
 
 /-!
 ## Utils
@@ -9,6 +9,12 @@ namespace Char
 /-- make String with `n` `c` chars -/
 def multiple (c : Char) ( n : Nat) (acc : String ): String :=
   if n = 0 then acc else multiple c ( n - 1) (c.toString ++ acc)
+
+def isHexDigit (c : Char) : Bool :=
+  if '0' ≤ c && c ≤ '9' then true
+  else if 'a' ≤ c && c ≤ 'f' then true
+  else if 'A' ≤ c && c ≤ 'F' then true
+  else false
 
 def decodeHexDigit (c : Char) : Option (UInt32) :=
   if '0' ≤ c && c ≤ '9' then some (c.val - '0'.val)
@@ -22,8 +28,19 @@ def decodeHexDigits (chars : List Char) : Except String UInt32 :=
     let (_, val) := l |> List.foldr (init := (1, 0)) (fun v (n, acc)  =>
       (n*16, acc + n*v))
     Except.ok val
-  --| [some u1, some u2, some u3, some u4] => Except.ok (4096*u1 + 256*u2 + 16*u3 + u4)
-  else Except.error s!"hexCharsToVal, invalid arg {chars}"
+  else Except.error s!"decodeHexDigits, invalid arg {chars}"
+
+def decodeOctDigit (c : Char) : Option (UInt32) :=
+  if '0' ≤ c && c ≤ '7' then some (c.val - '0'.val)
+  else none
+
+def decodeOctDigits (chars : List Char) : Except String UInt32 :=
+  let l := chars |> List.filterMap (decodeOctDigit ·)
+  if l.length > 0 then
+    let (_, val) := l |> List.foldr (init := (1, 0)) (fun v (n, acc)  =>
+      (n*8, acc + n*v))
+    Except.ok val
+  else Except.error s!"decodeOctDigits, invalid arg {chars}"
 
 end Char
 
@@ -62,6 +79,14 @@ namespace String
 /-- get `i` char in `s`, tood: switch to String.Pos logic -/
 def getAtCodepoint (s : String) (i : Nat) : Char :=
   if h : i < s.length then s.data.get ⟨i, h⟩ else default
+
+/-- starts string `m` at codepoint `i` in `s` -/
+def startsAtCodepoint (s m : String) (i : Nat) : Bool :=
+  if i + m.length ≤ s.length
+  then
+    let s := (s.toSubstring).drop i
+    s.toString.startsWith m
+  else false
 
 /-- compute the byte position of the codepoint position `p` in `s` -/
 def toBytePosition (s : String) (p : Nat) : String.Pos :=

@@ -1,4 +1,4 @@
-import Std.Data.Array.Basic
+import Batteries.Data.Array.Basic
 import Regex.Utils
 
 /-!
@@ -11,6 +11,8 @@ namespace Syntax.AstItems
 
 /-- The type of an error that occurred while building an AST. -/
 inductive ErrorKind
+  /-- Backrefence invalid. -/
+  | BackRefenceInvalid
   /-- The capturing group limit was exceeded. -/
   | CaptureLimitExceeded
   /-- An invalid escape sequence was found in a character class set. -/
@@ -23,6 +25,8 @@ inductive ErrorKind
   | ClassUnclosed
   /-- An invalid decimal number was given where one was expected. -/
   | DecimalInvalid
+  /-- End quote without a corresponding open quote. -/
+  | EndQuoteWithoutOpenQuote
   /-- A bracketed hex literal was empty. -/
   | EscapeHexEmpty
   /-- A bracketed hex literal did not correspond to a Unicode scalar value. -/
@@ -33,6 +37,8 @@ inductive ErrorKind
   | EscapeUnexpectedEof
   /-- An unrecognized escape sequence. -/
   | EscapeUnrecognized
+  /-- Fixed width in look behind -/
+  | FixedWidtExcpected
   /-- A dangling negation was used when setting flags, e.g., `i-`. -/
   | FlagDanglingNegation
   /-- A flag was used twice, e.g., `i-i`. -/
@@ -89,17 +95,20 @@ inductive ErrorKind
 namespace ErrorKind
 
 def toString : ErrorKind -> String
+  | .BackRefenceInvalid => "no capturing group found for backrefence"
   | .CaptureLimitExceeded => "exceeded the maximum number of capturing groups"
   | .ClassEscapeInvalid => "invalid escape sequence found in character class"
   | .ClassRangeInvalid => "invalid character class range, the start must be <= the end"
   | .ClassRangeLiteral => "invalid range boundary, must be a literal"
   | .ClassUnclosed => "unclosed character class"
   | .DecimalInvalid => "decimal literal invalid"
+  | .EndQuoteWithoutOpenQuote => "end quote without a corresponding open quote"
   | .EscapeHexEmpty => "hexadecimal literal empty"
   | .EscapeHexInvalid => "hexadecimal literal is not a Unicode scalar value"
   | .EscapeHexInvalidDigit => "invalid hexadecimal digit"
   | .EscapeUnexpectedEof => "incomplete escape sequence, reached end of pattern prematurely"
   | .EscapeUnrecognized => "unrecognized escape sequence"
+  | .FixedWidtExcpected => "fixed width expr in look behind expected"
   | .FlagDanglingNegation => "dangling flag negation operator"
   | .FlagDuplicate => "duplicate flag"
   | .FlagRepeatedNegation => "flag negation operator repeated"
@@ -145,6 +154,8 @@ def toErrorAt (s : String) (i : Nat) (kind : ErrorKind) (msg : String := "") : S
 
 /-- The type of a Unicode hex literal. -/
 inductive HexLiteralKind where
+  /-- A `\x` prefix. When used without brackets, this form is limited to one digit (Pcre flavor). -/
+  | x : HexLiteralKind
   /-- A `\x` prefix. When used without brackets, this form is limited to two digits. -/
   | X : HexLiteralKind
   /-- A `\u` prefix. When used without brackets, this form is limited to four digits. -/
@@ -153,6 +164,7 @@ inductive HexLiteralKind where
 namespace HexLiteralKind
 
 def digits : HexLiteralKind -> Nat
+  | .x => 1
   | .X => 2
   | .UnicodeShort => 4
 
@@ -173,8 +185,10 @@ namespace LiteralKind
 
 def toString : LiteralKind -> String
   | .Verbatim => "Verbatim"
+  | .Hex .x => "Hex x"
   | .Hex .X => "Hex X"
   | .Hex .UnicodeShort => "Hex UnicodeShort"
+  | .HexBrace .x => "HexBrace x"
   | .HexBrace .X => "HexBrace X"
   | .HexBrace .UnicodeShort => "HexBrace UnicodeShort"
 
@@ -204,6 +218,23 @@ end Literal
 
 instance : ToString Literal where
   toString := Literal.toString
+
+/-- A backrefence to a capturung group. -/
+structure BackRef where
+  /-- The span of this backrefence. -/
+  span: Substring
+  /-- number of the capturung group. -/
+  n: Nat
+
+namespace BackRef
+
+def toString (br : BackRef) : String :=
+  s!"Backrefence {spanToString br.span} '{br.n}'"
+
+end BackRef
+
+instance : ToString BackRef where
+  toString := BackRef.toString
 
 /-- A range repetition operator.-/
 inductive RepetitionRange where
@@ -348,16 +379,33 @@ structure Flags where
 instance : ToString Flags where
   toString flags := s!"Flags {flags.items}"
 
+/-- The kind of a Lookaround. -/
+inductive LookaroundKind where
+  | PositiveLookahead : LookaroundKind
+  | NegativeLookahead : LookaroundKind
+  | PositiveLookbehind : Nat -> LookaroundKind
+  | NegativeLookbehind : Nat -> LookaroundKind
+
+instance : ToString LookaroundKind where
+  toString look :=
+    match look with
+    |.PositiveLookahead => "PositiveLookahead"
+    |.NegativeLookahead => "NegativeLookahead"
+    |.PositiveLookbehind i => s!"PositiveLookbehind Length {i}"
+    |.NegativeLookbehind i => s!"NegativeLookbehind Length {i}"
+
 /-- The kind of a group. -/
 inductive GroupKind where
   | CaptureIndex : Nat -> GroupKind
   | NonCapturing : Flags -> GroupKind
+  | Lookaround : LookaroundKind -> GroupKind
 
 namespace GroupKind
 
 def toString : GroupKind -> String
   | .CaptureIndex i => s!"CaptureIndex {i}"
   | .NonCapturing flags => s!"NonCapturing {flags}"
+  | .Lookaround kind => s!"Lookaround {kind}"
 
 end GroupKind
 
@@ -411,10 +459,14 @@ inductive AssertionKind where
   | StartLine : AssertionKind
   /-- `$` -/
   | EndLine : AssertionKind
+  /-- `$` pcre flavor -/
+  | EndLineWithOptionalLF : AssertionKind
   /-- `\A` -/
   | StartText : AssertionKind
   /-- `\z` -/
   | EndText : AssertionKind
+  /-- `\Z` pcre flavor -/
+  | EndTextWithOptionalLF : AssertionKind
   /-- \b -/
   | WordBoundary : AssertionKind
   /-- \B -/
@@ -433,8 +485,10 @@ namespace AssertionKind
 def toString : AssertionKind -> String
   | .StartLine => s!"StartLine"
   | .EndLine => s!"EndLine"
+  | .EndLineWithOptionalLF => s!"EndLineWithOptionalLF"
   | .StartText => s!"StartText"
   | .EndText => s!"EndText"
+  | .EndTextWithOptionalLF => s!"EndTextWithOptionalLF"
   | .WordBoundary => s!"WordBoundary"
   | .NotWordBoundary => s!"NotWordBoundary"
   | .WordBoundaryStart => s!"WordBoundaryStart"
@@ -589,6 +643,7 @@ inductive SetFlags where
 /-- A primitive is an expression with no sub-expressions. -/
 inductive Primitive where
   | Literal : AstItems.Literal -> Primitive
+  | BackRef : AstItems.BackRef -> Primitive
   | Dot : Substring -> Primitive
   | Assertion : Assertion -> Primitive
   | Unicode : ClassUnicode -> Primitive
@@ -660,6 +715,8 @@ inductive Ast where
   | Flags : SetFlags -> Ast
   /-- A single character literal, which includes escape sequences. -/
   | Literal : Literal -> Ast
+  /-- A backrefence to a capturung group. -/
+  | BackRef : BackRef -> Ast
   /-- The "any character" class. -/
   | Dot : Substring -> Ast
   /-- A single zero-width assertion. -/
@@ -747,6 +804,7 @@ namespace Primitive
 def into_ast (p : Primitive) : Ast :=
   match p with
   | .Literal lit => Ast.Literal lit
+  | .BackRef n => Ast.BackRef n
   | .Dot span => Ast.Dot span
   | .Assertion a => Ast.Assertion a
   | .Unicode cls => Ast.ClassUnicode cls
@@ -762,6 +820,7 @@ def into_class_set_item (p : Primitive) : Except String ClassSetItem :=
 def into_class_literal (p : Primitive) : Except String Syntax.AstItems.Literal :=
   match p with
   | .Literal lit => Except.ok lit
+  | .Perl _ => Except.error "escape sequence unexpected in range"
   | _ => Except.error "into_class_literal, unexpected entry"
 
 end Primitive
@@ -879,6 +938,7 @@ def span (ast : Ast) : Substring :=
   | .Empty => default
   | .Flags ⟨span, _⟩  => span
   | .Literal lit => lit.span
+  | .BackRef br => br.span
   | .Dot span => span
   | .Assertion ⟨span, _⟩ => span
   | .ClassUnicode cls => cls.span
@@ -896,6 +956,7 @@ def toString (ast : Ast) (col : Nat) : String :=
   | .Empty => s!"Empty"
   | .Flags ⟨_, flags⟩  => s!"Flags {flags}"
   | .Literal lit => s!"{lit}"
+  | .BackRef br => s!"{br}"
   | .Dot span => s!"Dot {spanToString span}"
   | .Assertion a => s!"Assertion {a}"
   | .ClassUnicode cls => s!"ClassUnicode {cls}"

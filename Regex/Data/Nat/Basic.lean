@@ -1,4 +1,4 @@
-import Std.Data.Nat.Lemmas
+import Batteries.Data.Nat.Lemmas
 
 namespace Nat
 

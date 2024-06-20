@@ -1,4 +1,4 @@
-import Std.Data.Nat.Lemmas
+import Batteries.Data.Nat.Lemmas
 import Init.Data.List.Lemmas
 import Init.Data.Array.Mem
 

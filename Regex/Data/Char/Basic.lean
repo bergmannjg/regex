@@ -1,4 +1,4 @@
-import Std.Data.Nat.Lemmas
+import Batteries.Data.Nat.Lemmas
 import Regex.Data.UInt.Basic
 
 namespace Char

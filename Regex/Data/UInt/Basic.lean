@@ -1,5 +1,5 @@
-import Std.Data.Fin.Lemmas
-import Std.Data.Nat.Lemmas
+import Batteries.Data.Fin.Lemmas
+import Batteries.Data.Nat.Lemmas
 import Regex.Data.Fin.Basic
 import Regex.Data.Nat.Basic
 

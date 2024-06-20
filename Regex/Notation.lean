@@ -52,6 +52,7 @@ private def mkTermOfLook (l : NFA.Look) : Term :=
   match l with
   | .Start => Syntax.mkApp (mkCIdent ``NFA.Look.Start) #[]
   | .End => Syntax.mkApp (mkCIdent ``NFA.Look.End) #[]
+  | .EndWithOptionalLF => Syntax.mkApp (mkCIdent ``NFA.Look.EndWithOptionalLF) #[]
   | .StartLF => Syntax.mkApp (mkCIdent ``NFA.Look.StartLF) #[]
   | .EndLF => Syntax.mkApp (mkCIdent ``NFA.Look.EndLF) #[]
   | .StartCRLF => Syntax.mkApp (mkCIdent ``NFA.Look.StartCRLF) #[]
@@ -70,6 +71,16 @@ private def mkTermOfState (s : NFA.Checked.State n) : Term :=
   match s with
   | .Empty next =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Empty) #[Quote.quote next]
+  | .NextChar offset next =>
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.NextChar) #[Quote.quote offset, Quote.quote next]
+  | .Fail =>
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Fail) #[]
+  | .ChangeFrameStep f t =>
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.ChangeFrameStep) #[Quote.quote f, Quote.quote t]
+  | .RemoveFrameStep s =>
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.RemoveFrameStep) #[Quote.quote s]
+  | .BackRef b f sid =>
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.BackRef) #[Quote.quote b, Quote.quote f, Quote.quote sid]
   | .ByteRange t =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.ByteRange) #[Quote.quote t]
   | .SparseTransitions transitions =>

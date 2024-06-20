@@ -194,10 +194,15 @@ private def hir_assertion (ast : AstItems.Assertion) (flags : Syntax.Flags) : Hi
   | .EndLine =>
       if multi_line then if crlf then HirKind.Look (.EndCRLF) else HirKind.Look (.EndLF)
       else HirKind.Look (.End)
+  | .EndLineWithOptionalLF =>
+      if multi_line then if crlf then HirKind.Look (.EndCRLF) else HirKind.Look (.EndLF)
+      else HirKind.Look (Look.EndWithOptionalLF)
   | .StartText =>
       HirKind.Look (Look.Start)
   | .EndText =>
       HirKind.Look (Look.End)
+  | .EndTextWithOptionalLF =>
+      HirKind.Look (Look.EndWithOptionalLF)
   | .WordBoundary =>
       HirKind.Look (Look.WordUnicode)
   | .NotWordBoundary =>
@@ -218,12 +223,27 @@ private def hir_capture (g : AstItems.Group) (expr: Hir) : Hir :=
     match g.kind with
     | .CaptureIndex captureIndex => (some captureIndex, none)
     | .NonCapturing _ => (none, none)
+    | .Lookaround _ => (none, none)
 
   match index with
   | some index =>
     let cap : Syntax.Capture := Syntax.Capture.mk index name expr
     Hir.mk (HirKind.Capture cap) default
-  | none => expr
+  | none =>
+      match g.kind with
+      | .Lookaround .PositiveLookahead =>
+        let look : Syntax.Lookaround := Syntax.Lookaround.PositiveLookahead expr
+        Hir.mk (HirKind.Lookaround look) default
+      | .Lookaround .NegativeLookahead =>
+        let look : Syntax.Lookaround := Syntax.Lookaround.NegativeLookahead expr
+        Hir.mk (HirKind.Lookaround look) default
+      | .Lookaround (.PositiveLookbehind i) =>
+        let look : Syntax.Lookaround := Syntax.Lookaround.PositiveLookbehind i expr
+        Hir.mk (HirKind.Lookaround look) default
+      | .Lookaround (.NegativeLookbehind i) =>
+        let look : Syntax.Lookaround := Syntax.Lookaround.NegativeLookbehind i expr
+        Hir.mk (HirKind.Lookaround look) default
+      | _ => expr
 
 def pop_concat_expr (stack : Array HirFrame) : Except String (Array HirFrame × Option Hir) :=
   match Array.pop? stack with
@@ -232,6 +252,7 @@ def pop_concat_expr (stack : Array HirFrame) : Except String (Array HirFrame × 
     | .Concat => Except.ok (stack, none)
     | .Expr expr => Except.ok (stack, (some expr))
     | .Literal c => Except.ok (stack, (some (Hir.mk (Syntax.HirKind.Literal c) default)))
+    | .BackRef f n => Except.ok (stack, (some (Hir.mk (Syntax.HirKind.BackRef f n) default)))
     | .ClassUnicode _ => Except.error "pop_concat_expr, unexpected frame"
     | .Repetition => Except.error "pop_concat_expr, unexpected frame .ClassUnicode"
     | .Group _ => Except.error "pop_concat_expr, unexpected frame .Group"
@@ -262,6 +283,7 @@ def pop_alt_expr (stack : Array HirFrame) : Except String (Array HirFrame × Opt
     | .Alternation => Except.ok (stack, none)
     | .Expr expr => Except.ok (stack, (some expr))
     | .Literal c => Except.ok (stack, (some (Hir.mk (Syntax.HirKind.Literal c) default)))
+    | .BackRef f n => Except.ok (stack, (some (Hir.mk (Syntax.HirKind.BackRef f n) default)))
     | __ => Except.error "pop_alt_expr, unexpected frame"
   | none => Except.ok (stack, none)
 
@@ -331,6 +353,8 @@ def visit_post (ast: Ast) : StateT Translator (Except String) PUnit := do
       set {t with stack := t.stack.push (HirFrame.Expr expr)}
     else
       set {t with stack := push_char c t.stack}
+  | .BackRef ⟨_, n⟩ =>
+    set {t with stack := t.stack.push (HirFrame.BackRef t.flags.is_case_insensitive n)}
   | .Dot _ =>
     let expr := (hir_dot t.flags)
     set {t with stack := t.stack.push (HirFrame.Expr expr)}

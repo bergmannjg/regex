@@ -1,8 +1,8 @@
-import Std.Data.Nat.Lemmas
-import Std.Data.Fin.Lemmas
-import Std.Data.Int.Lemmas
-import Std.Data.List.Basic
-import Std.Data.List.Lemmas
+import Batteries.Data.Nat.Lemmas
+import Batteries.Data.Fin.Lemmas
+import Batteries.Data.Int.Lemmas
+import Batteries.Data.List.Basic
+import Batteries.Data.List.Lemmas
 
 import Regex.Data.Nat.Basic
 

@@ -127,7 +127,7 @@ error: failed to parse pattern a[, error: unclosed character class
 #guard_msgs in
 def re := regex% "a["
 
-example : NFA.Checked.toString nfaOf'a'Checked = nfaOf'a'.toString  := by native_decide
+example : toString nfaOf'a'Checked = toString nfaOf'a'  := by native_decide
 
 example : toString (regex% "a").nfa = nfaOf'a'.toString := by native_decide
 
@@ -144,5 +144,25 @@ example : toString (regex% "a|b").nfa = «nfaOf'a|b'».toString := by native_dec
 example : toString (regex% "(a)").nfa = «nfaOf'(a)'».toString := by native_decide
 
 example : toString (regex% "[a]{0,2}").nfa = «nfaOf'[a]{0,2}'».toString := by native_decide
+
+private def caputesOf (c : Char) : Option Captures := some ⟨c.toString.toSubstring , #[]⟩
+
+example : toString (Regex.captures "a" (regex% "a")) = toString (caputesOf 'a') := by native_decide
+
+example : toString (Regex.captures "ab" (regex% "a(?=b)")) = toString (caputesOf 'a') := by native_decide
+
+example : regex% "a(?=b)" |> Regex.captures "ac" |>.isNone := by native_decide
+
+example : toString (Regex.captures "ac" (regex% "a(?!b)")) = toString (caputesOf 'a') := by native_decide
+
+example : regex% "a(?!b)" |> Regex.captures "ab" |>.isNone := by native_decide
+
+private def fullMatch (captures : Option Captures) : String :=
+  match captures with | some captures => captures.fullMatch.toString | none => ""
+
+example : (fullMatch <| Regex.captures
+            "∀ (n : Nat), 0 ≤ n"
+            (regex% r"^\p{Math}\s*(.(?<=\()([a-z])[^,]+),\s*(\p{Nd})\s*(\p{Math})\s*\2$"))
+           = "∀ (n : Nat), 0 ≤ n" := by native_decide
 
 end Test.Compiler

@@ -2,10 +2,11 @@ import Regex.Syntax.Hir
 import Regex.Nfa
 import Regex.Compiler
 import Regex.Utils
+import Regex.Data.Array.Basic
 import Lean.Util
 import Init.Core
-import Std.Data.Nat.Lemmas
-import Std.Tactic.Exact
+import Batteries.Data.Nat.Lemmas
+import Batteries.Tactic.Exact
 
 /-!
 ## BoundedBacktracker
@@ -80,6 +81,12 @@ def create (s : Substring) («at» : String.Pos) : CharPos :=
   let prev? := if «at» = 0 then none else get? s (s.prev «at»)
   ⟨s, «at», get? s «at», prev?⟩
 
+def prevOf (offset : Nat) (cp : CharPos) : Option CharPos :=
+  if offset ≤ cp.pos.byteIdx then
+    let pos := cp.s.prevn offset cp.pos
+    some (create cp.s pos)
+  else none
+
 /-- to next position CharPos of `cp` -/
 def next (cp : CharPos) : CharPos :=
   if cp.pos >= cp.s.stopPos then cp
@@ -105,7 +112,7 @@ inductive Frame (n : Nat) where
   /-- Look for a match starting at `sid` and the given position in the haystack. -/
   | Step (sid: Fin n) («at»: CharPos) : Frame n
   /-- Reset the given `slot` to the given `offset` (which might be `None`). -/
-  | RestoreCapture (slot: Nat) (offset: Option String.Pos) : Frame n
+  | RestoreCapture (slot: Nat) (offset: Nat × Nat × Option String.Pos) : Frame n
 
 instance : ToString $ Frame n where
   toString frame :=
@@ -183,7 +190,7 @@ abbrev Visited := Array UInt8
   /-- position in input string -/
   «at» : CharPos
   /-- slots, positions of captures in haystack -/
-  slots: Array (Option String.Pos)
+  slots: Array (Nat × Nat × (Option String.Pos))
   /-- is logging enabled -/
   logEnabled : Bool
   /-- log msgs -/
@@ -198,10 +205,15 @@ namespace SearchState
 /-- create the SearchState from an NFA -/
 def fromNfa (nfa : Checked.NFA) (input : Substring) («at» : String.Pos) (logEnabled : Bool)
     (h : 0 < nfa.n) : SearchState nfa.n :=
-  let slots : Array (Option String.Pos) :=
+  let slotIdxs : Array (Nat × Nat) :=
     nfa.states
-    |> Array.filter (fun s => match s with | Checked.State.Capture _ _ _ _ => true | _ => false)
-    |> Array.map (fun _ => none)
+    |> Array.filterMap (fun s =>
+        match s with
+        | Checked.State.Capture _ _ g s => some (s, g)
+        | _ => none)
+  let sorted := Array.qsort slotIdxs (fun (a, _) (b, _) => a < b) |> Array.unique
+  let slots : Array (Nat × Nat × (Option String.Pos)) :=
+    sorted |> Array.map (fun (g, s) => (g, s, none))
   {
     stack := default
     visited := Array.Ref.mkRef <|
@@ -269,6 +281,22 @@ theorem checkVisited'_true_eq (s : SearchState n) (h : checkVisited' s = (true, 
   split at h <;> simp_all
 
 end Visited
+
+/-- build pairs of subsequent slots -/
+private def toPairs (slots : Array (Nat × Nat × Option String.Pos))
+    : Array (Option (String.Pos × String.Pos)) :=
+  if slots.size % 2 = 0
+  then
+    let arr : Array (Option (String.Pos × String.Pos)) := slots.foldl (init := #[])
+      fun acc (i, _) =>
+        if i % 2 = 0 then acc
+        else
+          match slots.get? (i - 1), slots.get? (i) with
+          | some (_, _, some v0), some (_, _, some v1) => acc.push (some (v0,v1))
+          | some (_, _, none), some (_, _, none) => acc.push none
+          | _, _ => acc
+    arr
+  else #[]
 
 /-- add a msg to the SearchState while doing backtracking.  -/
 @[inline] private def withMsg (msg : Unit -> String) (state : SearchState n) : SearchState n :=
@@ -342,28 +370,65 @@ private def encodeChar? (c: Option Char) : String :=
 @[inline] private def step_empty (next : Fin n) (state : SearchState n) : SearchState n :=
   withMsg (fun _ => s!"{state.sid}: Empty -> {next}") {state with sid := next}
 
+@[inline] private def step_next_char (offset : Nat) (next : Fin n) (state : SearchState n) : SearchState n :=
+  match state.at.prevOf offset with
+  | some pos =>
+    withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} to charpos {pos} -> {next}") {state with sid := next, «at» := pos}
+  | none =>
+    withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} failed at charpos {state.at}") state
+
+@[inline] private def step_fail (state : SearchState n) : SearchState n :=
+  withMsg (fun _ => s!"{state.sid}: Fail") state
+
+@[inline] private def step_change_frame_step (f t : Fin n) (state : SearchState n) : SearchState n :=
+  let stack := state.stack |> List.dropWhile (fun s => match s with | .Step f' _ => f != f' | _ => true)
+  match stack with
+  |  .Step _ «at» :: stack' =>
+    let stack := Frame.Step t «at» :: stack'
+    withMsg (fun _ => s!"{state.sid}: ChangeFrameStep stack {stack}") {state with stack := stack}
+  | _ =>
+    withMsg (fun _ => s!"{state.sid}: ChangeFrameStep failed ") state
+
+@[inline] private def step_remove_frame_step (sid : Fin n) (state : SearchState n) : SearchState n :=
+  let stack := state.stack |> List.dropWhile (fun s => match s with | .Step f' _ => sid != f' | _ => true)
+  match stack with
+  |  .Step _ _ :: stack' =>
+    withMsg (fun _ => s!"{state.sid}: RemoveFrameStep stack {stack'}") {state with stack := stack'}
+  | _ =>
+    withMsg (fun _ => s!"{state.sid}: RemoveFrameStep failed ") state
+
 @[inline] private def step_look (look : Look) (next : Fin n)
      (state : SearchState n) : SearchState n :=
   match look with
   | .Start =>
     if state.at.atStart then
-      let state := (withMsg (fun _ => s!"Look.Start -> {next}") {state with sid := next})
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.Start -> {next}") {state with sid := next})
       state
     else state
   | .End =>
     if state.at.atStop then
-      let state := (withMsg (fun _ => s!"Look.End -> {next}") {state with sid := next})
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.End -> {next}") {state with sid := next})
       state
     else state
+  | .EndWithOptionalLF =>
+    if state.at.atStop then
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}") {state with sid := next})
+      state
+    else
+      match (state.at.curr?, state.at.next.atStop) with
+      | (some '\n', true) =>
+          let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}") {state with sid := next})
+          state
+      | _ => (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF failed at pos {state.at} atStop {state.at.next.atStop}") state)
   | .StartLF =>
     if state.at.atStart || state.at.prev?.any (· = '\n') then
-      (withMsg (fun _ => s!"Look.StartLF -> {next}") {state with sid := next})
+      (withMsg (fun _ => s!"{state.sid}: Look.StartLF -> {next}") {state with sid := next})
     else
         let prev := encodeChar? state.at.prev?
-        (withMsg (fun _ => s!"StartLF failed at pos {state.at.pos} prev '{prev}'") state)
+        (withMsg (fun _ => s!"{state.sid}: StartLF failed at pos {state.at.pos} prev '{prev}'") state)
   | .EndLF =>
     if state.at.atStop || state.at.curr?.any (· = '\n') then
-      (withMsg (fun _ => s!"Look.EndLF -> {next}") {state with sid := next})
+      (withMsg (fun _ => s!"{state.sid}: Look.EndLF -> {next}") {state with sid := next})
     else state
   | .StartCRLF =>
     if state.at.atStart
@@ -371,7 +436,7 @@ private def encodeChar? (c: Option Char) : String :=
         || (state.at.prev?.any (· = '\r')
             && (state.at.atStop || state.at.curr?.any (· != '\n')))
     then
-      (withMsg (fun _ => s!"Look.StartCRLF -> {next}") {state with sid := next})
+      (withMsg (fun _ => s!"{state.sid}: Look.StartCRLF -> {next}") {state with sid := next})
     else state
   | .EndCRLF =>
     if state.at.atStop
@@ -379,11 +444,11 @@ private def encodeChar? (c: Option Char) : String :=
         || state.at.curr?.any (· = '\n')
             && (state.at.pos.byteIdx = 0 || state.at.prev?.any (· != '\r'))
     then
-      (withMsg (fun _ => s!"Look.EndCRLF -> {next}") {state with sid := next})
+      (withMsg (fun _ => s!"{state.sid}: Look.EndCRLF -> {next}") {state with sid := next})
     else state
   | .WordUnicode =>
     if is_word_unicode state then
-      (withMsg (fun _ => s!"Look.WordUnicode -> {next}") {state with sid := next})
+      (withMsg (fun _ => s!"{state.sid}: Look.WordUnicode -> {next}") {state with sid := next})
     else
       let prev := encodeChar? state.at.prev?
       let curr := encodeChar? state.at.curr?
@@ -391,29 +456,29 @@ private def encodeChar? (c: Option Char) : String :=
         (fun _ => s!"WordUnicode failed at pos {state.at.pos} prev '{prev}' curr '{curr}'") state)
   | .WordUnicodeNegate =>
     if is_word_unicode_negate state then
-      let state := (withMsg (fun _ => s!"Look.WordUnicodeNegate -> {next}") {state with sid := next})
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.WordUnicodeNegate -> {next}") {state with sid := next})
       state
     else state
   | .WordStartUnicode =>
     if is_word_start_unicode state then
-      let state := (withMsg (fun _ => s!"Look.WordStartUnicode -> {next}") {state with sid := next})
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.WordStartUnicode -> {next}") {state with sid := next})
       state
     else state
   | .WordEndUnicode =>
     if is_word_end_unicode state then
-      let state := (withMsg (fun _ => s!"Look.WordEndUnicode -> {next}") {state with sid := next})
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.WordEndUnicode -> {next}") {state with sid := next})
       state
     else state
   | .WordStartHalfUnicode =>
     if is_word_start_half_unicode state then
       let state := (withMsg
-        (fun _ => s!"Look.WordStartHalfUnicode -> {next}") {state with sid := next})
+        (fun _ => s!"{state.sid}: Look.WordStartHalfUnicode -> {next}") {state with sid := next})
       state
     else state
   | .WordEndHalfUnicode =>
     if is_word_end_half_unicode state then
       let state := (withMsg
-        (fun _ => s!"Look.WordEndHalfUnicode -> {next}") {state with sid := next})
+        (fun _ => s!"{state.sid}: Look.WordEndHalfUnicode -> {next}") {state with sid := next})
       state
     else state
 
@@ -422,11 +487,47 @@ private def encodeChar? (c: Option Char) : String :=
   if state.at.atStop then state
   else if state.at.curr?.any (Checked.Transition.matches trans)  then
     let next := state.at.next
-    (withMsg (fun _ => s!"{state.sid}: ByteRange charpos {next} -> {trans.next}")
+    (withMsg (fun _ => s!"{state.sid}: ByteRange '{encodeChar? state.at.curr?}' matched at charpos {state.at} -> {trans.next}")
          {state with sid := trans.next, «at» := next})
   else
     (withMsg (fun _ =>
-      s!"{state.sid}: ByteRange failed with '{encodeChar? state.at.curr?}' at charpos {state.at}")
+      s!"{state.sid}: ByteRange '{encodeChar? state.at.curr?}' failed at charpos {state.at}")
+      state)
+
+@[inline] private def step_backreference_loop (s : String) (i : Nat) (case_insensitive : Bool) (cp : CharPos)
+    : Option CharPos :=
+  if i < s.length
+  then
+    if cp.atStop then none else
+    let c := s.get ⟨i⟩
+    let cf := if case_insensitive
+      then
+        match Unicode.case_fold_char c with
+        | #[⟨(cU, _), _⟩, ⟨(cL, _), _⟩] => if cU = c then cL else cU
+        | _ => c
+      else c
+    if cp.curr?.any (fun x => x = c || x = cf)
+    then step_backreference_loop s (i + 1) case_insensitive cp.next
+    else none
+  else some cp
+
+@[inline] private def step_backreference (b : Nat) (case_insensitive : Bool) (next : Fin n) (state : SearchState n)
+    : SearchState n :=
+  let slots := state.slots.filter (fun (_, g, _) => g = b)
+  match slots with
+  | #[(_, _, some f), (_, _, some t)] =>
+      let s := state.input.extract f t |>.toString
+      match step_backreference_loop s 0 case_insensitive state.at with
+      | some cp =>
+          (withMsg (fun _ => s!"{state.sid}: Backreference {b} '{s}' matched from charpos {state.at} to {cp} -> {next}")
+              {state with sid := next, «at» := cp})
+      | none =>
+        (withMsg (fun _ =>
+          s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, no match with '{s}'")
+          state)
+  | _ =>
+    (withMsg (fun _ =>
+      s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, slot not found")
       state)
 
 @[inline] private def step_sparse_transitions (_ : Checked.NFA)
@@ -437,12 +538,12 @@ private def encodeChar? (c: Option Char) : String :=
             (fun trans => state.at.curr?.any (Checked.Transition.matches trans)) with
     | some t =>
         let next := state.at.next
-        (withMsg (fun _ => s!"{state.sid}: SparseTransitions charpos {next} -> {t.next}")
+        (withMsg (fun _ => s!"{state.sid}: SparseTransitions '{encodeChar? state.at.curr?}' matched at charpos {state.at} -> {t.next}")
             {state with sid := t.next, «at» := next})
     | none =>
       (withMsg
         (fun _ =>
-            s!"{state.sid}: SparseTransitions failed with '{encodeChar? state.at.curr?}'") state)
+            s!"{state.sid}: SparseTransitions '{encodeChar? state.at.curr?}' failed") state)
 
 @[inline] private def step_union (alts : Array $ Fin n) (state : SearchState n) : SearchState n :=
   match alts with
@@ -482,15 +583,28 @@ private def encodeChar? (c: Option Char) : String :=
   (withMsg (fun _ => s!"BinaryUnion {state.sid} -> {alt1}")
        {state with sid := alt1, stack := Stack.push state.stack (Frame.Step alt2 state.at)})
 
+@[inline] private def step_change_capture_slot (next : Fin n) (slot : Nat)
+     (state : SearchState n) : SearchState n :=
+  if h : slot < state.slots.size
+  then
+    let (s, g, _) := state.slots.get ⟨slot, h⟩
+    let slots := state.slots.set ⟨slot, h⟩ (s, g, some state.at.pos)
+    (withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} slots {slots} -> {next}")
+                {state with sid := next, slots := slots })
+  else
+    (withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} invalid")
+                state)
+
 @[inline] private def step_capture (next : Fin n) (slot : Nat)
      (state : SearchState n) : SearchState n :=
   let (stack, slots) :=
     if h : slot < state.slots.size
     then
+      let (s, g, _) := state.slots.get ⟨slot, h⟩
       let frame := Frame.RestoreCapture slot (state.slots.get ⟨slot, h⟩)
-      (Stack.push state.stack frame, state.slots.set ⟨slot, h⟩ state.at.pos)
+      (Stack.push state.stack frame, state.slots.set ⟨slot, h⟩ (s, g, state.at.pos))
     else (state.stack, state.slots)
-  (withMsg (fun _ => s!"{state.sid}: Capture stack {stack} -> {next}")
+  (withMsg (fun _ => s!"{state.sid}: Capture stack {stack} slots {slots} -> {next}")
                 {state with sid := next, slots := slots, stack := stack })
 
 @[inline] private def step_match (pattern_id : PatternID)
@@ -503,7 +617,12 @@ private def encodeChar? (c: Option Char) : String :=
     (searchState : SearchState n) : SearchState n :=
   match state with
   | .Empty next => step_empty next searchState
+  | .NextChar offset next => step_next_char offset next searchState
+  | .Fail => step_fail searchState
+  | .ChangeFrameStep f t => step_change_frame_step f t searchState
+  | .RemoveFrameStep s => step_remove_frame_step s searchState
   | .Look look next => step_look look next searchState
+  | .BackRef b f next => step_backreference b f next searchState
   | .ByteRange t => step_byterange t searchState
   | .SparseTransitions transitions => step_sparse_transitions nfa transitions searchState
   | .Union alts => step_union alts searchState
@@ -628,7 +747,7 @@ theorem steps_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n) (h : st
     (true,
       {state' with
               msgs := if state'.logEnabled
-                    then state'.msgs.push s!"{state'.sid}: backtrackLoop with stack {state'.stack}"
+                    then state'.msgs.push s!"{state'.sid}: Backtrack.Loop stack {state'.stack}"
                     else state'.msgs})
 
 theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
@@ -651,16 +770,16 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   rw [hs] at hx
   simp_all
 
-@[inline] private def toNextFrameRestoreCapture (slot : Nat) (offset : Option String.Pos)
+@[inline] private def toNextFrameRestoreCapture (slot : Nat) (offset : ℕ × ℕ × Option String.Pos)
   (stack : Stack n) (state : SearchState n) : Bool × SearchState n :=
   if h : slot < state.slots.size
   then
     let state := {state with slots := state.slots.set ⟨slot,h⟩ offset, stack := stack}
-    let state := (withMsg (fun _ => s!"{state.sid}: RestoreCapture slots stack {stack}") state)
+    let state := (withMsg (fun _ => s!"{state.sid}: RestoreCapture stack {stack} slots {state.slots}") state)
     (true, state)
   else (false, state)
 
-theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat) (offset : Option String.Pos)
+theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat) (offset : ℕ × ℕ × Option String.Pos)
   (stack : Stack n) (s : SearchState n)
     (h : toNextFrameRestoreCapture slot offset stack s = (true, s1))
     : s.countVisited = s1.countVisited ∧ stack = s1.stack := by
@@ -790,23 +909,6 @@ decreasing_by
       apply Prod.Lex.right'
       · simp [Nat.le_of_eq h1.left]
       · simp_all [h1.right]
-
-/-- build pairs of subsequent slots -/
-private def toPairs (slots : Array (Option String.Pos))
-    : Array (Option (String.Pos × String.Pos)) :=
-  if slots.size % 2 = 0
-  then
-    let slotsIdx := Array.mapIdx slots (fun i v => (i, v))
-    let arr : Array (Option (String.Pos × String.Pos)) := slotsIdx.foldl (init := #[])
-      fun acc (i, _) =>
-        if i.val % 2 = 0 then acc
-        else
-          match slots.get? (i.val - 1), slots.get? (i.val) with
-          | some (some v0), some (some v1) => acc.push (some (v0,v1))
-          | some none, some none => acc.push none
-          | _, _ => acc
-    arr
-  else #[]
 
 private def dropLastWhile (arr : Array  α) (p :  α -> Bool) : Array α :=
   arr |> Array.foldr (init := #[]) fun a acc =>

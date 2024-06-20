@@ -1,4 +1,4 @@
-import Std.Data.Fin.Lemmas
+import Batteries.Data.Fin.Lemmas
 
 namespace Fin
 

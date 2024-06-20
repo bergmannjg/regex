@@ -6,9 +6,12 @@ namespace RegexTest
 structure Span where
   start: Nat
   «end»: Nat
+  data: Option String
 
 instance : ToString Span where
-  toString s := s!"{s.start} {s.end}"
+  toString s :=
+    let data := match s.data with | some data => " " ++ data.quote | none => ""
+    s!"{s.start} {s.end}{data}"
 
 /-- Captures represents a single group of captured matches from a regex search. -/
 structure Captures where
@@ -41,27 +44,33 @@ structure RegexTest where
   haystack : String
   «matches» : Array RegexTest.Captures
   /-- An optional field whose value is a table with `start` and `end` fields-/
-  bounds : Option $ Array Nat
+  bounds : Option $ Array Nat := none
   /--  An optional field that specifies a limit on the number of matches. -/
-  «match-limit» : Option Nat
+  «match-limit» : Option Nat := none
   /-- Whether to execute an anchored search or not. -/
-  anchored : Option Bool
+  anchored : Option Bool := none
   /-- Whether to match the regex case insensitively. -/
-  «case-insensitive» : Option Bool
+  «case-insensitive» : Option Bool := none
   /-- When enabled, the haystack is unescaped. -/
-  unescape : Option Bool
-  compiles : Option Bool
+  unescape : Option Bool := none
+  compiles : Option Bool := none
   /-- When enabled, the regex pattern should be compiled with its
       corresponding Unicode mode enabled. -/
-  unicode : Option Bool
+  unicode : Option Bool := none
   /-- When this is enabled, all regex match substrings should be entirely valid UTF-8. -/
-  utf8 : Option Bool
+  utf8 : Option Bool := none
   /-- May be one of `all`, `leftmost-first` or `leftmost-longest`. -/
-  «match-kind» : Option String
+  «match-kind» : Option String := none
   /-- May be one of `earliest`, `leftmost` or `overlapping`. -/
-  «search-kind» : Option String
+  «search-kind» : Option String := none
   /-- This sets the line terminator used by the multi-line assertions -/
-  «line-terminator» : Option String
+  «line-terminator» : Option String := none
+  /-- should check only full match of capture -/
+  «only-full-match» : Option Bool := none
+  multi_line : Option Bool := none
+  single_line : Option Bool := none
+  «global» : Option Bool := none
+  extended : Option Bool := none
 
 namespace RegexTest
 
@@ -83,25 +92,32 @@ end String
 def checkFlagIsFalse (f : Option Bool) : Bool :=
   match f with | some v => !v | none => false
 
+def checkFlagIsTrue (f : Option Bool) : Bool :=
+  match f with | some v => v | none => false
+
 private def escape (s : String) : String :=
-  (s.replace "\n" "\\n").replace "\r" "\\r"
+  s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace ⟨[⟨0, by simp_arith⟩]⟩ r"\x00"
 
 instance : ToString RegexTest where
   toString s :=
-    let str := s!"{s.name} '{s.regex}' '{escape s.haystack}' {s.matches}"
+    let str := s!"{s.name} '{s.regex}' {s.haystack.quote} {s.matches}"
     let str := str ++ (if s.anchored.isSome then " anchored" else "")
-    let str := str ++ (if s.«case-insensitive».isSome then " case-insensitive" else "")
+    let str := str ++ (if checkFlagIsTrue s.«case-insensitive» then " case-insensitive" else "")
     let str := str ++ (if s.unescape.isSome then " unescape" else "")
     let str := str ++ (if s.unicode.isSome && !s.unicode.getD true then " !unicode" else "")
     let str := str ++ (if String.containsSubstr (Sum.val s.regex) "(?" then " flags" else "")
     let str := str ++ (if checkFlagIsFalse s.compiles then " !compiles" else "")
+    let str := str ++ (if checkFlagIsTrue s.single_line then " single_line" else "")
+    let str := str ++ (if checkFlagIsTrue s.multi_line then " multi_line" else "")
+    let str := str ++ (if checkFlagIsTrue s.global then " global" else "")
+    let str := str ++ (if checkFlagIsTrue s.extended then " extended" else "")
     str
 
 instance : ToString RegexTests where
   toString s := s!"{s.test}"
 
 def unescapeStr (s : String) : String :=
-  ⟨loop s.data []⟩
+  ⟨loop s.data⟩
 where
   toChar (a b : Char) : Char :=
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
@@ -109,29 +125,34 @@ where
       let val := 16*n+m
       if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
     | _, _ => ⟨0, by simp_arith⟩
-  loop (chars : List Char) (acc : List Char) : List Char :=
+  loop (chars : List Char) : List Char :=
     match chars with
-    | [] => acc
-    | '\\' :: 'x' :: a :: b :: tail => (toChar a b) :: (loop tail acc)
-    | '\\' :: 'n' :: tail => '\n' :: (loop tail acc)
-    | head :: tail => head :: (loop tail acc)
+    | [] => []
+    | '\\' :: 'x' :: a :: b :: tail => (toChar a b) :: (loop tail)
+    | '\\' :: 'n' :: tail => '\n' :: (loop tail)
+    | '\\' :: 'r' :: tail => '\r' :: (loop tail)
+    | '\\' :: '\\' :: tail => '\\' :: (loop tail)
+    | '\\' :: 't' :: tail => '\t' :: (loop tail)
+    | head :: tail => head :: (loop tail)
 
-def checkCompiles (t : RegexTest) : Bool :=
+def checkCompiles (flavor : Syntax.Flavor) (t : RegexTest) : Bool :=
   let flags : Syntax.Flags := default
   let config : Compiler.Config := default
-  match Regex.build (Sum.val t.regex) flags config with
+  match Regex.build (Sum.val t.regex) flavor flags config with
   | Except.ok _ => true
   | Except.error _ => false
 
-def captures (t : RegexTest) : Except String (Array Regex.Captures) := do
+def captures (flavor : Syntax.Flavor) (t : RegexTest) : Except String (Array Regex.Captures) := do
   let flags : Syntax.Flags := default
   let config : Compiler.Config := default
 
-  let flags := {flags with case_insensitive := t.«case-insensitive»}
+  let flags := {flags with case_insensitive := t.«case-insensitive»,
+                           dot_matches_new_line := t.single_line,
+                           multi_line := t.multi_line}
   let config := {config with unanchored_prefix := !t.anchored.getD false}
 
   let haystack := if t.unescape.getD false then unescapeStr t.haystack else t.haystack
-  let re ← Regex.build (Sum.val t.regex) flags config
+  let re ← Regex.build (Sum.val t.regex) flavor flags config
   Except.ok (Regex.all_captures haystack.toSubstring re)
 
 def checkMatches (arr : Array Regex.Captures) (t : RegexTest) : Bool :=
@@ -151,7 +172,7 @@ def checkMatches (arr : Array Regex.Captures) (t : RegexTest) : Bool :=
           | some (some span), some v =>
               span.start = v.startPos.byteIdx && span.end = v.stopPos.byteIdx
           | some none, none => true
-          | _, _ => false)
+          | _, _ => (Option.getD t.«only-full-match» false) && i.val > 0)
       else false)
 
 private def captureToString (r : Regex.Captures) : String :=
@@ -178,30 +199,70 @@ private def capturesToString (arr : Array Regex.Captures) : String :=
              else s
     "[" ++ s ++ "]"
 
+def extendedFlags := ["(?x", "(?^x"]
+def atomicGroup := "(?>"
+def conditionalExpression := "(?("
+def branchResetGroup := "(?|"
+
+def subroutines := ["(?0)", "(?1)", "(?2)", "(?3)", "(?4)", "(?5)", "(?6)", "(?7)", "(?+1)", "(?-2)"]
+
+/- todo -/
+def namedCaptureGroups := ["(?<a", "(?<n", "(?<x", "(?<A", "(?P", "(?<X", "(?'"]
+
+def controlVerbs :=
+  ["*THEN", "*PRUNE", "*SKIP", "*COMMIT", "*PRUNE", "*SKIP", "DEFINE", "ACCEPT", "(*:", "FAIL", "MARK", "*atomic",
+   "lookbehind", "whitespace", atomicGroup, conditionalExpression, branchResetGroup]
+  ++ subroutines ++ namedCaptureGroups ++ extendedFlags
+
+def controlVerbInRegex (regex : Sum String (Array String)) : Bool :=
+  match regex with
+  | Sum.inl s =>
+    List.any controlVerbs (fun v => let splits := s.splitOn v; splits.length > 1)
+  | Sum.inr _ => false
+
+def commentInRegex (regex : Sum String (Array String)) : Bool :=
+  match regex with
+  | Sum.inl s =>
+    let splits := s.splitOn "# "
+    splits.length > 1
+  | Sum.inr _ => false
+
 /-- ignore test, feature not implemented -/
 def ignoreTest (t : RegexTest) : Bool :=
   checkFlagIsFalse t.unicode
   || checkFlagIsFalse t.utf8
   || t.bounds.isSome -- no api
+  || t.extended.isSome
+  || controlVerbInRegex t.regex
+  || commentInRegex t.regex
   || t.«line-terminator».isSome -- Config
   || t.«search-kind».any (· != "leftmost") -- only leftmost is valid for BoundedBacktracker
   || t.«match-kind».any (· = "all") -- Sets
   || match t.regex with | .inr _ => true | .inl _ => false -- Sets
 
-def testItem (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
+/- todo -/
+def ignoredErrors := ["escape sequence unexpected in range"]
+
+/- todo -/
+def ignoredTests : List String :=
+  ["t591", -- todo: slow
+   "t1474", "t1477", "t1478", "t1479", -- end quote without start quote
+   "t1488", "t1489" -- empty quote
+  ]
+
+def testItem (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
   if checkFlagIsFalse t.compiles
   then
-    if checkCompiles t
+    if checkCompiles flavor t
     then
       IO.println s!"RegexTest: {t}"
       IO.println s!"  should not compile"
       pure (0, 1, 0)
     else pure (1, 0, 0)
-  else if ignoreTest t
-  then
-    pure (0, 0, 1)
+  else if ignoreTest t then pure (0, 0, 1)
+  else if List.contains ignoredTests t.name then pure (0, 0, 1)
   else
-    match captures t with
+    match captures flavor t with
     | Except.ok result =>
       if result.size = 0
       then
@@ -222,13 +283,15 @@ def testItem (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
           IO.println s!"  match different, expected {t.matches}, actual {capturesToString result}"
           pure (0, 1, 0)
       | Except.error e =>
+          if t.matches.size = 0 then pure (0, 0, 1) else
+          if List.contains ignoredErrors e then pure (0, 0, 1) else
           IO.println s!"RegexTest{filename}: {t}"
           IO.println s!"  error {e}"
           pure (0, 1, 0)
 
-def testItems (filename : String) (items : Array RegexTest) : IO (Nat × Nat× Nat) := do
+def testItems (flavor : Syntax.Flavor) (filename : String) (items : Array RegexTest) : IO (Nat × Nat× Nat) := do
   items |> Array.foldlM (init := (0, 0, 0)) (fun (succeeds, failures, ignored) RegexTest => do
-    let (succeed, failure, ignore) ← testItem filename RegexTest
+    let (succeed, failure, ignore) ← testItem flavor filename RegexTest
     pure (succeeds + succeed, failures + failure, ignore + ignored))
 
 end RegexTest

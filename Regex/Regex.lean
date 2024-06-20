@@ -53,9 +53,10 @@ instance : ToString Captures where
   toString c := s!"fullMatch: {c.fullMatch}\ngroups: {c.groups}"
 
 /-- Build a Regex from the given pattern. -/
-def build (s : String) (flags : Syntax.Flags := default) (config : Compiler.Config := default)
+def build (s : String) (flavor : Syntax.Flavor := default)
+    (flags : Syntax.Flags := default) (config : Compiler.Config := default)
     : Except String Regex := do
-  let nfa ← Syntax.AstItems.parse s >>= Syntax.translate flags >>= Compiler.compile config
+  let nfa ← Syntax.AstItems.parse s flavor >>= Syntax.translate flags >>= Compiler.compile config
   Except.ok ⟨nfa⟩
 
 namespace Log

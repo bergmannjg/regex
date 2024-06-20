@@ -1,4 +1,4 @@
-import Std.Data.Array.Basic
+import Batteries.Data.Array.Basic
 import Regex.Syntax.Hir
 import Regex.Nfa
 
@@ -43,7 +43,15 @@ private def patch («from» «to» : Unchecked.StateID) : CompilerM PUnit := do
   then
     match states.get ⟨«from», h⟩ with
     | .Empty _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Empty «to»))
+    | .NextChar offset _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.NextChar offset «to»))
+    | .Fail =>  Except.error s!"patch states .Fail unexpected"
+    | .ChangeFrameStep f t =>
+        if f = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.ChangeFrameStep «to» t))
+        else if t = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.ChangeFrameStep f «to»))
+        else Except.error "patch states, .ChangeFrameStep from and to not null"
+    | .RemoveFrameStep _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.RemoveFrameStep «to»))
     | .Look look _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Look look «to»))
+    | .BackRef b f _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.BackRef b f «to»))
     | .ByteRange t =>
         set (states.set ⟨«from», h⟩ (Unchecked.State.ByteRange {t with «next» := «to»}))
     | .Capture _ pattern_id group_index slot =>
@@ -79,12 +87,27 @@ private def add_union : CompilerM Unchecked.StateID :=
 private def add_union_reverse : CompilerM Unchecked.StateID  :=
   push (Unchecked.State.UnionReverse #[])
 
+private def add_backrefence (case_insensitive : Bool) (b : Nat)  : CompilerM Unchecked.StateID :=
+  push (Unchecked.State.BackRef b case_insensitive 0)
+
 private def c_range (start «end» : UInt32) : CompilerM ThompsonRef :=
   let trans: Unchecked.Transition := ⟨start, «end», 0⟩
   push' (Unchecked.State.ByteRange trans)
 
 private def add_empty : CompilerM Unchecked.StateID  :=
   push (Unchecked.State.Empty 0)
+
+private def add_fail  : CompilerM Unchecked.StateID :=
+  push (Unchecked.State.Fail)
+
+private def add_change_state : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.ChangeFrameStep 0 0)
+
+private def add_remove_state : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.RemoveFrameStep 0)
+
+private def add_next_char (offset : Nat) : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.NextChar offset 0)
 
 private def c_empty : CompilerM ThompsonRef :=
   push' (Unchecked.State.Empty 0)
@@ -105,6 +128,7 @@ private def c_literal (c : Char) : CompilerM ThompsonRef :=
 private def c_look : Syntax.Look -> CompilerM ThompsonRef
   | .Start => push' (Unchecked.State.Look NFA.Look.Start 0)
   | .End => push' (Unchecked.State.Look NFA.Look.End 0)
+  | .EndWithOptionalLF => push' (Unchecked.State.Look NFA.Look.EndWithOptionalLF 0)
   | .StartLF => push' (Unchecked.State.Look NFA.Look.StartLF 0)
   | .EndLF => push' (Unchecked.State.Look NFA.Look.EndLF 0)
   | .StartCRLF => push' (Unchecked.State.Look NFA.Look.StartCRLF 0)
@@ -239,6 +263,69 @@ private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (h : min ≤ m
   else c_empty
 termination_by sizeOf hir + sizeOf min + sizeOf max
 
+private def c_back_ref (case_insensitive : Bool) (n : Nat) : CompilerM ThompsonRef := do
+  let backrefence ← add_backrefence case_insensitive n
+  let empty ← add_empty
+  patch backrefence empty
+  pure ⟨backrefence, empty⟩
+
+private def c_lookaround (look : Lookaround) : CompilerM ThompsonRef := do
+  match look with
+  | .PositiveLookahead h =>
+    let compiled ← c h
+    let change_state ← add_change_state
+    let fail ← add_fail
+    let union ← add_union
+    let «end» ← add_empty
+
+    patch compiled.end change_state
+    patch union compiled.start
+    patch change_state fail
+    patch change_state «end»
+    patch union fail
+
+    pure ⟨union, «end»⟩
+  | .NegativeLookahead h =>
+    let compiled ← c h
+    let remove_state ← add_remove_state
+    let empty ← add_empty
+    let union ← add_union
+    let «end» ← add_empty
+
+    patch compiled.end remove_state
+    patch remove_state empty
+    patch union compiled.start
+    patch empty «end»
+    patch union empty
+
+    pure ⟨union, «end»⟩
+  | .PositiveLookbehind length h =>
+    let next_char ← add_next_char length
+    let compiled ← c h
+    let «end» ← add_empty
+
+    patch next_char compiled.start
+    patch compiled.end «end»
+
+    pure ⟨next_char, «end»⟩
+  | .NegativeLookbehind length h =>
+    let next_char ← add_next_char length
+    let compiled ← c h
+    let remove_state ← add_remove_state
+    let empty ← add_empty
+    let union ← add_union
+    let «end» ← add_empty
+
+    patch next_char compiled.start
+    patch compiled.end remove_state
+    patch remove_state empty
+    patch union next_char
+    patch empty «end»
+    patch union empty
+
+    pure ⟨union, «end»⟩
+termination_by sizeOf look
+
 private def c_repetition (rep : Repetition) : CompilerM ThompsonRef := do
   match rep with
   | .mk 0 (some 1) greedy h => do
@@ -273,6 +360,10 @@ private def c (hir : Hir) : CompilerM ThompsonRef :=
   | .Literal c => c_literal c
   | .Class (.Unicode cls) => c_unicode_class cls
   | .Look look => c_look look
+  | .Lookaround look =>
+    have : sizeOf look < sizeOf hir.kind := by simp [h]
+    c_lookaround look
+  | .BackRef f n => c_back_ref f n
   | .Repetition rep =>
     have : sizeOf rep < sizeOf hir.kind := by simp [h]
     c_repetition rep

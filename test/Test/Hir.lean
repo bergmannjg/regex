@@ -22,7 +22,7 @@ private def toString (x : Except String Hir) : String :=
   | Except.error e => s!"Error {e}"
 
 private def build (s : String) : Except String Hir := do
-  let ast ← Syntax.AstItems.parse s
+  let ast ← Syntax.AstItems.parse s Syntax.Flavor.Rust
   let hir ← Syntax.translate default ast
   Except.ok hir
 

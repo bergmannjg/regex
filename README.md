@@ -3,7 +3,8 @@
 A [regular expression](https://en.wikipedia.org/wiki/Regular_expression) engine written in
 [Lean 4](https://github.com/leanprover/lean4).
 
-This library is heavily based on the [Rust regex crate](https://docs.rs/regex/latest/regex/).
+This library is based on the [Rust regex crate](https://docs.rs/regex/latest/regex/)
+and extended for compatibility with [Pcre](https://www.pcre.org/).
 
 Main restrictions:
 
@@ -31,7 +32,7 @@ Get captures of "∀ (n : Nat), 0 ≤ n" :
 
 ```lean
 def Main : IO Unit := do
-  let re := regex% r"^\p{Math}\s*([^,]+),\s*(\p{Nd})\s*(\p{Math})\s*([a-z])$"
+  let re := regex% r"^\p{Math}\s*(.(?<=\()([a-z])[^,]+),\s*(\p{Nd})\s*(\p{Math})\s*\2$"
   let captures := Regex.captures "∀ (n : Nat), 0 ≤ n" re
   IO.println s!"{captures}"
 ```
@@ -40,8 +41,8 @@ Output is
 
 ```lean
 fullMatch: '∀ (n : Nat), 0 ≤ n', 0, 22
-groups: #[(some ('(n : Nat)', 4, 13)), (some ('0', 15, 16)),
-          (some ('≤', 17, 20)), (some ('n', 21, 22))]
+groups: #[(some ('(n : Nat)', 4, 13)), (some ('n', 5, 6)),
+          (some ('0', 15, 16)), (some ('≤', 17, 20))]
 ```
 
 Api
@@ -51,10 +52,10 @@ Api
 
 Components of regular expression:
 
-- *^* : Assertion Start of line
 - *\p{Math}* : match all characters with the Math property
-- *\s\** : match white space
+- *(?<=\\()* : lookbehind of char '('
 - *(\p{Nd})* : capturing group of numeric characters
+- *\2* : backreference to second capturing group
 
 ## Test
 
