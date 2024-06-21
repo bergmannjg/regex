@@ -54,8 +54,8 @@ private def patch («from» «to» : Unchecked.StateID) : CompilerM PUnit := do
     | .BackRef b f _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.BackRef b f «to»))
     | .ByteRange t =>
         set (states.set ⟨«from», h⟩ (Unchecked.State.ByteRange {t with «next» := «to»}))
-    | .Capture _ pattern_id group_index slot =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.Capture «to» pattern_id group_index slot))
+    | .Capture role _ pattern_id group_index slot =>
+        set (states.set ⟨«from», h⟩ (Unchecked.State.Capture role «to» pattern_id group_index slot))
     | .BinaryUnion alt1 alt2 =>
         if alt1 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion «to» alt2))
         else if alt2 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion alt1 «to»))
@@ -140,8 +140,8 @@ private def c_look : Syntax.Look -> CompilerM ThompsonRef
   | .WordStartHalfUnicode => push' (Unchecked.State.Look NFA.Look.WordStartHalfUnicode 0)
   | .WordEndHalfUnicode => push' (Unchecked.State.Look NFA.Look.WordEndHalfUnicode 0)
 
-private def c_cap' (pattern_id slot: Nat) : CompilerM Unchecked.StateID  :=
-  push (Unchecked.State.Capture 0 0 pattern_id slot)
+private def c_cap' (role : Capture.Role) (pattern_id slot: Nat) : CompilerM Unchecked.StateID  :=
+  push (Unchecked.State.Capture role 0 0 pattern_id slot)
 
 mutual
 
@@ -381,9 +381,9 @@ termination_by sizeOf hir
 private def c_cap (hir : Capture) : CompilerM ThompsonRef := do
   match hc : hir with
     | .mk pattern_id name sub =>
-      let start ← c_cap' pattern_id (pattern_id * 2)
+      let start ← c_cap' Capture.Role.Start pattern_id (pattern_id * 2)
       let inner ← c sub
-      let «end» ← c_cap' pattern_id (pattern_id * 2 + 1)
+      let «end» ← c_cap' Capture.Role.End pattern_id (pattern_id * 2 + 1)
       patch start inner.start
       patch inner.end «end»
       pure ⟨start, «end»⟩

@@ -14,6 +14,22 @@ see also [Tagged NFA](https://en.wikipedia.org/wiki/Tagged_Deterministic_Finite_
 /-- The identifier of a regex pattern, represented by a Nat -/
 abbrev PatternID := Nat
 
+namespace Capture
+
+inductive Role where
+  | Start
+  | End
+deriving BEq
+
+def toString : Role -> String
+  | .Start => s!"Start"
+  | .End => s!"End"
+
+instance : ToString Role where
+  toString := toString
+
+end Capture
+
 /-- The high-level intermediate representation for a look-around assertion. -/
 inductive Look where
   /-- Match the beginning of text. -/
@@ -125,7 +141,7 @@ inductive State where
        offset that is being recorded. Each capturing group has two slots
        corresponding to the start and end of the matching portion of that
        group. -/
-  | Capture (next: StateID) (pattern_id: PatternID) (group_index: Nat) (slot: Nat) : State
+  | Capture (role : Capture.Role) (next: StateID) (pattern_id: PatternID) (group_index: Nat) (slot: Nat) : State
   /-- A match state. There is at least one such occurrence of this state for
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State
@@ -155,8 +171,8 @@ def toString : State -> String
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
       s!"UnionReverse [{lines} ]"
   | .BinaryUnion alt1 alt2 => s!"binary-union({alt1}, {alt2})"
-  | .Capture next pattern_id group slot =>
-      s!"capture(pid={pattern_id}, group={group}, slot={slot}) => {next}"
+  | .Capture role next pattern_id group slot =>
+      s!"capture{role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
   | .Match pattern_id => s!"Match({pattern_id})"
 
 end State
@@ -243,7 +259,7 @@ inductive State (n : Nat) where
        offset that is being recorded. Each capturing group has two slots
        corresponding to the start and end of the matching portion of that
        group. -/
-  | Capture (next: Fin n) (pattern_id: PatternID) (group_index: Nat) (slot: Nat) : State n
+  | Capture (role: Capture.Role) (next: Fin n) (pattern_id: PatternID) (group_index: Nat) (slot: Nat) : State n
   /-- A match state. There is at least one such occurrence of this state for
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State n
@@ -253,7 +269,7 @@ private partial def beq' :  State n → State n → Bool
   | .ByteRange trans1 , .ByteRange trans2  =>
       trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
   | .SparseTransitions trans1 , .SparseTransitions trans2  => trans1.size = trans2.size
-  | .Capture ⟨n1, _⟩ p1 _ _,  .Capture ⟨n2, _⟩ p2 _ _  => n1 = n2 && p1 = p2
+  | .Capture r1 ⟨n1, _⟩ p1 _ _,  .Capture r2 ⟨n2, _⟩ p2 _ _  => r1 == r2 && n1 = n2 && p1 = p2
   | .Match p1,  .Match p2 => p1 = p2
   | _, _ => false
 
@@ -285,8 +301,8 @@ def toString : State n -> String
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
       s!"UnionReverse [{lines} ]"
   | .BinaryUnion alt1 alt2 => s!"binary-union({alt1}, {alt2})"
-  | .Capture next pattern_id group slot =>
-      s!"capture(pid={pattern_id}, group={group}, slot={slot}) => {next}"
+  | .Capture role next pattern_id group slot =>
+      s!"capture{role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
   | .Match pattern_id => s!"Match({pattern_id})"
 
 end State
@@ -358,8 +374,8 @@ private def toCkeckedState? (s : Unchecked.State) (n : Nat) : Option $ Checked.S
         match (toFin? alt1 n), (toFin? alt2 n) with
         | some alt1, some alt2 => (Checked.State.BinaryUnion alt1 alt2)
         | _, _ => none
-  | .Capture next pattern_id group slot =>
-        (toFin? next n) |> Option.map (Checked.State.Capture · pattern_id group slot)
+  | .Capture role next pattern_id group slot =>
+        (toFin? next n) |> Option.map (Checked.State.Capture role · pattern_id group slot)
   | .Match pattern_id => some (Checked.State.Match pattern_id)
 
 /-- transform Unchecked.NFA to Checked.NFA -/

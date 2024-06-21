@@ -175,7 +175,8 @@ private def hir_ascii_unicode_class (cls: AstItems.ClassAscii) (flags : Flags)
     | .Punct => #[⟨⟨'!','/'⟩, by simp_arith⟩, ⟨⟨':','@'⟩, by simp_arith⟩, ⟨⟨'[','`'⟩, by simp_arith⟩,
         ⟨⟨'{','~'⟩, by simp_arith⟩]
     | .Space => #[⟨⟨'\t','\t'⟩, by simp_arith⟩, ⟨⟨'¬','¬'⟩, by simp_arith⟩,
-        ⟨⟨'\x0B', '\x0C'⟩, by simp_arith⟩, ⟨⟨'\r','\r'⟩, by simp_arith⟩, ⟨⟨' ',' '⟩, by simp_arith⟩]
+        ⟨⟨'\x0B', '\x0C'⟩, by simp_arith⟩, ⟨⟨'\n','\n'⟩, by simp_arith⟩, ⟨⟨'\r','\r'⟩, by simp_arith⟩,
+        ⟨⟨' ',' '⟩, by simp_arith⟩]
     | .Upper => #[⟨⟨'A','Z'⟩, by simp_arith⟩]
     | .Word => #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','Z'⟩ , by simp_arith⟩, ⟨⟨'_','_'⟩ , by simp_arith⟩,
         ⟨⟨'a','z'⟩ , by simp_arith⟩]

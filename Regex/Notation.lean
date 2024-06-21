@@ -67,6 +67,14 @@ private def mkTermOfLook (l : NFA.Look) : Term :=
 instance : Quote NFA.Look where
   quote := mkTermOfLook
 
+private def mkTermOfRole (l : NFA.Capture.Role) : Term :=
+  match l with
+  | .Start => Syntax.mkApp (mkCIdent ``NFA.Capture.Role.Start) #[]
+  | .End => Syntax.mkApp (mkCIdent ``NFA.Capture.Role.End) #[]
+
+instance : Quote NFA.Capture.Role where
+  quote := mkTermOfRole
+
 private def mkTermOfState (s : NFA.Checked.State n) : Term :=
   match s with
   | .Empty next =>
@@ -93,9 +101,9 @@ private def mkTermOfState (s : NFA.Checked.State n) : Term :=
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.UnionReverse) #[Quote.quote alts]
   | .BinaryUnion alt1 alt2 =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.BinaryUnion) #[Quote.quote alt1, Quote.quote alt2]
-  | .Capture next id g s =>
+  | .Capture next r id g s =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Capture)
-        #[Quote.quote next, toNumLit id, toNumLit g, toNumLit s]
+        #[Quote.quote next, Quote.quote r, toNumLit id, toNumLit g, toNumLit s]
   | .Match id =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Match) #[toNumLit id]
 

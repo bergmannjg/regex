@@ -234,7 +234,7 @@ private def maybe_parse_special_word_boundary (pattern : String) (i : Nat)
   else
     Except.ok none
 
-private def maybe_parse_backref (pattern : String) (i : Nat)
+private def maybe_parse_backref_num (pattern : String) (i : Nat)
     : ParserM $ Option (NChars × BackRef) := do
   let state ← get
   let c := pattern.getAtCodepoint (i)
@@ -256,6 +256,46 @@ private def maybe_parse_backref (pattern : String) (i : Nat)
     if 0 < n && n ≤ state.capture_index
     then pure (some (2, ⟨span, n⟩))
     else pure none
+  else pure none
+
+private def maybe_parse_backref (pattern : String) (i : Nat)
+    : ParserM $ Option (NChars × BackRef) := do
+  let state ← get
+  let c := pattern.getAtCodepoint (i)
+  let c1 := pattern.getAtCodepoint (i + 1)
+  let c2 := pattern.getAtCodepoint (i + 2)
+  if c.isDigit
+  then maybe_parse_backref_num pattern i
+  else if c = 'g' && c1 = '{' && c2 = '-'
+  then
+    match ← maybe_parse_backref_num pattern (i + 3) with
+    | some (n, ⟨span, b⟩) =>
+      let c2 := pattern.getAtCodepoint (i + 3 + n)
+      if c2 = '}' then
+        if b ≤ state.capture_index then pure (n + 4, (⟨span, state.capture_index + 1 - b⟩ : BackRef))
+        else pure none
+      else pure none
+    | none => pure none
+  else if c = 'g' && c1 = '{'
+  then
+    match ← maybe_parse_backref_num pattern (i + 2) with
+    | some (n, b) =>
+      let c2 := pattern.getAtCodepoint (i + 2 + n)
+      if c2 = '}' then pure (n + 3, b) else pure none
+    | none => pure none
+  else if c = 'g' && c1 = '-'
+  then
+    match ← maybe_parse_backref_num pattern (i + 2) with
+    | some (n, ⟨span, b⟩) =>
+      if b ≤ state.capture_index then pure (n + 2, (⟨span, state.capture_index + 1 - b⟩ : BackRef))
+      else pure none
+    | none => pure none
+  else if c = 'g'
+  then
+    match ← maybe_parse_backref_num pattern (i + 1) with
+    | some (n, b) => pure (n + 1, b)
+    | none => pure none
+
   else pure none
 
 /-- Parse a Unicode class in either the single character notation `\pN`
@@ -850,7 +890,7 @@ private def push_group (pattern : String) (i : Nat) (concat : Concat)
     set {parser with stack_group := parser.stack_group.push (GroupState.Group concat group)}
     pure (n, Concat.mk (String.toSpan pattern i (i + 1)) #[])
 
-private def get_fixed_width (pattern : String) (ast : Ast) : ParserM Nat := do
+private def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat := do
   match ast with
   | .Literal _ => pure 1
   | .Dot _ => pure 1
@@ -948,11 +988,31 @@ private def add_char_to_concat (pattern : String) (i : Nat) (c : Char) (concat :
   let asts := concat.asts.push p.into_ast
   (Concat.mk (concat.span) asts)
 
+private def checkBackRefence (b : Nat) (ast: Ast) : Except String Bool := do
+  let check (ast : Ast) :=
+    match ast with
+    | .Group ⟨_, AstItems.GroupKind.CaptureIndex b', _⟩ => b = b'
+    | _ => false
+
+  match AstItems.find ast check with
+  | some ast =>
+      match get_fixed_width "" ast with
+      | Except.ok _ => pure true
+      | Except.error _ => Except.error s!"fixed width capture group of backreference {b} expected"
+  | none => Except.error s!"capture group {b} not found"
+
+/-- capture groups with a backreference should have fixed width -/
+private def checkBackRefences (b : Nat) (ast: Ast) : Except String Bool := do
+  if b = 0 then pure true
+  else
+    if ← checkBackRefence b ast then checkBackRefences (b - 1) ast else pure false
+
 /-- Parse the regular expression and return an abstract syntax tree. -/
 def parse (pattern : String) (flavor : Syntax.Flavor) : Except String Ast := do
   let concat : Concat := Concat.mk (String.toSpan pattern 0 pattern.length) #[]
   let (concat, parser) ← loop pattern 0 concat flavor default
   if parser.capture_index < parser.max_backreference
+      && (← checkBackRefences parser.max_backreference (Ast.Concat concat))
   then Except.error (toError pattern .BackRefenceInvalid)
   else pop_group_end pattern concat parser
   where

@@ -15,7 +15,7 @@ instance : MonadLift (Except String) IO where
 
 private def stack_ops (stack : Stack 1) : Nat × Stack 1 :=
   let frameStep : Frame 1 := Frame.Step default default
-  let frameRestoreCapture : Frame 1 := Frame.RestoreCapture default default
+  let frameRestoreCapture : Frame 1 := Frame.RestoreCapture Capture.Role.Start default default
   let stack := Stack.push stack frameStep
   let stack := Stack.push stack frameRestoreCapture
   match Stack.pop? stack with

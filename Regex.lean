@@ -34,7 +34,10 @@ The following features are not yet implemented in the Pcre flavor:
 * [subroutines](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC26),
 * [conditional patterns](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#TOC1),
 * [backtracking control](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC28),
-* [variable length look behind](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22).
+* [variable length look behind](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22),
+* [extended patterns](https://perldoc.perl.org/perlre#Extended-Patterns),
+* [named capture groups](https://perldoc.perl.org/perlre#(?NAME%3Epattern)),
+* capture groups with a backreference should have fixed width.
 
 ## Unicode
 
@@ -97,7 +100,7 @@ Get captures of "∀ (n : Nat), 0 ≤ n" :
 
 <pre>
 def Main : IO Unit := do
-  let re := regex% r"^\p{Math}\s*(.(?<=\()([a-z])[^,]+),\s*(\p{Nd})\s*(\p{Math})\s*\2$"
+  let re := regex% r"^\p{Math}\s*.(?<=\\()([a-z])[^,]+,\s*(\p{Nd})\s*(\p{Math})\s*\1$"
   let captures := Regex.captures "∀ (n : Nat), 0 ≤ n" re
   IO.println s!"{captures}"
 </pre>
@@ -106,8 +109,7 @@ Output is
 
 <pre>
 fullMatch: '∀ (n : Nat), 0 ≤ n', 0, 22
-groups: #[(some ('(n : Nat)', 4, 13)), (some ('n', 5, 6)),
-          (some ('0', 15, 16)), (some ('≤', 17, 20))]
+groups: #[(some ('n', 5, 6)), (some ('0', 15, 16)), (some ('≤', 17, 20))]
 </pre>
 
 Components of regular expression:
@@ -115,7 +117,7 @@ Components of regular expression:
 - *\p{Math}* : match all characters with the Math property
 - *(?<=\\()* : lookbehind of char '('
 - *(\p{Nd})* : capturing group of numeric characters
-- *\2* : backreference to second capturing group
+- *\1* : backreference to first capturing group
 
 ## Performance
 

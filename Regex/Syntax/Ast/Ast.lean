@@ -990,3 +990,19 @@ termination_by sizeOf ast
 
 instance : ToString Ast where
   toString ast := AstItems.toString ast 0
+
+partial def find (ast : Ast) (p : Ast -> Bool) : Option Ast :=
+  if p ast then some ast else
+    match ast with
+    | .Repetition ⟨_, _, _, item⟩ => find item p
+    | .Alternation ⟨_, items⟩ =>
+        match items |> Array.filterMap  (fun item => find item p) with
+        | #[ast] => some ast
+        | _ => none
+    | .Group ⟨_, _, item⟩ => find item p
+    | .Concat ⟨_, items⟩ =>
+        match items |> Array.filterMap  (fun item => find item p) with
+        | #[ast] => some ast
+        | _ => none
+
+    | _ => none

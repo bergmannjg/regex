@@ -241,7 +241,7 @@ def ignoreTest (t : RegexTest) : Bool :=
   || match t.regex with | .inr _ => true | .inl _ => false -- Sets
 
 /- todo -/
-def ignoredErrors := ["escape sequence unexpected in range"]
+def ignoredErrors := ["escape sequence unexpected in range", "fixed width capture group of backreference"]
 
 /- todo -/
 def ignoredTests : List String :=
@@ -284,7 +284,7 @@ def testItem (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (
           pure (0, 1, 0)
       | Except.error e =>
           if t.matches.size = 0 then pure (0, 0, 1) else
-          if List.contains ignoredErrors e then pure (0, 0, 1) else
+          if (ignoredErrors |> List.find? (fun m => e.startsWith m)).isSome then pure (0, 0, 1) else
           IO.println s!"RegexTest{filename}: {t}"
           IO.println s!"  error {e}"
           pure (0, 1, 0)

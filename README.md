@@ -33,7 +33,7 @@ Get captures of "∀ (n : Nat), 0 ≤ n" :
 
 ```lean
 def Main : IO Unit := do
-  let re := regex% r"^\p{Math}\s*(.(?<=\()([a-z])[^,]+),\s*(\p{Nd})\s*(\p{Math})\s*\2$"
+  let re := regex% r"^\p{Math}\s*.(?<=\()([a-z])[^,]+,\s*(\p{Nd})\s*(\p{Math})\s*\1$"
   let captures := Regex.captures "∀ (n : Nat), 0 ≤ n" re
   IO.println s!"{captures}"
 ```
@@ -42,8 +42,7 @@ Output is
 
 ```lean
 fullMatch: '∀ (n : Nat), 0 ≤ n', 0, 22
-groups: #[(some ('(n : Nat)', 4, 13)), (some ('n', 5, 6)),
-          (some ('0', 15, 16)), (some ('≤', 17, 20))]
+groups: #[(some ('n', 5, 6)), (some ('0', 15, 16)), (some ('≤', 17, 20))]
 ```
 
 Api
@@ -56,7 +55,7 @@ Components of regular expression:
 - *\p{Math}* : match all characters with the Math property
 - *(?<=\\()* : lookbehind of char '('
 - *(\p{Nd})* : capturing group of numeric characters
-- *\2* : backreference to second capturing group
+- *\1* : backreference to first capturing group
 
 ## Test
 
