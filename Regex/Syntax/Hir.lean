@@ -221,11 +221,11 @@ def fold [Inhabited α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
   | .Repetition ⟨_, _, _, sub⟩  => fold sub f init
   | .Capture _ => f init hir
   | .Concat hirs => hirs.attach |> Array.foldl (init := init)
-      (fun a h =>
+      (fun a (h : { x // x ∈ hirs}) =>
         have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
         fold h.val f a)
   | .Alternation hirs => hirs.attach |> Array.foldl (init := init)
-      (fun a h =>
+      (fun a (h : { x // x ∈ hirs}) =>
         have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
         fold h.val f a)
 termination_by sizeOf hir

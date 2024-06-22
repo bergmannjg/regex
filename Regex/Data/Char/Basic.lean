@@ -30,10 +30,6 @@ theorem succ_lt {c1 c2 : Char} (h : (c2.val.toNat - c1.val.toNat) = 1) : c1 < c2
   have hx : c1.val.toNat < c2.val.toNat := by simp_all [Nat.lt_of_sub_eq_succ h]
   exact hx
 
-theorem le_trans {c1 c2 c3 : Char} (h₁ : c1 ≤ c2) (h₂ : c2 ≤ c3) : c1 ≤ c3 := by
-  have h : c1.val.toNat ≤ c3.val.toNat := by exact Nat.le_trans h₁ h₂
-  exact h
-
 theorem min_le (c : Char) : Char.min ≤ c := by
   have h : 0 ≤ c.val.toNat := by simp_all
   exact h
@@ -49,8 +45,6 @@ theorem le_max (c : Char) : c ≤ Char.max := by
     have hx : c.val.toNat < 0x10FFFF.succ := h.right
     have hy : c.val.toNat ≤ 0x10FFFF := Nat.le_of_lt_succ hx
     exact hy
-
-theorem lt_def {a b : Char} : a < b ↔ a.val < b.val := .rfl
 
 theorem one_le_of_lt {c1 c2 : Char} (h : c1 < c2) : 1 ≤ c2.val :=
   have h : c1.val < c2.val := Char.lt_def.mp h

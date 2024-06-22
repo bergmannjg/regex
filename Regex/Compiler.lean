@@ -153,7 +153,7 @@ private def c_concat (hirs : Array Hir) : CompilerM ThompsonRef := do
 
     have : sizeOf tail < sizeOf hirs := Array.sizeOf_head?_of_tail h
     let hir ← tail.attach.foldlM (init := «end»)
-      (fun s h => do
+      (fun s (h : { x // x ∈ tail}) => do
         have : sizeOf h.val < sizeOf tail := Array.sizeOf_lt_of_mem h.property
         let hir ← c h.val
         patch s hir.start
@@ -183,7 +183,7 @@ private def c_alt_iter (hirs : Array Hir) : CompilerM ThompsonRef := do
 
       have : sizeOf tail' < sizeOf tail := Array.sizeOf_head?_of_tail hTail
       tail'.attach.forM
-        (fun h => do
+        (fun (h : { x // x ∈ tail'}) => do
           have : sizeOf h.val < sizeOf tail' := Array.sizeOf_lt_of_mem h.property
           let compiled ← c h.val
           patch union compiled.start
@@ -243,7 +243,7 @@ termination_by sizeOf hir + sizeOf n + 1
 
 /-- Compile the given expression such that it matches at least `min` times,
     but no more than `max` times.-/
-private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (h : min ≤ max)
+private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (_ : min ≤ max)
     : CompilerM ThompsonRef := do
   if h : 0 < max then
     let «prefix» ← c_exactly hir min

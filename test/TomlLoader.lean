@@ -1,7 +1,6 @@
 import Lean
 import Lake.Toml
 import Lake.Toml.Decode
-import Lake.Util.Newline
 
 import RegexTest
 
@@ -121,7 +120,7 @@ nonrec def load (tomlFile : FilePath) : IO $ Array RegexTest := do
     match (← IO.FS.readBinFile tomlFile |>.toBaseIO) with
     | .ok bytes =>
       if let some input := String.fromUTF8? bytes then
-        pure (crlf2lf input)
+        pure (input.crlfToLf)
       else
         throw $ .userError s!"{fileName} file contains invalid characters"
     | .error e => throw $ .userError s!"{e}"

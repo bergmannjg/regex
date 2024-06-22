@@ -51,14 +51,12 @@ This library implements part of “Basic Unicode Support” (Level 1) as specifi
 Hex Notation refers to the ability to specify a Unicode code point in a regular expression
 via its hexadecimal code point representation. These forms of hexadecimal notation are supported:
 
-<pre>
-\x7F            hex character code (exactly two digits)
-\x{10FFFF}      any hex character code corresponding to a Unicode code point
-\u007F          hex character code (exactly four digits)
-\u{7F}          any hex character code corresponding to a Unicode code point
-\U0000007F      hex character code (exactly eight digits)
-\U{7F}          any hex character code corresponding to a Unicode code point
-</pre>
+- \x7F            hex character code (exactly two digits)
+- \x{10FFFF}      any hex character code corresponding to a Unicode code point
+- \u007F          hex character code (exactly four digits)
+- \u{7F}          any hex character code corresponding to a Unicode code point
+- \U0000007F      hex character code (exactly eight digits)
+- \U{7F}          any hex character code corresponding to a Unicode code point
 
 ### RL1.2 Properties
 
@@ -69,13 +67,11 @@ and a type (`Unicode.PropertyType`) and may have values.
 
 These forms of property notation are supported:
 
-<pre>
-\pX               Unicode character class identified by a one-letter name
-\p{Greek}         Unicode character class given by property value
-\p{Script=Greek}  Unicode character class given by property name and value
-\PX               Negated Unicode character class identified by a one-letter name
-\P{Greek}         negated Unicode character class (general category or script)
-</pre>
+- \pX               Unicode character class identified by a one-letter name
+- \p{Greek}         Unicode character class given by property value
+- \p{Script=Greek}  Unicode character class given by property name and value
+- \PX               Negated Unicode character class identified by a one-letter name
+- \P{Greek}         negated Unicode character class (general category or script)
 
 The type `Unicode.PropertyName` contains all supported property names.
 
@@ -98,19 +94,19 @@ Main api for Regex library
 
 Get captures of "∀ (n : Nat), 0 ≤ n" :
 
-<pre>
+```
 def Main : IO Unit := do
   let re := regex% r"^\p{Math}\s*.(?<=\\()([a-z])[^,]+,\s*(\p{Nd})\s*(\p{Math})\s*\1$"
   let captures := Regex.captures "∀ (n : Nat), 0 ≤ n" re
   IO.println s!"{captures}"
-</pre>
+```
 
 Output is
 
-<pre>
+```
 fullMatch: '∀ (n : Nat), 0 ≤ n', 0, 22
 groups: #[(some ('n', 5, 6)), (some ('0', 15, 16)), (some ('≤', 17, 20))]
-</pre>
+```
 
 Components of regular expression:
 
@@ -131,13 +127,13 @@ The performance is tested for the regular expression **a?<sup>n</sup>a<sup>n</su
 the haystack a<sup>n</sup> where n means repetition i.e. a?a?aa for n = 2.
 To find a match for this expression the BoundedBacktracker has to traverse the entire search space.
 
-<table border="1" align="center">
-<tr><th>n</th><th>seconds</th><th>visited values</th><th>backtracks</></tr>
-<tr align="right"><td>100</td><td>0.005</td><td>20404</td><td>5050</td></tr>
-<tr align="right"><td>500</td><td>0.150</td><td>502004</td><td>125250</td></tr>
-<tr align="right"><td>1000</td><td>0.600</td><td>2004004</td><td>500500</td></tr>
-<tr align="right"><td>2000</td><td>2.200</td><td>8008004</td><td>2001000</td></tr>
-</table>
+|n|seconds|visited values|backtracks|
+|--|--|--|--|
+|100|0.005|20404|5050|
+|500|0.150|502004|125250|
+|1000|0.600|2004004|500500|
+|2000|2.200|8008004|2001000|
+
 
 The visited values are the encoded (StateID, HaystackOffset) pairs that have been visited
 by the backtracker within a single search (`BoundedBacktracker.SearchState`).
@@ -147,12 +143,11 @@ by the backtracker within a single search (`BoundedBacktracker.SearchState`).
 The performance is tested for the regular expression **(?i)Xyz** and
 a haystack which contains **xyz** as last element.
 
-<table border="1" align="center">
-<tr align="right"><th>size of haystack</th><th>seconds</th><th>visited values</th></tr>
-<tr align="right"><td>1 kb</td><td>0.170</td><td>5010</td></tr>
-<tr align="right"><td>100 kb</td><td>0.340</td><td>500010</td></tr>
-<tr align="right"><td>1000 kb</td><td>1.720</td><td>5000010</td></tr>
-</table>
+|size of haystack|seconds|visited values|
+|--|--|--|
+|1 kb|0.170|5010|
+|100 kb|0.340|500010|
+|1000 kb|1.720|5000010|
 
 ## Inspect tool
 
@@ -166,23 +161,23 @@ The inspect tool command line options:
 
 Output of *inspect ast 'a|b*
 
-<pre>
+```
 Alternation
   0: Literal (a|b,0,1) Verbatim 'a'
   1: Literal (a|b,2,3) Verbatim 'b'
-</pre>
+```
 
 Output of *inspect hir 'a|b*
 
-<pre>
+```
 Alternation
   0: Literal 'a'
   1: Literal 'b'
-</pre>
+```
 
 Output of *inspect compile 'a|b*
 
-<pre>
+```
 0: UnionReverse [ 2 3 ]
 1: Empty => 0
 2: SparseTransitions [ 0x00-0xd7ff => 1 0xe000-0x10ffff => 1 ]
@@ -193,13 +188,12 @@ Output of *inspect compile 'a|b*
 7: Empty => 8
 8: capture(pid=0, group=0, slot=1) => 9
 9: Match(0)
-</pre>
+```
 
 Output of *inspect captures 'a|b' a*
 
-<pre>
+```
 fullMatch: 'a', 0, 1
 groups: #[]
-</pre>
-
+```
 -/

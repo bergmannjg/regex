@@ -62,7 +62,7 @@ private def visit_class_item_loop' {α σ: Type} [Inhabited α]
   match item with
   | .Bracketed ⟨_ , _, kind⟩  => visit_class_loop' β kind
   | .Union ⟨_, items⟩  =>
-      items.attach.forM (fun item => do
+      items.attach.forM (fun (item : { x // x ∈ items}) => do
           have : sizeOf item.val < sizeOf items := Array.sizeOf_lt_of_mem item.property
           visit_class_item_loop' β item.val)
   | _ => pure ()
@@ -76,7 +76,7 @@ private def visit_class_loop' {α σ: Type} [Inhabited α]
   match ast with
   | .Item (ClassSetItem.Bracketed ⟨_, _, kind⟩ ) => visit_class_loop'  β kind
   | .Item (ClassSetItem.Union  ⟨_, items⟩) =>
-      items.attach.forM (fun item => do
+      items.attach.forM (fun (item : { x // x ∈ items}) => do
           have : sizeOf item.val < sizeOf items := Array.sizeOf_lt_of_mem item.property
           visit_class_item_loop' β item.val)
   | .BinaryOp op =>
@@ -113,7 +113,7 @@ def visit_loop {α σ: Type} [Inhabited α] (β : Visitor α σ) (ast : Ast) : M
     | .Alternation alt =>
       match alt with
       | .mk _ items =>
-        items.attach.forM (fun ast => do
+        items.attach.forM (fun (ast : { x // x ∈ items}) => do
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           visit_loop β ast.val)
     | .Group g =>
@@ -122,7 +122,7 @@ def visit_loop {α σ: Type} [Inhabited α] (β : Visitor α σ) (ast : Ast) : M
         visit_loop β ast'
     | .Concat concat => do
         have : sizeOf concat.asts < sizeOf concat := Concat.sizeOfAstsOfConcat concat
-        concat.asts.attach.forM (fun ast => do
+        concat.asts.attach.forM (fun (ast : { x // x ∈ concat.asts}) => do
           have : sizeOf ast.val < sizeOf concat.asts := Array.sizeOf_lt_of_mem ast.property
           visit_loop β ast.val)
 

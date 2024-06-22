@@ -902,7 +902,7 @@ private def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat :
   | .Concat concat =>
       match concat with
       | ⟨_, asts⟩ =>
-        let width ← asts.attach.foldlM (init := 0) (fun s ast => do
+        let width ← asts.attach.foldlM (init := 0) (fun s (ast : { x // x ∈ asts}) => do
             have : sizeOf ast.val < sizeOf asts := Array.sizeOf_lt_of_mem ast.property
             let width ← get_fixed_width pattern ast.val
             pure (s + width))
@@ -910,7 +910,7 @@ private def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat :
   | .Alternation alt =>
       match alt with
       | ⟨_, asts⟩ =>
-        let widths ← asts.attach.mapM (fun ast => do
+        let widths ← asts.attach.mapM (fun (ast : { x // x ∈ asts}) => do
             have : sizeOf ast.val < sizeOf asts := Array.sizeOf_lt_of_mem ast.property
             let width ← get_fixed_width pattern ast.val
             pure width)

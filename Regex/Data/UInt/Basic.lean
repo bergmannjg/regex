@@ -5,22 +5,12 @@ import Regex.Data.Nat.Basic
 
 namespace UInt32
 
-theorem lt_def {a b : UInt32} : a < b ↔ a.val < b.val := .rfl
+theorem add_def' {a b : UInt32} : UInt32.add a b = a + b := rfl
 
-theorem le_def {a b : UInt32} : a ≤ b ↔ a.val ≤ b.val := .rfl
-
-theorem add_def {a b : UInt32} : UInt32.add a b = a + b := rfl
-
-theorem sub_def {a b : UInt32} : UInt32.sub a b = a - b := rfl
-
-theorem eq_of_val_eq : ∀ {i j : UInt32}, Eq i.val j.val → Eq i j
-  | ⟨_, _⟩, ⟨_, _⟩, rfl => rfl
-
-theorem val_eq_of_eq {i j : UInt32} (h : Eq i j) : Eq i.val j.val :=
-  h ▸ rfl
+theorem sub_def' {a b : UInt32} : UInt32.sub a b = a - b := rfl
 
 theorem val_ne_of_ne {c d : UInt32} (h : Not (Eq c d)) : Not (Eq c.val d.val) :=
-  fun h' => absurd (eq_of_val_eq h') h
+  fun h' => absurd (UInt32.eq_of_val_eq h') h
 
 theorem one_le_of_lt {c1 c2 : UInt32} (h : c1 < c2) : 1 ≤ c2 :=
   Nat.zero_lt_of_lt h
@@ -38,7 +28,7 @@ theorem ofNat_eq (n : Nat) (h : n < UInt32.size) : (UInt32.ofNat n).val = ⟨n, 
 
 theorem ofNat_add_ofNat (n m : Nat) (hn : n < UInt32.size) (hm : m < UInt32.size)
   (hnm : n + m < UInt32.size) : (UInt32.ofNat n) + (UInt32.ofNat m) = UInt32.ofNat (n + m) := by
-  rw [← UInt32.add_def]
+  rw [← UInt32.add_def']
   unfold UInt32.add
   have hx : (UInt32.ofNat n).val = ⟨n, hn⟩ := UInt32.ofNat_eq n hn
   have hy : (UInt32.ofNat m).val = ⟨m, hm⟩ := UInt32.ofNat_eq m hm
@@ -56,7 +46,7 @@ theorem ofNat_add_ofNat (n m : Nat) (hn : n < UInt32.size) (hm : m < UInt32.size
 
 theorem toNat_add_toNat (n m : UInt32) (hnm : n.val + m.val < UInt32.size)
     : n.toNat + m.toNat = (n + m).toNat := by
-  rw [← UInt32.add_def]
+  rw [← UInt32.add_def']
   unfold UInt32.add
   unfold UInt32.toNat
   rw [Fin.add_def]
@@ -67,7 +57,7 @@ theorem toNat_sub_toNat {n m : UInt32} (hmn : m.val ≤ n.val) (h2 : n.val < UIn
     : n.toNat - m.toNat = (n - m).toNat := by
   have h1 : n.val - m.val < UInt32.size := Nat.le_lt_sub_lt hmn h2
   have h2 : m.val < UInt32.size := Nat.lt_of_le_of_lt hmn h2
-  rw [← UInt32.sub_def]
+  rw [← UInt32.sub_def']
   unfold UInt32.sub
   unfold UInt32.toNat
   rw [Fin.sub_def]
