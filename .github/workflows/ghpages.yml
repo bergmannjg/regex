@@ -32,6 +32,7 @@ jobs:
         with:
           lint-module: Regex
           use-mathlib-cache: false
+          use-github-cache: false
       - name: Build Doc
         run: |
           lake -R -Kenv=dev update
