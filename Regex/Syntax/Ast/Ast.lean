@@ -71,6 +71,8 @@ inductive ErrorKind
   | RepetitionCountUnclosed
   /-- A repetition operator was applied to a missing sub-expression. -/
   | RepetitionMissing
+  /-- A repetition operator was ungreedy and possessive. -/
+  | RepetitionUngreedyAndPossessive
   /-- The special word boundary syntax, `\b{something}`, was used, but
       either EOF without `}` was seen, or an invalid character in the
       braces was seen. -/
@@ -125,6 +127,7 @@ def toString : ErrorKind -> String
   | .RepetitionCountDecimalEmpty => "repetition quantifier expects a valid decimal"
   | .RepetitionCountUnclosed => "unclosed counted repetition"
   | .RepetitionMissing => "repetition operator missing expression"
+  | .RepetitionUngreedyAndPossessive => "ungreedy and possessive repetition not possible"
   | .SpecialWordBoundaryUnclosed =>
         "special word boundary assertion is either unclosed or contains an invalid character"
   | .SpecialWordBoundaryUnrecognized =>
@@ -630,7 +633,7 @@ mutual
 
 /-- A repetition operation applied to a regular expression. -/
 inductive Repetition where
-  | mk (span: Substring) (op: RepetitionOp) (greedy : Bool) (ast: Ast) : Repetition
+  | mk (span: Substring) (op: RepetitionOp) (greedy : Bool) (possessive : Bool) (ast: Ast) : Repetition
 
 /-- A grouped regular expression. -/
 inductive Group where
@@ -921,11 +924,13 @@ instance : ToString ClassSet where
 
 namespace Repetition
 
-def op (rep : Repetition) : RepetitionOp := match rep with | .mk _ op _ _ => op
+def op (rep : Repetition) : RepetitionOp := match rep with | .mk _ op _ _ _ => op
 
-def greedy (rep : Repetition) : Bool := match rep with | .mk _ _ greedy _ => greedy
+def greedy (rep : Repetition) : Bool := match rep with | .mk _ _ greedy _ _ => greedy
 
-def ast (rep : Repetition) : Ast := match rep with | .mk _ _ _ ast => ast
+def possessive (rep : Repetition) : Bool := match rep with | .mk _ _ _ possessive _ => possessive
+
+def ast (rep : Repetition) : Ast := match rep with | .mk _ _ _ _ ast => ast
 
 theorem sizeOfAstOfRepetition (rep : Repetition) : sizeOf rep.ast < sizeOf rep := by
   unfold Syntax.AstItems.Repetition.ast
@@ -944,7 +949,7 @@ def span (ast : Ast) : Substring :=
   | .ClassUnicode cls => cls.span
   | .ClassPerl cls => cls.span
   | .ClassBracketed ⟨span, _, _⟩ => span
-  | .Repetition ⟨span, _, _, _⟩ => span
+  | .Repetition ⟨span, _, _, _, _⟩ => span
   | .Alternation ⟨span, _⟩ => span
   | .Group ⟨span, _, _⟩ => span
   | .Concat concat => concat.span
@@ -965,7 +970,7 @@ def toString (ast : Ast) (col : Nat) : String :=
       s!"ClassBracketed negated {negated}{pre}{ClassSet.toString cls col}"
   | .Repetition rep =>
     match rep with
-    | .mk _ op greedy ast => s!"Repetition{pre}{op} greedy {greedy}{pre}{toString ast col}"
+    | .mk _ op greedy possessive ast => s!"Repetition{pre}{op} possessive {possessive} greedy {greedy}{pre}{toString ast col}"
   | .Alternation alt =>
     match alt with
     | .mk _ items =>
@@ -994,7 +999,7 @@ instance : ToString Ast where
 partial def find (ast : Ast) (p : Ast -> Bool) : Option Ast :=
   if p ast then some ast else
     match ast with
-    | .Repetition ⟨_, _, _, item⟩ => find item p
+    | .Repetition ⟨_, _, _, _, item⟩ => find item p
     | .Alternation ⟨_, items⟩ =>
         match items |> Array.filterMap  (fun item => find item p) with
         | #[ast] => some ast

@@ -332,8 +332,12 @@ private def parse_perl_class (pattern : String) (i : Nat) : Except String ClassP
   let (neg, kind) ← match c with
         | 'd' => pure (false, ClassPerlKind.Digit)
         | 'D' => pure (true, ClassPerlKind.Digit)
+        | 'h' => pure (false, ClassPerlKind.Space) -- todo: horizontal space
+        | 'H' => pure (true, ClassPerlKind.Space)
         | 's' => pure (false, ClassPerlKind.Space)
         | 'S' => pure (true, ClassPerlKind.Space)
+        | 'v' => pure (false, ClassPerlKind.Space) -- todo: vertical space
+        | 'V' => pure (true, ClassPerlKind.Space)
         | 'w' => pure (false, ClassPerlKind.Word)
         | 'W' => pure (true, ClassPerlKind.Word)
         | _ => Except.error s!"expected valid Perl class but got {c}"
@@ -368,7 +372,7 @@ private def parse_escape (pattern : String) (i : Nat) (inSetClass : Bool := fals
   | 'p' | 'P' =>
     let (n, cls) ← parse_unicode_class (c = 'P') pattern (i + 1)
     pure (NatPos.succ n, Primitive.Unicode cls)
-  | 'd' | 's' | 'w' | 'D' | 'S' | 'W' =>
+  | 'd' | 'h' | 's' | 'v' | 'w' | 'D' | 'H' | 'S' | 'V' | 'W' =>
     let cls ← parse_perl_class pattern i
     pure (NatPos.succ 0, Primitive.Perl cls)
   | 'a' => pure (NatPos.one, toVerbatim '\x07')
@@ -392,7 +396,6 @@ private def parse_escape (pattern : String) (i : Nat) (inSetClass : Bool := fals
   | 't' => pure (NatPos.one, toVerbatim '\t')
   | 'n' => pure (NatPos.one, toVerbatim '\n')
   | 'r' => pure (NatPos.one, toVerbatim '\r')
-  | 'V' => pure (NatPos.one, toVerbatim '\x0B')
   | 'z' =>
     pure (NatPos.succ 0,
       Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.EndText⟩)
@@ -465,7 +468,10 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
         let c := pattern.getAtCodepoint (i+n.val+1)
         if c = '}' then
           let c := pattern.getAtCodepoint (i+n.val+1+1)
-          let (greedy, offset) := if c = '?' then (false, 1) else (true, 0)
+          let (possessive, greedy, offset) :=
+            if c = '+' then (true, true, 1)
+            else if c = '?' then (false, false, 1)
+            else (false, true, 0)
           let asts := asts.push (
               Ast.Repetition
                 (Repetition.mk
@@ -473,6 +479,7 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
                   ⟨(String.toSpan pattern (i) (i+n.val+2+1)),
                   (RepetitionKind.Range (RepetitionRange.AtLeast count_start))⟩
                   greedy
+                  possessive
                   ast
               ))
           pure (1 +(n.val+1)+offset, (Concat.mk (Syntax.AstItems.span ast) asts))
@@ -481,7 +488,10 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
           let c := pattern.getAtCodepoint (i+n.val+1+m.val)
           if c = '}' then
             let c := pattern.getAtCodepoint (i+n.val+1+m.val+1)
-            let (greedy, offset) := if c = '?' then (false, 1) else (true, 0)
+            let (possessive, greedy, offset) :=
+              if c = '+' then (true, true, 1)
+              else if c = '?' then (false, false, 1)
+              else (false, true, 0)
             let asts := asts.push (
                 Ast.Repetition
                   (Repetition.mk
@@ -489,13 +499,17 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
                     ⟨(String.toSpan pattern (i) (i+n.val+2+offset)),
                     (RepetitionKind.Range (RepetitionRange.Bounded count_start count_end))⟩
                     greedy
+                    possessive
                     ast
                 ))
             pure (1 + (n.val+m.val+1+offset), (Concat.mk (Syntax.AstItems.span ast) asts))
           else Except.error (toError pattern .RepetitionCountUnclosed)
       else if c = '}' then
         let c := pattern.getAtCodepoint (i+n.val+1)
-        let (greedy, offset) := if c = '?' then (false, 1) else (true, 0)
+        let (possessive, greedy, offset) :=
+          if c = '+' then (true, true, 1)
+          else if c = '?' then (false, false, 1)
+          else (false, true, 0)
         let asts := asts.push (
             Ast.Repetition
               (Repetition.mk
@@ -503,6 +517,7 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
                 ⟨(String.toSpan pattern (i-1) (i+n.val+1+1)),
                 (RepetitionKind.Range (RepetitionRange.Exactly count_start))⟩
                 greedy
+                possessive
                 ast
             ))
         pure (1 + n.val+offset, (Concat.mk (Syntax.AstItems.span ast) asts))
@@ -746,14 +761,15 @@ private def parse_primitive (pattern : String) (i : Nat) : ParserM (NatPos × Pr
     pure (⟨1, by simp⟩, Primitive.Literal lit)
 
 /-- Parses an uncounted repetition operation. -/
-private def parse_uncounted_repetition (pattern : String) (i : Nat) (kind: RepetitionKind)
+private def parse_uncounted_repetition (pattern : String) (i : Nat) (kind: RepetitionKind) (possessive : Bool)
     (concat : Concat) : Except String (NChars × Concat) := do
   match Array.pop? concat.asts with
   | some (ast, asts) =>
     let op : AstItems.RepetitionOp := ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, kind⟩
     let c := pattern.getAtCodepoint (i + 1)
     let (n, greedy)  := if c = '?' then (1, false) else (0, true)
-    let r : Repetition := Repetition.mk (String.toSpan pattern i (i + 1)) op greedy ast
+    if !greedy && possessive then Except.error (toErrorAt pattern i .RepetitionUngreedyAndPossessive) else
+    let r : Repetition := Repetition.mk (String.toSpan pattern i (i + 1)) op greedy possessive ast
     let asts := asts.push (Ast.Repetition r)
     Except.ok (n, Concat.mk (concat.span) asts)
   | none => Except.error (toErrorAt pattern i .RepetitionMissing)
@@ -923,7 +939,7 @@ private def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat :
         else throw (toError pattern .FixedWidtExcpected)
   | .Repetition rep  =>
       match rep with
-      | AstItems.Repetition.mk _ (RepetitionOp.mk _ (.Range (.Exactly n))) _ _ => pure n
+      | AstItems.Repetition.mk _ (RepetitionOp.mk _ (.Range (.Exactly n))) _ _ _ => pure n
       | _ => throw (toError pattern .FixedWidtExcpected)
   | .Group ⟨_, GroupKind.CaptureIndex _, ast⟩  =>
         let width ← get_fixed_width pattern ast
@@ -1011,10 +1027,12 @@ private def checkBackRefences (b : Nat) (ast: Ast) : Except String Bool := do
 def parse (pattern : String) (flavor : Syntax.Flavor) : Except String Ast := do
   let concat : Concat := Concat.mk (String.toSpan pattern 0 pattern.length) #[]
   let (concat, parser) ← loop pattern 0 concat flavor default
+  let ast ← pop_group_end pattern concat parser
   if parser.capture_index < parser.max_backreference
-      && (← checkBackRefences parser.max_backreference (Ast.Concat concat))
+     && (← checkBackRefences parser.max_backreference ast)
   then Except.error (toError pattern .BackRefenceInvalid)
-  else pop_group_end pattern concat parser
+  else pure ast
+
   where
     /-- loop over chars of `pattern` to parse the regular expression -/
     loop (pattern : String) (i' : Nat) (concat : Concat) : ParserM Concat := do
@@ -1059,24 +1077,33 @@ def parse (pattern : String) (flavor : Syntax.Flavor) : Except String Ast := do
         | '?' =>
           if state.disabled_metacharacters
           then loop pattern (i+1) (add_char_to_concat pattern i c concat) else
-            let (n, p) ← parse_uncounted_repetition pattern i RepetitionKind.ZeroOrOne concat
+            let (possessive, offset) :=
+                  if (i + 1) < pattern.length && pattern.getAtCodepoint (i + 1) = '+'
+                  then (true, 1) else (false, 0)
+            let (n, p) ← parse_uncounted_repetition pattern i RepetitionKind.ZeroOrOne possessive concat
             have : pattern.length - (i + n + 1) < pattern.length - i := by
               simp [Nat.sum_succ_lt_of_not_gt _ _ _ h₀]
-            loop pattern (i+n+1) p
+            loop pattern (i+n+1+offset) p
         | '*' =>
           if state.disabled_metacharacters
           then loop pattern (i+1) (add_char_to_concat pattern i c concat) else
-            let (n, p) ← parse_uncounted_repetition pattern i RepetitionKind.ZeroOrMore concat
+            let (possessive, offset) :=
+                  if (i + 1) < pattern.length && pattern.getAtCodepoint (i + 1) = '+'
+                  then (true, 1) else (false, 0)
+            let (n, p) ← parse_uncounted_repetition pattern i RepetitionKind.ZeroOrMore possessive concat
             have : pattern.length - (i + n + 1) < pattern.length - i := by
               simp [Nat.sum_succ_lt_of_not_gt _ _ _ h₀]
-            loop pattern (i+n+1) p
+            loop pattern (i+n+1+offset) p
         | '+' =>
           if state.disabled_metacharacters
           then loop pattern (i+1) (add_char_to_concat pattern i c concat) else
-            let (n, p) ← parse_uncounted_repetition pattern i RepetitionKind.OneOrMore concat
+            let (possessive, offset) :=
+                  if (i + 1) < pattern.length && pattern.getAtCodepoint (i + 1) = '+'
+                  then (true, 1) else (false, 0)
+            let (n, p) ← parse_uncounted_repetition pattern i RepetitionKind.OneOrMore possessive concat
             have : pattern.length - (i + n + 1) < pattern.length - i := by
               simp [Nat.sum_succ_lt_of_not_gt _ _ _ h₀]
-            loop pattern (i+n+1) p
+            loop pattern (i+n+1+offset) p
         | '{' =>
           if state.disabled_metacharacters
           then loop pattern (i+1) (add_char_to_concat pattern i c concat) else

@@ -106,7 +106,7 @@ private def hir_repetition (r : AstItems.Repetition) (expr: Hir) (flags : Flags)
   then Hir.mk HirKind.Empty default
   else
     let greedy := if flags.is_swap_greed then !r.greedy else r.greedy
-    let rep : Syntax.Repetition := Syntax.Repetition.mk min max greedy expr
+    let rep : Syntax.Repetition := Syntax.Repetition.mk min max greedy r.possessive expr
     Hir.mk (HirKind.Repetition rep) default
 
 private def hir_dot (flags : Flags) : Hir :=
@@ -156,7 +156,7 @@ private def hir_perl_unicode_class (cls : AstItems.ClassPerl) (flags : Flags)
     let range : Array ClassUnicodeRange ← range_of_property "White_Space"
     Except.ok (unicode_fold_and_negate range flags cls.negated)
   | .Word =>
-    let range : Array ClassUnicodeRange ← range_of_property "Word"
+    let range : Array ClassUnicodeRange := ← range_of_property "Word"
     Except.ok (unicode_fold_and_negate range flags cls.negated)
 
 private def hir_ascii_unicode_class (cls: AstItems.ClassAscii) (flags : Flags)

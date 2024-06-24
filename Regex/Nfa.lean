@@ -58,6 +58,7 @@ inductive Look where
   | WordStartHalfUnicode : Look
   /-- Match the end half of a Unicode word boundary. -/
   | WordEndHalfUnicode : Look
+
 namespace Look
 
 def toString : Look -> String
@@ -86,6 +87,23 @@ namespace Unchecked
     The identifier may refer to a non existing state. -/
 abbrev StateID := Nat
 
+inductive EatMode where
+  /-- Eat frames until State  found -/
+  | Until : StateID -> EatMode
+  /-- Eat frames inclusive last occurunce of State. -/
+  | ToLast : StateID -> EatMode
+
+namespace EatMode
+
+def toString : EatMode -> String
+  | .Until sid => s!"Until {sid}"
+  | .ToLast sid => s!"ToLast {sid}"
+
+end EatMode
+
+instance : ToString EatMode where
+  toString := EatMode.toString
+
 /-- A single transition to another state.
     This transition may only be followed if the current char in the haystack
     falls in the inclusive range of chars specified. -/
@@ -110,10 +128,12 @@ inductive State where
   /-- An empty state whose only purpose is to forward the automaton to
       another state via an unconditional epsilon transition. -/
   | Empty (next: StateID) : State
-  /-- use netx char -/
+  /-- use next char -/
   | NextChar (offset : Nat) (next: StateID) : State
   /-- Fail, force backtrack -/
   | Fail : State
+  /-- remove Frame.Step in stack  -/
+  | Eat (mode : EatMode) (next: StateID) : State
   /-- change Frame.Step in stack and force backtrack -/
   | ChangeFrameStep («from» to: StateID) : State
   /-- remove Frame.Step in stack and force backtrack -/
@@ -152,6 +172,7 @@ def toString : State -> String
   | .Empty next => s!"Empty => {next}"
   | .NextChar offset next => s!"NextChar offset  {offset} => {next}"
   | .Fail => s!"Fail"
+  | .Eat s n => s!"Eat {s} => {n}"
   | .ChangeFrameStep «from» to => s!"ChangeFrameStep from {«from»} to {to}"
   | .RemoveFrameStep sid => s!"RemoveFrameStep {sid}"
   | .BackRef b f sid =>
@@ -204,6 +225,24 @@ instance : ToString Unchecked.NFA where
 
 namespace Checked
 
+inductive EatMode n where
+  /-- Eat frames until State  found -/
+  | Until : Fin n -> EatMode n
+  /-- Eat frames inclusive last occurunce of State. -/
+  | ToLast : Fin n -> EatMode n
+
+namespace EatMode
+
+def toString : EatMode n -> String
+  | .Until sid => s!"Until {sid}"
+  | .ToLast sid => s!"ToLast {sid}"
+
+end EatMode
+
+instance : ToString (EatMode n) where
+  toString := EatMode.toString
+
+
 /-- A single transition to another state.
     This transition may only be followed if the current char in the haystack
     falls in the inclusive range of chars specified. -/
@@ -232,6 +271,8 @@ inductive State (n : Nat) where
   | NextChar (offset : Nat) (next: Fin n) : State n
   /-- Fail, force backtracking -/
   | Fail : State n
+  /-- remove Frame.Step in stack  -/
+  | Eat (mode : EatMode n) (next: Fin n) : State n
   /-- change Frame.Step in stack and force backtracking -/
   | ChangeFrameStep (fr to: Fin n) : State n
   /-- remove Frame.Step in stack and force backtrack -/
@@ -282,6 +323,7 @@ def toString : State n -> String
   | .Empty next => s!"Empty => {next}"
   | .NextChar offset next => s!"NextChar offset {offset} => {next}"
   | .Fail => s!"Fail"
+  | .Eat s next => s!"Eat {s} => {next}"
   | .ChangeFrameStep f t => s!"ChangeFrameStep from {f} to {t}"
   | .RemoveFrameStep sid => s!"RemoveFrameStep {sid}"
   | .BackRef b f sid =>
@@ -349,6 +391,14 @@ private def toCkeckedState? (s : Unchecked.State) (n : Nat) : Option $ Checked.S
   | .Empty next => (toFin? next n) |> Option.map (Checked.State.Empty ·)
   | .NextChar offset next => (toFin? next n) |> Option.map (Checked.State.NextChar offset ·)
   | .Fail => some Checked.State.Fail
+  | .Eat (.Until s) next =>
+        match (toFin? s n), (toFin? next n) with
+        | some s, some next => some (Checked.State.Eat (.Until s) next)
+        |_, _ => none
+  | .Eat (.ToLast s) next =>
+        match (toFin? s n), (toFin? next n) with
+        | some s, some next => some (Checked.State.Eat (.ToLast s) next)
+        |_, _ => none
   | .ChangeFrameStep f t =>
         match (toFin? f n), (toFin? t n) with
         | some f, some t => some (Checked.State.ChangeFrameStep f t)

@@ -387,6 +387,33 @@ private def encodeChar? (c: Option Char) : String :=
 @[inline] private def step_fail (state : SearchState n) : SearchState n :=
   withMsg (fun _ => s!"{state.sid}: Fail") state
 
+/-- eat frames until State `sid` found -/
+@[inline] private def step_eat_until (sid next : Fin n) (state : SearchState n) : SearchState n :=
+  let stack := state.stack |> List.dropWhile (fun s => match s with | .Step f' _ => sid != f' | _ => true)
+
+  match stack with
+  |  .Step _ _ :: stack' =>
+    withMsg (fun _ => s!"{state.sid}: EatUntil {sid} stack {stack'} => {next}") {state with stack := stack', sid := next }
+  | _ =>
+    withMsg (fun _ => s!"{state.sid}: EatUntil failed ") state
+
+/-- eat frames inclusive last occurunce of State `sid`  -/
+@[inline] private def step_eat_to_last (sid next : Fin n) (state : SearchState n) : SearchState n :=
+  let index := state.stack |> List.reverse |> List.findIdx (fun s => match s with | .Step f' _ => sid = f' | _ => false)
+
+  if index < state.stack.length then
+    let index := state.stack.length -index
+    let stack := state.stack |> List.drop index
+
+    withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {stack} => {next}") {state with stack := stack, sid := next }
+  else withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {state.stack} => {next}") {state with sid := next }
+    --withMsg (fun _ => s!"{state.sid}: EatToLast failed ") state
+
+@[inline] private def step_eat (mode : Checked.EatMode n) (next : Fin n) (state : SearchState n) : SearchState n :=
+  match mode with
+  | .Until sid => step_eat_until sid next state
+  | .ToLast sid => step_eat_to_last sid next state
+
 @[inline] private def step_change_frame_step (f t : Fin n) (state : SearchState n) : SearchState n :=
   let stack := state.stack |> List.dropWhile (fun s => match s with | .Step f' _ => f != f' | _ => true)
   match stack with
@@ -491,14 +518,17 @@ private def encodeChar? (c: Option Char) : String :=
 
 @[inline] private def step_byterange (trans : Checked.Transition n) (state : SearchState n)
     : SearchState n :=
-  if state.at.atStop then state
+  if state.at.atStop then
+    (withMsg (fun _ =>
+      s!"{state.sid}: ByteRange failed at stop")
+      state)
   else if state.at.curr?.any (Checked.Transition.matches trans)  then
     let next := state.at.next
-    (withMsg (fun _ => s!"{state.sid}: ByteRange '{encodeChar? state.at.curr?}' matched at charpos {state.at} -> {trans.next}")
+    (withMsg (fun _ => s!"{state.sid}: ByteRange matched '{encodeChar? state.at.curr?}' at charpos {state.at} -> {trans.next}")
          {state with sid := trans.next, «at» := next})
   else
     (withMsg (fun _ =>
-      s!"{state.sid}: ByteRange '{encodeChar? state.at.curr?}' failed at charpos {state.at}")
+      s!"{state.sid}: ByteRange failed match '{encodeChar? state.at.curr?}' at charpos {state.at}")
       state)
 
 @[inline] private def step_backreference_loop (s : String) (i : Nat) (case_insensitive : Bool) (cp : CharPos)
@@ -645,6 +675,7 @@ private def encodeChar? (c: Option Char) : String :=
   | .Empty next => step_empty next searchState
   | .NextChar offset next => step_next_char offset next searchState
   | .Fail => step_fail searchState
+  | .Eat s next => step_eat s next searchState
   | .ChangeFrameStep f t => step_change_frame_step f t searchState
   | .RemoveFrameStep s => step_remove_frame_step s searchState
   | .Look look next => step_look look next searchState
@@ -801,7 +832,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   if h : slot < state.slots.size
   then
     let state := {state with slots := state.slots.set ⟨slot,h⟩ offset, stack := stack}
-    let state := (withMsg (fun _ => s!"{state.sid}: RestoreCapture stack {stack} slots {state.slots}") state)
+    let state := (withMsg (fun _ => s!"{state.sid}: Backtrack.RestoreCapture stack {stack} slots {state.slots}") state)
     (true, state)
   else (false, state)
 
@@ -825,7 +856,7 @@ theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat) (offset : ℕ ×
         toNextFrameStep nfa
           {state with sid := sid, «at» := «at», stack := stack,
                       msgs := if state.logEnabled
-                              then state.msgs.push s!"{state.sid}: Step stack {stack} at pos {state.at} -> {sid}"
+                              then state.msgs.push s!"{state.sid}: Backtrack.Step stack {stack} at pos {state.at} -> {sid}"
                               else state.msgs}
       | .RestoreCapture _ slot offset => toNextFrameRestoreCapture slot offset stack state
   | none =>
@@ -845,7 +876,7 @@ theorem toNextFrame_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
         slots := s.slots, logEnabled := s.logEnabled,
         recentCaptures := s.recentCaptures
         msgs := if s.logEnabled
-                then s.msgs.push s!"{s.sid}: Step stack {stack} at pos {s.at} -> {sid}"
+                then s.msgs.push s!"{s.sid}: Backtrack.Step stack {stack} at pos {s.at} -> {sid}"
                 else s.msgs, halfMatch := s.halfMatch,
         backtracks := s.backtracks }
     have h1 : state.countVisited < s1.countVisited ∨

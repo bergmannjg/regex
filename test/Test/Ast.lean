@@ -20,6 +20,7 @@ private def astOf'a?' : Ast :=
         (String.toSpan "a?" 0 2)
         ⟨String.toSpan "a?" 1 2, RepetitionKind.ZeroOrOne⟩
         true
+        false
         (Ast.Literal ⟨String.toSpan "a?" 0 1, LiteralKind.Verbatim, 'a'⟩))
 
 private def astOf'ab' : Ast :=

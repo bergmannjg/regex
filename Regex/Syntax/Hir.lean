@@ -165,7 +165,7 @@ inductive Lookaround where
 
 /-- A concatenation of regular expressions. -/
 inductive Repetition where
-  | mk (min: Nat) (max: Option Nat) (greedy : Bool) (sub: Hir) : Repetition
+  | mk (min: Nat) (max: Option Nat) (greedy : Bool) (possessive : Bool) (sub: Hir) : Repetition
 
 /-- The high-level intermediate representation for a capturing group. -/
 inductive Capture where
@@ -218,7 +218,7 @@ def fold [Inhabited α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
       | .NegativeLookahead sub => fold sub f init
       | .PositiveLookbehind _ sub => fold sub f init
       | .NegativeLookbehind _  sub => fold sub f init
-  | .Repetition ⟨_, _, _, sub⟩  => fold sub f init
+  | .Repetition ⟨_, _, _, _, sub⟩  => fold sub f init
   | .Capture _ => f init hir
   | .Concat hirs => hirs.attach |> Array.foldl (init := init)
       (fun a (h : { x // x ∈ hirs}) =>
@@ -284,10 +284,10 @@ def toString (hir : Hir) (col : Nat): String :=
         s!"NegativeLookbehind Length {i} {toString sub col}"
   | .Repetition rep =>
     match hr : rep with
-    | .mk min max greedy sub =>
+    | .mk min max greedy possessive sub =>
         have : sizeOf rep < sizeOf hir.kind := by simp [hk, hr]
         have : sizeOf sub < sizeOf rep := by simp [hr]
-        s!"Repetition {min} {max} greedy {greedy}{pre}sub {toString sub col}"
+        s!"Repetition {min} {max} possessive {possessive} greedy {greedy}{pre}sub {toString sub col}"
   | .Capture c =>
     match hc : c with
     | .mk index name sub =>

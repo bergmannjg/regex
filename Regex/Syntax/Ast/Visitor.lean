@@ -108,7 +108,7 @@ def visit_loop {α σ: Type} [Inhabited α] (β : Visitor α σ) (ast : Ast) : M
       pure default
     | .Repetition rep =>
       match rep with
-      | .mk _ _ _ ast' =>
+      | .mk _ _ _ _ ast' =>
         visit_loop β ast'
     | .Alternation alt =>
       match alt with

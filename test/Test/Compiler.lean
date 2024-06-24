@@ -107,14 +107,14 @@ private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
     .Capture NFA.Capture.Role.Start 4 0 0 0,
-    .Empty 6,
+    .Empty 8,
     .Empty 12,
-    .Union #[8, 5],
-    .Empty 9,
-    .SparseTransitions #[⟨'a'.val, 'a'.val, 7⟩],
-    .Union #[11, 5],
+    .Empty 11,
+    .SparseTransitions #[⟨'a'.val, 'a'.val, 6⟩],
+    .Union #[7, 5],
     .Empty 5,
-    .SparseTransitions #[⟨'a'.val, 'a'.val, 10⟩],
+    .SparseTransitions #[⟨'a'.val, 'a'.val, 9⟩],
+    .Union #[10, 5],
     .Capture NFA.Capture.Role.End 13 0 0 1,
     .Match 0
     ], 2, 0⟩
@@ -164,5 +164,11 @@ example : (fullMatch <| Regex.captures
             "∀ (n : Nat), 0 ≤ n"
             (regex% r"^\p{Math}\s*.(?<=\()([a-z])[^,]+,\s*(\p{Nd})\s*(\p{Math})\s*\1$"))
            = "∀ (n : Nat), 0 ≤ n" := by native_decide
+
+/- match a double-quoted string -/
+example : (fullMatch <| Regex.captures
+            "\"αbc\""
+            (regex% "\"(?:[^\"\\\\]++|\\.)*+\""))
+           = "\"αbc\"" := by native_decide
 
 end Test.Compiler

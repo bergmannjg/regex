@@ -75,6 +75,14 @@ private def mkTermOfRole (l : NFA.Capture.Role) : Term :=
 instance : Quote NFA.Capture.Role where
   quote := mkTermOfRole
 
+private def mkTermOfEatMode (m : NFA.Checked.EatMode n) : Term :=
+  match m with
+  | .Until sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.Until) #[Quote.quote sid]
+  | .ToLast sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.ToLast) #[Quote.quote sid]
+
+instance : Quote (NFA.Checked.EatMode n) where
+  quote := mkTermOfEatMode
+
 private def mkTermOfState (s : NFA.Checked.State n) : Term :=
   match s with
   | .Empty next =>
@@ -83,6 +91,8 @@ private def mkTermOfState (s : NFA.Checked.State n) : Term :=
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.NextChar) #[Quote.quote offset, Quote.quote next]
   | .Fail =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Fail) #[]
+  | .Eat m next  =>
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Eat) #[Quote.quote m, Quote.quote next]
   | .ChangeFrameStep f t =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.ChangeFrameStep) #[Quote.quote f, Quote.quote t]
   | .RemoveFrameStep s =>
