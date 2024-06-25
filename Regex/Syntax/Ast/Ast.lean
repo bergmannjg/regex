@@ -93,6 +93,22 @@ inductive ErrorKind
   | UnsupportedLookAround
   /-- ClassAsci not found. -/
   | UnkownAsciiClass
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedNamedGroups
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedSubroutines
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedFlagShorthand
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedAtomicGroup
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedConditionalExpression
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedBranchResetGroup
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedControlVerbs
+  /-- Feature not implemented. -/
+  | FeatureNotImplementedFlagExtended
 
 namespace ErrorKind
 
@@ -141,6 +157,14 @@ def toString : ErrorKind -> String
   | .UnsupportedBackreference => "backreferences are not supported"
   | .UnsupportedLookAround => "look-around, including look-ahead and look-behind, is not supported"
   | .UnkownAsciiClass => "ascii class unkown"
+  | .FeatureNotImplementedNamedGroups => "feature not implemented: NamedGroups"
+  | .FeatureNotImplementedSubroutines => "feature not implemented: Subroutines"
+  | .FeatureNotImplementedFlagShorthand => "feature not implemented: Flag ^"
+  | .FeatureNotImplementedAtomicGroup => "feature not implemented: AtomicGroup"
+  | .FeatureNotImplementedConditionalExpression => "feature not implemented: ConditionalExpression"
+  | .FeatureNotImplementedBranchResetGroup => "feature not implemented: BranchResetGroup"
+  | .FeatureNotImplementedControlVerbs => "feature not implemented: ControlVerb"
+  | .FeatureNotImplementedFlagExtended => "feature not implemented: Flag x"
 
 end ErrorKind
 

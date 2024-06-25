@@ -828,14 +828,30 @@ private def parse_group (pattern : String) (i : Nat)
   let c1 := pattern.getAtCodepoint i
   let c2 := pattern.getAtCodepoint (i + 1)
   let c3 := pattern.getAtCodepoint (i + 2)
-  if c1 = '?' && c2  = 'P' && c3  = '<' then
-    let chars := (pattern.data.drop (i+2)).takeWhile (· != '>')
-    let n := chars.length + 3
-    let parser := {parser with capture_index := parser.capture_index + 1 }
-    -- todo: add CaptureName
-    let g := Group.mk (String.toSpan pattern i (i + n + 1)) (.CaptureIndex parser.capture_index) Ast.Empty
-    set parser
-    pure (n, Sum.inr g)
+  if c1 = '?' && c2  = '<' && c3.isAlpha then
+    throw  (toError pattern .FeatureNotImplementedNamedGroups)
+  else if c1 = '?' && c2  = 'P' && (c3 = '<'  || c3 = '=') then
+    throw  (toError pattern .FeatureNotImplementedNamedGroups)
+  else if c1 = '?' && c2  = '\'' then
+    throw  (toError pattern .FeatureNotImplementedNamedGroups)
+  else if c1 = '?' && c2.isDigit then
+    throw  (toError pattern .FeatureNotImplementedSubroutines)
+  else if c1 = '?' && (c2 = '-'  || c2 = '+') && c3.isDigit then
+    throw  (toError pattern .FeatureNotImplementedSubroutines)
+  else if c1 = '?' && c2 = '&' then
+    throw  (toError pattern .FeatureNotImplementedSubroutines)
+  else if c1 = '?' && c2 = '?' then
+    throw  (toError pattern .FeatureNotImplementedSubroutines)
+  else if c1 = '?' && c2 = '^' then
+    throw  (toError pattern .FeatureNotImplementedFlagShorthand)
+  else if c1 = '?' && c2 = '>' then
+    throw  (toError pattern .FeatureNotImplementedAtomicGroup)
+  else if c1 = '?' && c2 = '(' then
+    throw  (toError pattern .FeatureNotImplementedConditionalExpression)
+  else if c1 = '?' && c2 = '|' then
+    throw  (toError pattern .FeatureNotImplementedBranchResetGroup)
+  else if c1 = '*' && (c2.isUpper || c2 = 'a' || c2 = ':') then
+    throw  (toError pattern .FeatureNotImplementedControlVerbs)
   else if c1 = '?' && c2  = '#' then
     let chars := (pattern.data.drop (i+1)).takeWhile (· != ')')
     let n := chars.length + 2
@@ -853,6 +869,9 @@ private def parse_group (pattern : String) (i : Nat)
     pure (5, Sum.inr g)
   else if c1 = '*' && String.startsAtCodepoint pattern "positive_lookahead:" (i+1) then
     let g := Group.mk (String.toSpan pattern i (i + 1)) (.Lookaround .PositiveLookahead) Ast.Empty
+    pure (20, Sum.inr g)
+  else if c1 = '*' && String.startsAtCodepoint pattern "negative_lookbehind:" (i+1) then
+    let g := Group.mk (String.toSpan pattern i (i + 1)) (.Lookaround (.NegativeLookbehind 0)) Ast.Empty
     pure (20, Sum.inr g)
   else if c1 = '?' && c2  = '!' then
     let g := Group.mk (String.toSpan pattern i (i + 1)) (.Lookaround .NegativeLookahead) Ast.Empty

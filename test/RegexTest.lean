@@ -148,7 +148,8 @@ def captures (flavor : Syntax.Flavor) (t : RegexTest) : Except String (Array Reg
 
   let flags := {flags with case_insensitive := t.«case-insensitive»,
                            dot_matches_new_line := t.single_line,
-                           multi_line := t.multi_line}
+                           multi_line := t.multi_line
+                           extended := t.extended}
   let config := {config with unanchored_prefix := !t.anchored.getD false}
 
   let haystack := if t.unescape.getD false then unescapeStr t.haystack else t.haystack
@@ -199,49 +200,21 @@ private def capturesToString (arr : Array Regex.Captures) : String :=
              else s
     "[" ++ s ++ "]"
 
-def extendedFlags := ["(?x", "(?^x"]
-def atomicGroup := "(?>"
-def conditionalExpression := "(?("
-def branchResetGroup := "(?|"
-
-def subroutines := ["(?0)", "(?1)", "(?2)", "(?3)", "(?4)", "(?5)", "(?6)", "(?7)", "(?+1)", "(?-2)"]
-
-/- todo -/
-def namedCaptureGroups := ["(?<a", "(?<n", "(?<x", "(?<A", "(?P", "(?<X", "(?'"]
-
-def controlVerbs :=
-  ["*THEN", "*PRUNE", "*SKIP", "*COMMIT", "*PRUNE", "*SKIP", "DEFINE", "ACCEPT", "(*:", "FAIL", "MARK", "*atomic",
-   "lookbehind", "whitespace", atomicGroup, conditionalExpression, branchResetGroup]
-  ++ subroutines ++ namedCaptureGroups ++ extendedFlags
-
-def controlVerbInRegex (regex : Sum String (Array String)) : Bool :=
-  match regex with
-  | Sum.inl s =>
-    List.any controlVerbs (fun v => let splits := s.splitOn v; splits.length > 1)
-  | Sum.inr _ => false
-
-def commentInRegex (regex : Sum String (Array String)) : Bool :=
-  match regex with
-  | Sum.inl s =>
-    let splits := s.splitOn "# "
-    splits.length > 1
-  | Sum.inr _ => false
-
 /-- ignore test, feature not implemented -/
 def ignoreTest (t : RegexTest) : Bool :=
   checkFlagIsFalse t.unicode
   || checkFlagIsFalse t.utf8
   || t.bounds.isSome -- no api
-  || t.extended.isSome
-  || controlVerbInRegex t.regex
-  || commentInRegex t.regex
   || t.«line-terminator».isSome -- Config
   || t.«search-kind».any (· != "leftmost") -- only leftmost is valid for BoundedBacktracker
   || t.«match-kind».any (· = "all") -- Sets
   || match t.regex with | .inr _ => true | .inl _ => false -- Sets
 
 /- todo -/
-def ignoredErrors := ["escape sequence unexpected in range", "fixed width capture group of backreference"]
+def ignoredErrors := [
+      "escape sequence unexpected in range",
+      "fixed width capture group of backreference",
+      "feature not implemented"]
 
 /- todo -/
 def ignoredTests : List String :=
@@ -284,7 +257,7 @@ def testItem (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (
           pure (0, 1, 0)
       | Except.error e =>
           if t.matches.size = 0 then pure (0, 0, 1) else
-          if (ignoredErrors |> List.find? (fun m => e.startsWith m)).isSome then pure (0, 0, 1) else
+          if (ignoredErrors |> List.find? (fun m => (e.splitOn m).length > 1)).isSome then pure (0, 0, 1) else
           IO.println s!"RegexTest{filename}: {t}"
           IO.println s!"  error {e}"
           pure (0, 1, 0)

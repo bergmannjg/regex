@@ -56,6 +56,8 @@ instance : ToString Captures where
 def build (s : String) (flavor : Syntax.Flavor := default)
     (flags : Syntax.Flags := default) (config : Compiler.Config := default)
     : Except String Regex := do
+  if flags.extended.getD false
+  then throw (Syntax.AstItems.toError s .FeatureNotImplementedFlagExtended) else
   let nfa ← Syntax.AstItems.parse s flavor >>= Syntax.translate flags >>= Compiler.compile config
   Except.ok ⟨nfa⟩
 

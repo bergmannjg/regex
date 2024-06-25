@@ -147,8 +147,9 @@ structure Flags where
   dot_matches_new_line: Option Bool
   swap_greed: Option Bool
   crlf: Option Bool
+  extended : Option Bool
 
-instance : Inhabited Flags := ⟨⟨none, none, none, none, none⟩⟩
+instance : Inhabited Flags := ⟨⟨none, none, none, none, none, none⟩⟩
 
 instance : ToString Flags where
   toString s :=
