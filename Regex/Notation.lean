@@ -63,6 +63,8 @@ private def mkTermOfLook (l : NFA.Look) : Term :=
   | .WordEndUnicode => Syntax.mkApp (mkCIdent ``NFA.Look.WordEndUnicode) #[]
   | .WordStartHalfUnicode => Syntax.mkApp (mkCIdent ``NFA.Look.WordStartHalfUnicode) #[]
   | .WordEndHalfUnicode => Syntax.mkApp (mkCIdent ``NFA.Look.WordEndHalfUnicode) #[]
+  | .PreviousMatch => Syntax.mkApp (mkCIdent ``NFA.Look.PreviousMatch) #[]
+  | .ClearMatches => Syntax.mkApp (mkCIdent ``NFA.Look.ClearMatches) #[]
 
 instance : Quote NFA.Look where
   quote := mkTermOfLook

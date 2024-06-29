@@ -515,6 +515,24 @@ private def encodeChar? (c: Option Char) : String :=
         (fun _ => s!"{state.sid}: Look.WordEndHalfUnicode -> {next}") {state with sid := next})
       state
     else state
+  | .PreviousMatch =>
+    if state.at.atStart then
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.PreviousMatch -> {next}") {state with sid := next})
+      state
+    else
+      (withMsg
+        (fun _ => s!"PreviousMatch failed at pos {state.at.pos}") state)
+  | .ClearMatches =>
+    if h : 0 < state.slots.size then
+      let frame : Frame n := Frame.RestoreCapture Capture.Role.Start 0 (state.slots.get ⟨0, h⟩)
+      let stack := Stack.push state.stack frame
+      let slots := state.slots |> Array.map (fun (s, g, _) =>
+                    if s = 0 then (s, g, state.at.pos) else (s, g, none))
+      (withMsg (fun _ => s!"{state.sid}: Look.ClearMatches stack {stack} slots {slots} -> {next}")
+                          {state with stack := stack, slots := slots, sid := next})
+    else
+      (withMsg
+        (fun _ => s!"ClearMatches failed at pos {state.at.pos}, no slots") state)
 
 @[inline] private def step_byterange (trans : Checked.Transition n) (state : SearchState n)
     : SearchState n :=
@@ -524,11 +542,14 @@ private def encodeChar? (c: Option Char) : String :=
       state)
   else if state.at.curr?.any (Checked.Transition.matches trans)  then
     let next := state.at.next
-    (withMsg (fun _ => s!"{state.sid}: ByteRange matched '{encodeChar? state.at.curr?}' at charpos {state.at} -> {trans.next}")
+    (withMsg (fun _ =>
+            let t := s!"{Nat.intAsString trans.start}-{Nat.intAsString trans.end}"
+            s!"{state.sid}: ByteRange matched '{t}' at charpos {state.at} -> {trans.next}")
          {state with sid := trans.next, «at» := next})
   else
     (withMsg (fun _ =>
-      s!"{state.sid}: ByteRange failed match '{encodeChar? state.at.curr?}' at charpos {state.at}")
+            let t := s!"{Nat.intAsString trans.start}-{Nat.intAsString trans.end}"
+            s!"{state.sid}: ByteRange failed match '{t}' at charpos {state.at}")
       state)
 
 @[inline] private def step_backreference_loop (s : String) (i : Nat) (case_insensitive : Bool) (cp : CharPos)
@@ -571,10 +592,12 @@ private def encodeChar? (c: Option Char) : String :=
     s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, recentCapture not found")
     state)
 
-
 @[inline] private def step_sparse_transitions (_ : Checked.NFA)
     (transitions : Array $ Checked.Transition n)  (state : SearchState n) : SearchState n :=
-  if state.at.atStop then state
+  if state.at.atStop then
+      (withMsg
+        (fun _ =>
+            s!"{state.sid}: SparseTransitions failed at stop") state)
   else
     match Array.find? transitions
             (fun trans => state.at.curr?.any (Checked.Transition.matches trans)) with

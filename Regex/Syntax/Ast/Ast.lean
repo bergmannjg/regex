@@ -93,6 +93,8 @@ inductive ErrorKind
   | UnsupportedLookAround
   /-- ClassAsci not found. -/
   | UnkownAsciiClass
+  /-- A octal literal did not correspond to a Unicode scalar value. -/
+  | EscapeOctalInvalid
   /-- Feature not implemented. -/
   | FeatureNotImplementedNamedGroups
   /-- Feature not implemented. -/
@@ -126,7 +128,7 @@ def toString : ErrorKind -> String
   | .EscapeHexInvalidDigit => "invalid hexadecimal digit"
   | .EscapeUnexpectedEof => "incomplete escape sequence, reached end of pattern prematurely"
   | .EscapeUnrecognized => "unrecognized escape sequence"
-  | .FixedWidtExcpected => "fixed width expr in look behind expected"
+  | .FixedWidtExcpected => "fixed width expr in look around expected"
   | .FlagDanglingNegation => "dangling flag negation operator"
   | .FlagDuplicate => "duplicate flag"
   | .FlagRepeatedNegation => "flag negation operator repeated"
@@ -165,7 +167,7 @@ def toString : ErrorKind -> String
   | .FeatureNotImplementedBranchResetGroup => "feature not implemented: BranchResetGroup"
   | .FeatureNotImplementedControlVerbs => "feature not implemented: ControlVerb"
   | .FeatureNotImplementedFlagExtended => "feature not implemented: Flag x"
-
+  | .EscapeOctalInvalid => "octal value is not a Unicode scalar value"
 end ErrorKind
 
 instance : ToString ErrorKind where
@@ -506,6 +508,10 @@ inductive AssertionKind where
   | WordBoundaryStartHalf : AssertionKind
   /-- `\b{end-half}` -/
   |  WordBoundaryEndHalf : AssertionKind
+  /-- \G -/
+  | PreviousMatch : AssertionKind
+  /-- \K -/
+  | ClearMatches : AssertionKind
 
 namespace AssertionKind
 
@@ -522,6 +528,8 @@ def toString : AssertionKind -> String
   | .WordBoundaryEnd => s!"WordBoundaryEnd"
   | .WordBoundaryStartHalf => s!"WordBoundaryStartHalf"
   | .WordBoundaryEndHalf => s!"WordBoundaryEndHalf"
+  | .PreviousMatch => s!"PreviousMatch"
+  | .ClearMatches => s!"ClearMatches"
 
 end AssertionKind
 
@@ -631,6 +639,12 @@ inductive ClassPerlKind where
   | Space
   /-- Word characters. -/
   | Word
+  /-- Newline. -/
+  | Newline
+  /-- Whitespace. -/
+  | VerticalSpace
+  /-- Whitespace. -/
+  | HorizontalSpace
 
 instance : ToString ClassPerlKind where
   toString k :=
@@ -638,6 +652,9 @@ instance : ToString ClassPerlKind where
   | .Digit => "Digit"
   | .Space => "Space"
   | .Word => "Word"
+  | .Newline => "Newline"
+  | .VerticalSpace => "VerticalSpace"
+  | .HorizontalSpace => "HorizontalSpace"
 
 /--A Perl character class.-/
 structure ClassPerl where

@@ -100,4 +100,15 @@ def decodeHex (s : String) : Except String UInt32 :=
   let s := if s.startsWith "0x" then s.replace "0x" "" else s
   Char.decodeHexDigits s.data
 
+def asHex (s : String) : String :=
+  let toHexDigit (c : Nat) : String := String.singleton c.digitChar
+
+  let q := "";
+  let q := s.foldl
+    (fun q c => q ++
+      if c.isAlphanum then String.singleton c
+      else "\\x" ++ toHexDigit (c.toNat / 16) ++ toHexDigit (c.toNat % 16))
+    q;
+  q ++ ""
+
 end String

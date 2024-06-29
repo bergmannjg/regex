@@ -37,7 +37,12 @@ The following features are not yet implemented in the Pcre flavor:
 * [variable length look behind](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22),
 * [extended patterns](https://perldoc.perl.org/perlre#Extended-Patterns),
 * [named capture groups](https://perldoc.perl.org/perlre#(?NAME%3Epattern)),
-* capture groups with a backreference should have fixed width.
+* capture groups with a backreference should have fixed width,
+* patterns in look around should have fixed width.
+
+The following features are not implemented in the Rust flavor:
+
+* non unicode support.
 
 ## Unicode
 

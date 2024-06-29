@@ -58,7 +58,10 @@ inductive Look where
   | WordStartHalfUnicode : Look
   /-- Match the end half of a Unicode word boundary. -/
   | WordEndHalfUnicode : Look
-
+  /-- Match the end of the previous match or start of string -/
+  | PreviousMatch : Look
+  /-- Clear matches -/
+  | ClearMatches : Look
 namespace Look
 
 def toString : Look -> String
@@ -75,6 +78,8 @@ def toString : Look -> String
   | .WordEndUnicode => s!"WordEndUnicode"
   | .WordStartHalfUnicode => s!"WordStartHalfUnicode"
   | .WordEndHalfUnicode => s!"WordEndHalfUnicode"
+  | .PreviousMatch => s!"PreviousMatch"
+  | .ClearMatches => s!"ClearMatches"
 
 end Look
 

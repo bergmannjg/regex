@@ -142,6 +142,25 @@ theorem consume_space_ge (concat : Concat) (pattern : String) (i : Nat)
   | case3 _ _ _ _ => unfold consume_space; split <;> omega
   | case4 _ _  _ => unfold consume_space; split <;> omega
 
+/-- get NextNonSpaceChar and returns consumed chars -/
+private def nextNonSpaceChar (pattern : String) (i : Nat) (offset : Nat := 0) : NChars × Char :=
+  if i + offset >= pattern.length then (offset, default)
+  else if is_whitespace (pattern.getAtCodepoint (i+offset))
+  then nextNonSpaceChar pattern i (offset + 1)
+  else (1 + offset, pattern.getAtCodepoint (i + offset))
+termination_by pattern.length - (i + offset)
+
+end AstItems
+end Syntax
+
+/-- test if NextNonSpaceChar is `c` and returns consumed chars inclusive `c` -/
+def Char.isNextNonSpaceChar (c : Char) (p : String) (i : Nat) : Option Syntax.AstItems.NChars :=
+  let (offset, c1) := Syntax.AstItems.nextNonSpaceChar p i
+  if c = c1 then some offset else none
+
+namespace Syntax
+namespace AstItems
+
 /-- Parse a hex representation of any Unicode scalar value. -/
 private def parse_hex_brace (pattern : String) (i : Nat) (kind: HexLiteralKind)
     : Except String (NChars × Literal) := do
@@ -237,65 +256,61 @@ private def maybe_parse_special_word_boundary (pattern : String) (i : Nat)
 private def maybe_parse_backref_num (pattern : String) (i : Nat)
     : ParserM $ Option (NChars × BackRef) := do
   let state ← get
-  let c := pattern.getAtCodepoint (i)
-  let c1 := pattern.getAtCodepoint (i + 1)
-  let c2 := pattern.getAtCodepoint (i + 2)
-  if c.isDigit && !c1.isDigit
-  then
+  let (offset0, c) := nextNonSpaceChar pattern i
+  let c1 := pattern.getAtCodepoint (i + offset0)
+  let (_, c2) := nextNonSpaceChar pattern (i + offset0 + 1)
+  match (c.isDigit, c1.isDigit, c2.isDigit) with
+  | (true, false, _) =>
     let span := String.toSpan pattern (i - 1) (i)
     let n := (c.val - '0'.val).toNat
     if 0 = n then pure none
     else
       if n > state.max_backreference then set {state with max_backreference := n}
-
-      pure (some (1, ⟨span, n⟩))
-  else if c.isDigit && c1.isDigit && !c2.isDigit
-  then
+      pure (some (offset0, ⟨span, n⟩))
+  | (true, true, false) =>
     let span := String.toSpan pattern (i - 1) (i)
     let n := (c.val - '0'.val).toNat * 10 + (c1.val - '0'.val).toNat
     if 0 < n && n ≤ state.capture_index
-    then pure (some (2, ⟨span, n⟩))
+    then pure (some (offset0 + 1, ⟨span, n⟩))
     else pure none
-  else pure none
+  | (_, _, _) => pure none
 
 private def maybe_parse_backref (pattern : String) (i : Nat)
     : ParserM $ Option (NChars × BackRef) := do
   let state ← get
   let c := pattern.getAtCodepoint (i)
-  let c1 := pattern.getAtCodepoint (i + 1)
-  let c2 := pattern.getAtCodepoint (i + 2)
   if c.isDigit
   then maybe_parse_backref_num pattern i
-  else if c = 'g' && c1 = '{' && c2 = '-'
-  then
-    match ← maybe_parse_backref_num pattern (i + 3) with
-    | some (n, ⟨span, b⟩) =>
-      let c2 := pattern.getAtCodepoint (i + 3 + n)
-      if c2 = '}' then
-        if b ≤ state.capture_index then pure (n + 4, (⟨span, state.capture_index + 1 - b⟩ : BackRef))
+  else if c = 'g' then
+    let (offset1, c1) := nextNonSpaceChar pattern (i + 1)
+    let (offset2, c2) := nextNonSpaceChar pattern (i + 1 + offset1)
+    match (c1, c2) with
+    | ('{', '-')  =>
+      let offset := offset1 + offset2
+      match ← maybe_parse_backref_num pattern (i + 1 + offset) with
+      | some (n, ⟨span, b⟩) =>
+        let (offset2, c2) := nextNonSpaceChar pattern (i + 1 + offset + n)
+        if c2 = '}' then
+          if b ≤ state.capture_index then pure (1 + offset + n + offset2, (⟨span, state.capture_index + 1 - b⟩ : BackRef))
+          else pure none
         else pure none
-      else pure none
-    | none => pure none
-  else if c = 'g' && c1 = '{'
-  then
-    match ← maybe_parse_backref_num pattern (i + 2) with
-    | some (n, b) =>
-      let c2 := pattern.getAtCodepoint (i + 2 + n)
-      if c2 = '}' then pure (n + 3, b) else pure none
-    | none => pure none
-  else if c = 'g' && c1 = '-'
-  then
-    match ← maybe_parse_backref_num pattern (i + 2) with
-    | some (n, ⟨span, b⟩) =>
-      if b ≤ state.capture_index then pure (n + 2, (⟨span, state.capture_index + 1 - b⟩ : BackRef))
-      else pure none
-    | none => pure none
-  else if c = 'g'
-  then
-    match ← maybe_parse_backref_num pattern (i + 1) with
-    | some (n, b) => pure (n + 1, b)
-    | none => pure none
-
+      | none => pure none
+    | ('{', _)  =>
+      match ← maybe_parse_backref_num pattern (i + 1 + offset1) with
+      | some (n, b) =>
+        let (offset2, c2) := nextNonSpaceChar pattern (i + 1 + offset1 + n)
+        if c2 = '}' then pure (1 + offset1 + n + offset2, b) else pure none
+      | none => pure none
+    | ('-', _)  =>
+      match ← maybe_parse_backref_num pattern (i + 1 + offset1) with
+      | some (n, ⟨span, b⟩) =>
+        if b ≤ state.capture_index then pure (1 + offset1 + n, (⟨span, state.capture_index + 1 - b⟩ : BackRef))
+        else pure none
+      | none => pure none
+    | (_, _)  =>
+      match ← maybe_parse_backref_num pattern (i + offset1) with
+      | some (n, b) => pure (offset1 + n, b)
+      | none => pure none
   else pure none
 
 /-- Parse a Unicode class in either the single character notation `\pN`
@@ -327,22 +342,24 @@ private def parse_unicode_class (negated : Bool) (pattern : String) (i : Nat)
     Except.ok (1, cls)
 
 /-- Parse a Perl character class, e.g., `\d` or `\W`. -/
-private def parse_perl_class (pattern : String) (i : Nat) : Except String ClassPerl := do
+private def parse_perl_class (pattern : String) (i : Nat) : ParserM ClassPerl := do
   let c := pattern.getAtCodepoint (i)
   let (neg, kind) ← match c with
         | 'd' => pure (false, ClassPerlKind.Digit)
         | 'D' => pure (true, ClassPerlKind.Digit)
-        | 'h' => pure (false, ClassPerlKind.Space) -- todo: horizontal space
-        | 'H' => pure (true, ClassPerlKind.Space)
+        | 'h' => pure (false, ClassPerlKind.HorizontalSpace)
+        | 'H' => pure (true, ClassPerlKind.HorizontalSpace)
+        | 'n' => pure (false, ClassPerlKind.Newline)
+        | 'N' => pure (true, ClassPerlKind.Newline)
         | 's' => pure (false, ClassPerlKind.Space)
         | 'S' => pure (true, ClassPerlKind.Space)
-        | 'v' => pure (false, ClassPerlKind.Space) -- todo: vertical space
-        | 'V' => pure (true, ClassPerlKind.Space)
+        | 'v' => pure (false, ClassPerlKind.VerticalSpace)
+        | 'V' => pure (true, ClassPerlKind.VerticalSpace)
         | 'w' => pure (false, ClassPerlKind.Word)
         | 'W' => pure (true, ClassPerlKind.Word)
         | _ => Except.error s!"expected valid Perl class but got {c}"
 
-  Except.ok ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, kind, neg⟩
+  pure ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, kind, neg⟩
 
 private def parse_control_char (pattern : String) (i : Nat)
     : Except String (NatPos × Primitive) := do
@@ -372,7 +389,7 @@ private def parse_escape (pattern : String) (i : Nat) (inSetClass : Bool := fals
   | 'p' | 'P' =>
     let (n, cls) ← parse_unicode_class (c = 'P') pattern (i + 1)
     pure (NatPos.succ n, Primitive.Unicode cls)
-  | 'd' | 'h' | 's' | 'v' | 'w' | 'D' | 'H' | 'S' | 'V' | 'W' =>
+  | 'd' | 'h' | 's' | 'v' | 'w' | 'D' | 'H' | 'N' | 'S' | 'V' | 'W' =>
     let cls ← parse_perl_class pattern i
     pure (NatPos.succ 0, Primitive.Perl cls)
   | 'a' => pure (NatPos.one, toVerbatim '\x07')
@@ -393,9 +410,24 @@ private def parse_escape (pattern : String) (i : Nat) (inSetClass : Bool := fals
     else Except.error (toError pattern .EscapeUnrecognized)
   | 'e' => pure (NatPos.one, toVerbatim '\x07')
   | 'f' => pure (NatPos.one, toVerbatim '\x0C')
-  | 't' => pure (NatPos.one, toVerbatim '\t')
   | 'n' => pure (NatPos.one, toVerbatim '\n')
+  | 'o' =>
+      let c1 := pattern.getAtCodepoint (i+1)
+      if c1 = '{' then
+          let chars := (pattern.data.drop (i + 2)).takeWhile (fun c => '0' <= c && c <= '7')
+          let c2 := pattern.getAtCodepoint (i+2+chars.length)
+          if c2 = '}' && 0 < chars.length && chars.length <= 3 then
+            let n ← Char.decodeOctDigits chars
+            if h : isValidChar n
+            then
+              let x : AstItems.Literal := ⟨String.toSpan pattern i (i + 2 + chars.length), LiteralKind.Verbatim, ⟨n, h⟩⟩
+              pure (NatPos.succ (2 + chars.length), Primitive.Literal x)
+            else Except.error (toError pattern .EscapeOctalInvalid)
+          else Except.error (toError pattern .EscapeOctalInvalid)
+      else
+       pure (NatPos.one, toVerbatim c)
   | 'r' => pure (NatPos.one, toVerbatim '\r')
+  | 't' => pure (NatPos.one, toVerbatim '\t')
   | 'z' =>
     pure (NatPos.succ 0,
       Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.EndText⟩)
@@ -405,6 +437,16 @@ private def parse_escape (pattern : String) (i : Nat) (inSetClass : Bool := fals
   | 'B' =>
     pure (NatPos.succ 0,
       Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.NotWordBoundary⟩)
+  | 'G' =>
+    if flavor == Flavor.Pcre
+    then  pure (NatPos.succ 0,
+      Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.PreviousMatch⟩)
+    else Except.error (toError pattern .EscapeUnrecognized)
+  | 'K' =>
+    if flavor == Flavor.Pcre
+    then  pure (NatPos.succ 0,
+      Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.ClearMatches⟩)
+    else Except.error (toError pattern .EscapeUnrecognized)
   | 'Z' =>
     pure (NatPos.succ 0,
       Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.EndTextWithOptionalLF⟩)
@@ -443,17 +485,84 @@ private def parse_escape (pattern : String) (i : Nat) (inSetClass : Bool := fals
       else pure (NatPos.one, toVerbatim c)
     else Except.error (toError pattern .EscapeUnrecognized)
 
-/-- Parse a decimal number into a u32 -/
-private def parse_decimal (pattern : String) (i : Nat)
-    : Except String (NatPos × Nat) := do
+private def parse_decimal (pattern : String) (i : Nat) : Except String (NChars × Nat) := do
   if i < pattern.length
   then
-    let chars := (pattern.data.drop i).takeWhile (fun c => '0' <= c && c <= '9')
-    if h : 0 < chars.length then
+    let ws := (pattern.data.drop i).takeWhile (fun c => is_whitespace c)
+    let chars := (pattern.data.drop (i + ws.length)).takeWhile (fun c => '0' <= c && c <= '9')
+    if 0 < chars.length then
       let val := chars |> List.foldl (init := 0) (fun b c => (c.val - '0'.val).toNat+10*b)
-      Except.ok (⟨chars.length, h⟩, val)
+      Except.ok (chars.length + ws.length, val)
     else Except.error (toError pattern .DecimalInvalid)
   else Except.error (toError pattern .DecimalInvalid)
+
+theorem parse_decimal_gt_zero (pattern : String) (i : Nat)
+    (h : parse_decimal pattern i = Except.ok (offset, n)) : 0 < offset := by
+  unfold  parse_decimal at h
+  split at h <;> try simp_all
+  split at h <;> try simp_all
+  rename_i hCharsLt
+  let ws := List.takeWhile (fun c => Syntax.AstItems.is_whitespace c) (List.drop i pattern.data)
+  have hWs : ws
+            = List.takeWhile (fun c => Syntax.AstItems.is_whitespace c) (List.drop i pattern.data)
+            := by simp
+
+  let chars := List.takeWhile (fun c => decide ('0' ≤ c) && decide (c ≤ '9'))
+                (List.drop (i + (List.takeWhile
+                  (fun c => Syntax.AstItems.is_whitespace c) (List.drop i pattern.data)).length)
+                pattern.data)
+  have hChars : chars
+            = List.takeWhile (fun c => decide ('0' ≤ c) && decide (c ≤ '9'))
+                (List.drop (i + (List.takeWhile
+                  (fun c => Syntax.AstItems.is_whitespace c) (List.drop i pattern.data)).length)
+                pattern.data)
+            := by simp
+
+  rw [← hWs, ← hChars] at h
+  rw [← hChars] at hCharsLt
+
+  have hWsLength : 0 ≤ ws.length := by simp
+  have h : chars.length + ws.length = offset := h.left
+  have hLt : 0 < chars.length + ws.length := by omega
+  simp_all
+
+/-- parse 'm}' or '}' after ',' -/
+private def parse_counted_repetition_values_after_comma (pattern : String) (i : Nat)
+    : Except String (NChars × Option Nat) := do
+  let none' : Option Nat := none
+  if let some offset := '}'.isNextNonSpaceChar pattern i  then
+    pure (offset, none')
+  else
+    let (offset, m) ← parse_decimal pattern i
+    if let some offset' := '}'.isNextNonSpaceChar pattern (i + offset) then
+      let offset := offset + offset'
+      pure (offset, some m)
+    else Except.error (toError pattern .RepetitionCountUnclosed)
+
+/-- parse 'n,m}', ',m}', 'n,}' or ',}' after '{' -/
+private def parse_counted_repetition_values (pattern : String) (i : Nat)
+    : Except String (Nat × Option Nat × Option Nat) := do
+  let none' : Option Nat := none
+  if let some offset := ','.isNextNonSpaceChar pattern i then
+    match ←parse_counted_repetition_values_after_comma pattern (i + offset) with
+    | (nChars, none) => pure (offset + nChars, none', none')
+    | (nChars, some m) => pure (offset + nChars, none', some m)
+  else
+    let (offset, n) ← parse_decimal pattern i
+    if let some offsetC := ','.isNextNonSpaceChar pattern (i + offset) then
+      let offset := offset + offsetC
+      match ←parse_counted_repetition_values_after_comma pattern (i + offset) with
+      | (nChars, none) => pure (offset + nChars, some n, none')
+      | (nChars, some m) => pure (offset + nChars, some n, some m)
+    else if let some offsetC := '}'.isNextNonSpaceChar pattern (i + offset) then
+      pure (offset + offsetC, some n, some n)
+    else Except.error ""
+
+private def parse_possessive_greedy (pattern : String) (i : Nat) : Bool × Bool × Nat :=
+  let c := pattern.getAtCodepoint i
+  if c = '+' then (true, true, 1)
+  else if c = '?' then (false, false, 1)
+  else (false, true, 0)
 
 private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Concat)
     : Except String (NChars × Concat) := do
@@ -462,66 +571,52 @@ private def parse_counted_repetition (pattern : String) (i : Nat) (concat : Conc
     if match ast with | .Empty => true | .Flags _ => true | _ => false
     then Except.error (toErrorAt pattern i .RepetitionMissing)
     else
-      let (n, count_start) ← parse_decimal pattern i
-      let c := pattern.getAtCodepoint (i+n.val)
-      if c = ',' then
-        let c := pattern.getAtCodepoint (i+n.val+1)
-        if c = '}' then
-          let c := pattern.getAtCodepoint (i+n.val+1+1)
-          let (possessive, greedy, offset) :=
-            if c = '+' then (true, true, 1)
-            else if c = '?' then (false, false, 1)
-            else (false, true, 0)
+      match ←parse_counted_repetition_values pattern i with
+      | (offset, none, some m) =>
+          let (possessive, greedy, offset2) := parse_possessive_greedy pattern (i + offset)
+          let offset:= offset + offset2
           let asts := asts.push (
               Ast.Repetition
                 (Repetition.mk
                   (Syntax.AstItems.span ast)
-                  ⟨(String.toSpan pattern (i) (i+n.val+2+1)),
-                  (RepetitionKind.Range (RepetitionRange.AtLeast count_start))⟩
+                  ⟨(String.toSpan pattern i (i+offset)),
+                  (RepetitionKind.Range (RepetitionRange.Bounded 0 m))⟩
                   greedy
                   possessive
                   ast
               ))
-          pure (1 +(n.val+1)+offset, (Concat.mk (Syntax.AstItems.span ast) asts))
-        else
-          let (m, count_end) ← parse_decimal pattern (i+n.val+1)
-          let c := pattern.getAtCodepoint (i+n.val+1+m.val)
-          if c = '}' then
-            let c := pattern.getAtCodepoint (i+n.val+1+m.val+1)
-            let (possessive, greedy, offset) :=
-              if c = '+' then (true, true, 1)
-              else if c = '?' then (false, false, 1)
-              else (false, true, 0)
-            let asts := asts.push (
-                Ast.Repetition
-                  (Repetition.mk
-                    (Syntax.AstItems.span ast)
-                    ⟨(String.toSpan pattern (i) (i+n.val+2+offset)),
-                    (RepetitionKind.Range (RepetitionRange.Bounded count_start count_end))⟩
-                    greedy
-                    possessive
-                    ast
-                ))
-            pure (1 + (n.val+m.val+1+offset), (Concat.mk (Syntax.AstItems.span ast) asts))
-          else Except.error (toError pattern .RepetitionCountUnclosed)
-      else if c = '}' then
-        let c := pattern.getAtCodepoint (i+n.val+1)
-        let (possessive, greedy, offset) :=
-          if c = '+' then (true, true, 1)
-          else if c = '?' then (false, false, 1)
-          else (false, true, 0)
-        let asts := asts.push (
-            Ast.Repetition
-              (Repetition.mk
-                (Syntax.AstItems.span ast)
-                ⟨(String.toSpan pattern (i-1) (i+n.val+1+1)),
-                (RepetitionKind.Range (RepetitionRange.Exactly count_start))⟩
-                greedy
-                possessive
-                ast
-            ))
-        pure (1 + n.val+offset, (Concat.mk (Syntax.AstItems.span ast) asts))
-      else Except.error (toError pattern .RepetitionCountUnclosed)
+          pure (offset, (Concat.mk (Syntax.AstItems.span ast) asts))
+      | (offset, some n, some m) =>
+          let (possessive, greedy, offset2) := parse_possessive_greedy pattern (i + offset)
+          let offset:= offset + offset2
+          let asts := asts.push (
+              Ast.Repetition
+                (Repetition.mk
+                  (Syntax.AstItems.span ast)
+                  ⟨(String.toSpan pattern (i) (i+offset)),
+                  (RepetitionKind.Range
+                    (if n = m then (RepetitionRange.Exactly n) else (RepetitionRange.Bounded n m)))⟩
+                  greedy
+                  possessive
+                  ast
+              ))
+          pure (offset, (Concat.mk (Syntax.AstItems.span ast) asts))
+      | (offset, some m, none) =>
+          let (possessive, greedy, offset2) := parse_possessive_greedy pattern (i + offset)
+          let offset:= offset + offset2
+          let asts := asts.push (
+              Ast.Repetition
+                (Repetition.mk
+                  (Syntax.AstItems.span ast)
+                  ⟨(String.toSpan pattern (i-1) (i+offset)),
+                  (RepetitionKind.Range (RepetitionRange.AtLeast m))⟩
+                  greedy
+                  possessive
+                  ast
+              ))
+          pure (offset, (Concat.mk (Syntax.AstItems.span ast) asts))
+      | (_, _, _) =>
+          Except.error (toError pattern .RepetitionCountUnclosed)
   | none => Except.error (toErrorAt pattern i .RepetitionMissing)
 
 /-- Parse a single item in a character class as a primitive -/
@@ -539,8 +634,11 @@ private def parse_set_class_item (pattern : String) (i : Nat)
       pure (⟨2, by simp⟩ , none)
     else if flavor == Flavor.Pcre && c1 = 'E'
     then
-      set {state with disabled_metacharacters := false}
-      pure (⟨2, by simp⟩ , none)
+      if !state.disabled_metacharacters
+      then throw (toError pattern .EndQuoteWithoutOpenQuote)
+      else
+        set {state with disabled_metacharacters := false}
+        pure (⟨2, by simp⟩ , none)
     else
       let (⟨n, _⟩ , p) ← parse_escape pattern (i + 1) true
       pure (NatPos.succ n, p)
@@ -740,6 +838,7 @@ private def parse_set_class (pattern : String) (i : Nat)
 /-- Parse a primitive AST. e.g., A literal, non-set character class or assertion.-/
 private def parse_primitive (pattern : String) (i : Nat) : ParserM (NatPos × Primitive) := do
   let flavor ← read
+  let state ← get
   let c := pattern.getAtCodepoint i
   match c with
   | '\\' =>
@@ -751,11 +850,15 @@ private def parse_primitive (pattern : String) (i : Nat) : ParserM (NatPos × Pr
   | '.' => pure (⟨1, by simp⟩, Primitive.Dot (String.toSpan pattern i (i + 1)))
   | '^' => pure (⟨1, by simp⟩,
               Primitive.Assertion ⟨String.toSpan pattern i (i + 1), AssertionKind.StartLine⟩)
-  | '$' => pure (⟨1, by simp⟩,
-              Primitive.Assertion ⟨String.toSpan pattern i (i + 1),
-                if flavor == Flavor.Pcre
-                then AssertionKind.EndLineWithOptionalLF
-                else AssertionKind.EndLine⟩)
+  | '$' =>  if state.disabled_metacharacters then
+              let lit := ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, LiteralKind.Verbatim, c⟩
+              pure (⟨1, by simp⟩, Primitive.Literal lit)
+            else
+              pure (⟨1, by simp⟩,
+                Primitive.Assertion ⟨String.toSpan pattern i (i + 1),
+                  if flavor == Flavor.Pcre
+                  then AssertionKind.EndLineWithOptionalLF
+                  else AssertionKind.EndLine⟩)
   | _ =>
     let lit := ⟨⟨pattern, ⟨i⟩, ⟨i + 1⟩⟩, LiteralKind.Verbatim, c⟩
     pure (⟨1, by simp⟩, Primitive.Literal lit)
@@ -795,7 +898,7 @@ private def push_alternate (pattern : String) (i : Nat) (concat : Concat)
   pure (Concat.mk (String.toSpan pattern i (i + 1)) #[])
 
 /-- Parse the current character as a flag. -/
-private def parse_flag (c : Char) : Except String Flag :=
+private def parse_flag (c : Char) (pattern : String) : Except String Flag :=
   match c with
   | 'i' => Except.ok Flag.CaseInsensitive
   | 'm' => Except.ok Flag.MultiLine
@@ -803,7 +906,7 @@ private def parse_flag (c : Char) : Except String Flag :=
   | 'U' => Except.ok Flag.SwapGreed
   | 'u' => Except.ok Flag.Unicode
   | 'R' => Except.ok Flag.CRLF
-  | 'x' => Except.ok Flag.IgnoreWhitespace
+  | 'x' => throw  (toError pattern .FeatureNotImplementedFlagExtended)
   | _ => Except.error (toError c.toString .FlagUnrecognized)
 
 /-- Parse a sequence of flags starting at the current character.-/
@@ -815,7 +918,7 @@ private def parse_flags (pattern : String) (i : Nat)
     chars |> Array.mapM (fun c => do
       if c = '-' then pure ⟨span, FlagsItemKind.Negation⟩
       else
-        let f ← parse_flag c
+        let f ← parse_flag c pattern
         pure ⟨span, FlagsItemKind.Flag f⟩)
   let flags : Flags := ⟨(String.toSpan pattern i chars.size), items⟩
   Except.ok (chars.size, flags)
@@ -872,7 +975,7 @@ private def parse_group (pattern : String) (i : Nat)
     pure (20, Sum.inr g)
   else if c1 = '*' && String.startsAtCodepoint pattern "negative_lookbehind:" (i+1) then
     let g := Group.mk (String.toSpan pattern i (i + 1)) (.Lookaround (.NegativeLookbehind 0)) Ast.Empty
-    pure (20, Sum.inr g)
+    pure (21, Sum.inr g)
   else if c1 = '?' && c2  = '!' then
     let g := Group.mk (String.toSpan pattern i (i + 1)) (.Lookaround .NegativeLookahead) Ast.Empty
     pure (2, Sum.inr g)
@@ -977,6 +1080,12 @@ private def set_width (pattern : String) (g : Group) : ParserM Group := do
   | ⟨span, .Lookaround (.NegativeLookbehind _), ast⟩ =>
       let width ← get_fixed_width pattern ast
       pure (Group.mk span (.Lookaround (.NegativeLookbehind width)) ast)
+  | ⟨_, .Lookaround .PositiveLookahead, ast⟩ =>
+      let _ ← get_fixed_width pattern ast
+      pure g
+  | ⟨_, .Lookaround .NegativeLookahead, ast⟩ =>
+      let _ ← get_fixed_width pattern ast
+      pure g
   | _ => pure g
 
 /-- Pop a group AST from the parser's internal stack and set the group's AST to the concatenation.-/

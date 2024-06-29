@@ -150,6 +150,8 @@ private def c_look : Syntax.Look -> CompilerM ThompsonRef
   | .WordEndUnicode => push' (Unchecked.State.Look NFA.Look.WordEndUnicode 0)
   | .WordStartHalfUnicode => push' (Unchecked.State.Look NFA.Look.WordStartHalfUnicode 0)
   | .WordEndHalfUnicode => push' (Unchecked.State.Look NFA.Look.WordEndHalfUnicode 0)
+  | .PreviousMatch => push' (Unchecked.State.Look NFA.Look.PreviousMatch 0)
+  | .ClearMatches => push' (Unchecked.State.Look NFA.Look.ClearMatches 0)
 
 private def c_cap' (role : Capture.Role) (pattern_id slot: Nat) : CompilerM Unchecked.StateID  :=
   push (Unchecked.State.Capture role 0 0 pattern_id slot)
@@ -217,84 +219,66 @@ private def c_exactly (hir : Hir) (n : Nat) : CompilerM ThompsonRef := do
   else c_empty
 termination_by sizeOf hir + sizeOf n
 
+/-- embed `start` to `end` states in a possessive union,
+    i.e. remove backtracking frames from stack if `end` state is reached
+-/
+private def c_possessive (tref : ThompsonRef) : CompilerM ThompsonRef := do
+  let union ← add_union
+  let fail ← add_fail
+  let eat ← add_eat (Unchecked.EatMode.ToLast 0)
+  let empty ← add_empty
+
+  patch union tref.start
+  patch tref.«end» eat
+  patch union fail
+  patch eat fail
+  patch eat empty
+  pure ⟨union, empty⟩
+
 /-- Compile the given expression such that it may be matched `n` or more times -/
 private def c_at_least (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool) : CompilerM ThompsonRef := do
   if n = 0 then
     /- compile x* as (x+)?, which preserves the correct preference order
         if x can match the empty string. -/
     let compiled ← c hir
+     let plus ← (if greedy then add_union else add_union_reverse)
+
+    patch compiled.end plus
+    patch plus compiled.start
+
+    let question ← (if greedy then add_union else add_union_reverse)
+    let empty ← add_empty
+    patch question compiled.start
+    patch question empty
+    patch plus empty
 
     if possessive then
-      let plus ← add_union
-      patch compiled.end plus
-      patch plus compiled.start
-
-      let question ← add_union
-      let eat ← add_eat (Unchecked.EatMode.Until 0)
-      let empty ← add_empty
-
-      patch question compiled.start
-      patch plus eat
-      patch eat empty
-      patch eat empty
-      patch question empty
-
-      pure ⟨question, empty⟩
+      c_possessive ⟨question, empty⟩
     else
-      let plus ← (if greedy then add_union else add_union_reverse)
-      patch compiled.end plus
-      patch plus compiled.start
-
-      let question ← (if greedy then add_union else add_union_reverse)
-      let empty ← add_empty
-      patch question compiled.start
-      patch question empty
-      patch plus empty
-
       pure ⟨question, empty⟩
   else if n = 1 then
     let compiled ← c hir
+    let union ← (if greedy then add_union else add_union_reverse)
+
+    patch compiled.end union
+    patch union compiled.start
+
     if possessive then
-      let union ← add_union
-      let eat ← add_eat (Unchecked.EatMode.ToLast 0)
-      let empty ← add_empty
-
-      patch compiled.end union
-      patch union compiled.start
-      patch union eat
-      patch eat eat
-      patch eat empty
-
-      pure ⟨compiled.start, empty⟩
+      c_possessive ⟨compiled.start, union⟩
     else
-      let union ← (if greedy then add_union else add_union_reverse)
-      patch compiled.end union
-      patch union compiled.start
-
       pure ⟨compiled.start, union⟩
   else
     let «prefix» ← c_exactly hir (n-1)
     let last ← c hir
+    let union ← (if greedy then add_union else add_union_reverse)
+
+    patch «prefix».end last.start
+    patch last.end union
+    patch union last.start
+
     if possessive then
-      let union ← add_union
-      let eat ← add_eat (Unchecked.EatMode.ToLast 0)
-      let empty ← add_empty
-
-      patch «prefix».end last.start
-      patch last.end union
-      patch union last.start
-      patch union eat
-      patch eat eat
-      patch eat empty
-
-      pure ⟨«prefix».start, empty⟩
+      c_possessive  ⟨«prefix».start, union⟩
     else
-      let union ← (if greedy then add_union else add_union_reverse)
-
-      patch «prefix».end last.start
-      patch last.end union
-      patch union last.start
-
       pure ⟨«prefix».start, union⟩
 termination_by sizeOf hir + sizeOf n + 1
 
@@ -306,16 +290,7 @@ private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : 
     let «prefix» ← c_exactly hir min
     if min = max then
       if possessive then
-        let union ← add_union
-        let eat ← add_eat (Unchecked.EatMode.ToLast 0)
-        let empty ← add_empty
-
-        patch union «prefix».start
-        patch «prefix».end eat
-        patch union eat
-        patch eat eat
-        patch eat empty
-        pure ⟨union, empty⟩
+        c_possessive «prefix»
       else
         pure «prefix»
     else
@@ -323,21 +298,22 @@ private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : 
       let prev_end ← (List.replicate (max-min) 0).foldlM (init := «prefix».end)
         (fun prev_end _ => do
           let compiled ← c hir
+          let union ← (if greedy then add_union else add_union_reverse)
+
+          patch prev_end union
+          patch union compiled.start
+
           if possessive then
             let union ← add_union
+            let fail ← add_fail
             let eat ← add_eat (Unchecked.EatMode.ToLast 0)
 
-            patch prev_end union
-            patch union compiled.start
-            patch union eat
-            patch eat eat
+            patch union fail
+            patch eat fail
             patch eat empty
 
             pure compiled.end
           else
-            let union ← (if greedy then add_union else add_union_reverse)
-            patch prev_end union
-            patch union compiled.start
             patch union empty
             pure compiled.end)
       patch prev_end empty

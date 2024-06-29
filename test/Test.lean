@@ -27,8 +27,8 @@ def testRustFile (path : FilePath) : IO (Nat × Nat × Nat) := do
 
 def testPcreFile (path : FilePath) : IO (Nat × Nat × Nat) := do
   let filename : String := path.fileName.getD ""
-  let tests := (← Loader.Pcre.load path) |> Loader.Pcre.toRegexTestArray
-  testToml path filename Syntax.Flavor.Pcre tests
+  let tests ← (← Loader.Pcre.load path) |> Loader.Pcre.toRegexTestArray |> IO.ofExcept
+  testToml path filename Syntax.Flavor.Pcre (tests)
 
 def summary (arr : Array (Nat × Nat × Nat)) : IO UInt32 := do
   let (succeeds, failures, ignored) := arr |> Array.foldl
@@ -37,7 +37,7 @@ def summary (arr : Array (Nat × Nat × Nat)) : IO UInt32 := do
   if failures > 0 then IO.eprintln s!"succeeds {succeeds} failures {failures} ignored {ignored} total"
   pure (if failures > 0 then 1 else 0)
 
-def testAll (path : FilePath): IO UInt32 := do
+def testRustFlavor (path : FilePath) : IO UInt32 := do
   if ← System.FilePath.isDir path
   then
     (← System.FilePath.walkDir path)
@@ -48,14 +48,20 @@ def testAll (path : FilePath): IO UInt32 := do
     IO.println  s!"no such directory '{path}'"
     pure 1
 
+def testAllFlavors : IO UInt32 := do
+  let retRust ← testRustFlavor "testdata/rust"
+  let retPcre ← summary #[← testPcreFile "testdata/pcre/testresult1.json"]
+
+  pure (if 0 < retRust + retPcre then 1 else 0)
+
 def main (args : List String): IO UInt32 := do
   let exitcode ←
     try
       match args with
-      | [] => pure <| ← testAll "testdata/rust"
+      | [] => pure <| ← testAllFlavors
       | ["--pcre", path] => pure <| ← summary #[← testPcreFile path]
       | ["--toml", path] => pure <| ← summary #[← testRustFile path]
-      | ["--all", path] => pure <| ← testAll path
+      | ["--all", path] => pure <| ← testRustFlavor path
       | _ =>
         IO.println  s!"usage: Test [--toml <path> | --pcre] [--all path]"
         pure 1

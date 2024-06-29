@@ -103,6 +103,7 @@ where
     | '\\' :: 'n' :: tail => '\n' :: (loop tail acc)
     | '\\' :: 'r' :: tail => '\r' :: (loop tail acc)
     | '\\' :: 't' :: tail => '\t' :: (loop tail acc)
+    | '\\' :: '\\' :: tail => '\\' :: (loop tail acc)
     | head :: tail => head :: (loop tail acc)
 
 def ast : CliM PUnit := do
@@ -169,6 +170,9 @@ def captures : CliM PUnit := do
     | (msgs, some captures) =>
       if msgs.size > 0 then IO.println s!"msgs {msgs |> Array.map (· ++ nl)}"
       IO.println s!"{captures}"
+
+      if isVerbose then
+        IO.println s!"fullMatch chars {captures.fullMatch.toString.asHex} utf8ByteSize {captures.fullMatch.toString.utf8ByteSize}"
 
 end regex
 

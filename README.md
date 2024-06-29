@@ -59,17 +59,15 @@ Components of regular expression:
 
 ## Test
 
-The library is tested with the [testdata](./testdata) of Rust Regex crate.
+The library is tested
+with the [testdata](./testdata/pcre) of the PCRE2 library
+and the [testdata](./testdata/rust) of the Rust Regex crate.
 
 The tests are run with
 
 ```sh
-./.lake/build/bin/test --all ./testdata/
+lake test
 ```
-
-The tests passed successfully except those with not yet supported features:
-
-- non unicode data.
 
 ## License
 

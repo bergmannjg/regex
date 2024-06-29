@@ -14,7 +14,7 @@ private def octDigitsToChar! (chars : List Char) : Char :=
   | Except.error _ => cZero
 
 /-- unescape strings from pcre json file generated from perltest.sh via JSON::PP. -/
-private def unescapeStr (s : String) (backslashIsEmptyString : Bool := false) : String :=
+private def unescapeStr (s : String) (isHaystack : Bool := false) : String :=
   ⟨loop s.data⟩
 where
   toChar (a b : Char) : Char :=
@@ -26,19 +26,23 @@ where
   loop (chars : List Char) : List Char :=
     match chars with
     | [] => []
-    | ['\\'] => if backslashIsEmptyString then [] else ['\\']
+    | ['\\'] => if isHaystack then [] else ['\\']
+    | '\\' :: 'x' :: '{' :: a :: b :: '}' :: tail => (toChar a b) :: (loop tail)
     | '\\' :: 'x' :: a :: b :: tail =>
       if b.isHexDigit
       then (toChar a b) :: (loop tail)
       else (toChar '0' a) :: (loop (b :: tail))
-    | '\\' :: 'e' :: tail => ⟨27, by simp_arith⟩  :: (loop tail)
+    | '\\' :: 'a' :: tail => '\x07' :: (loop tail)
+    | '\\' :: 'e' :: tail => ⟨27, by simp_arith⟩ :: (loop tail)
+    | '\\' :: 'f' :: tail => '\x0c' :: (loop tail)
     | '\\' :: 'n' :: tail => '\n' :: (loop tail)
     | '\\' :: 'r' :: tail => '\r' :: (loop tail)
     | '\\' :: '"' :: tail => '"' :: (loop tail)
-    | '\\' :: '$' :: tail => '$' :: (loop tail)
+    | '\\' :: '$' :: tail => if isHaystack then '$' :: (loop tail) else '\\' :: '$' :: (loop tail)
     | '\\' :: '@' :: tail => '@' :: (loop tail)
     | '\\' :: '\\' :: tail => '\\' :: (loop tail)
     | '\\' :: 't' :: tail => '\t' :: (loop tail)
+    | '0' :: 'x' :: '0' :: 'p' :: '+' :: '0' :: tail => '%' :: 'a' :: (loop tail) -- why?
     | '\\' :: c1 :: tail =>
       if c1.isDigit
       then
@@ -96,21 +100,24 @@ private structure PcreTest where
   noMatch : Option Bool
   deriving Lean.FromJson
 
-private def toCaptures (p : PcreTest) : Array $ RegexTest.Captures :=
+private def toCaptures (p : PcreTest) : Except String $ (Array RegexTest.Captures) := do
   match p.match with
   | some arr =>
-      let groups :=
-        arr |> Array.map (fun m =>
+      let groups : Array $ Option RegexTest.Span ←
+        arr |> Array.mapM (fun m =>
           let _haystack := unescapeStr p.haystack true
           let _match := unescapeStr m.«match»
-
-          if _match.length = 0 then some ⟨0, 0, some _match⟩ else
+          if _haystack.length < _match.length then
+            Except.error s!"haystack.length < match.length, haystack '{_haystack}' match '{_match}'" else
+          if _match.length = 0 then pure <| some ⟨0, 0, some _match⟩ else
           match _haystack.splitOn _match with
           | f :: _ =>
-            some ⟨f.utf8ByteSize, f.utf8ByteSize + _match.utf8ByteSize, some _match⟩
-          | _ => none)
-      #[⟨groups⟩]
-  | none => #[]
+            if false && f.utf8ByteSize = _haystack.length  then
+              Except.error s!"match not found in haystack, haystack '{_haystack.quote}', _match '{_match.quote}'" else
+            pure <| some ⟨f.utf8ByteSize, f.utf8ByteSize + _match.utf8ByteSize, some _match⟩
+          | _ => pure none)
+      pure #[⟨groups⟩]
+  | none => pure #[]
 
 private def setOption (c : Char) (t : RegexTest) : RegexTest :=
   match c with
@@ -137,20 +144,20 @@ private def toPattern (p : PcreTest) (t : RegexTest) : RegexTest :=
     | none => t
   | (_, _) => t
 
-private def toRegexTest (i : Nat) (p : PcreTest) : RegexTest :=
-  toPattern p
+private def toRegexTest (i : Nat) (p : PcreTest) : Except String $ RegexTest := do
+  pure <| toPattern p
     {
       name := s!"t{i}"
       regex := Sum.inl ""
       haystack := unescapeStr p.haystack true
-      «matches» := toCaptures p
+      «matches» := ← toCaptures p
       «match-limit» := some 1
       unescape := some true
       «only-full-match» := some true
     }
 
-def toRegexTestArray (arr : Array PcreTest) : Array RegexTest :=
-  Array.mapIdx arr (fun i p => toRegexTest i p)
+def toRegexTestArray (arr : Array PcreTest) : Except String $ Array RegexTest :=
+  Array.mapIdxM arr (fun i p => toRegexTest i p)
 
 def load (path : FilePath) : IO (Array PcreTest) := do
   let contents ← IO.FS.readFile path
