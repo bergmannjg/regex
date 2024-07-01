@@ -377,10 +377,12 @@ private def encodeChar? (c: Option Char) : String :=
 @[inline] private def step_empty (next : Fin n) (state : SearchState n) : SearchState n :=
   withMsg (fun _ => s!"{state.sid}: Empty -> {next}") {state with sid := next}
 
-@[inline] private def step_next_char (offset : Nat) (next : Fin n) (state : SearchState n) : SearchState n :=
+@[inline] private def step_next_char (offset : Nat) (next : Fin n) (state : SearchState n)
+    : SearchState n :=
   match state.at.prevOf offset with
   | some pos =>
-    withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} to charpos {pos} -> {next}") {state with sid := next, «at» := pos}
+    withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} to charpos {pos} -> {next}")
+                      {state with sid := next, «at» := pos}
   | none =>
     withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} failed at charpos {state.at}") state
 
@@ -389,45 +391,76 @@ private def encodeChar? (c: Option Char) : String :=
 
 /-- eat frames until State `sid` found -/
 @[inline] private def step_eat_until (sid next : Fin n) (state : SearchState n) : SearchState n :=
-  let stack := state.stack |> List.dropWhile (fun s => match s with | .Step f' _ => sid != f' | _ => true)
+  let stack :=
+    state.stack
+    |> List.dropWhile (fun s => match s with | .Step f' _ => sid != f' | _ => true)
 
   match stack with
   |  .Step _ _ :: stack' =>
-    withMsg (fun _ => s!"{state.sid}: EatUntil {sid} stack {stack'} => {next}") {state with stack := stack', sid := next }
+    withMsg (fun _ => s!"{state.sid}: EatUntil {sid} stack {stack'} => {next}")
+                      {state with stack := stack', sid := next }
   | _ =>
     withMsg (fun _ => s!"{state.sid}: EatUntil failed ") state
 
 /-- eat frames inclusive last occurunce of State `sid`  -/
 @[inline] private def step_eat_to_last (sid next : Fin n) (state : SearchState n) : SearchState n :=
-  let index := state.stack |> List.reverse |> List.findIdx (fun s => match s with | .Step f' _ => sid = f' | _ => false)
+  let index := state.stack
+    |> List.reverse
+    |> List.findIdx (fun s => match s with | .Step f' _ => sid = f' | _ => false)
 
   if index < state.stack.length then
     let index := state.stack.length -index
     let stack := state.stack |> List.drop index
 
-    withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {stack} => {next}") {state with stack := stack, sid := next }
-  else withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {state.stack} => {next}") {state with sid := next }
+    withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {stack} => {next}")
+                      {state with stack := stack, sid := next }
+  else withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {state.stack} => {next}")
+                         {state with sid := next }
     --withMsg (fun _ => s!"{state.sid}: EatToLast failed ") state
 
-@[inline] private def step_eat (mode : Checked.EatMode n) (next : Fin n) (state : SearchState n) : SearchState n :=
+@[inline] private def step_eat (mode : Checked.EatMode n) (next : Fin n) (state : SearchState n)
+    : SearchState n :=
   match mode with
   | .Until sid => step_eat_until sid next state
   | .ToLast sid => step_eat_to_last sid next state
 
 @[inline] private def step_change_frame_step (f t : Fin n) (state : SearchState n) : SearchState n :=
-  let stack := state.stack |> List.dropWhile (fun s => match s with | .Step f' _ => f != f' | _ => true)
+  let cond := (fun (s : Frame n) => match s with | .Step f' _ => f != f' | _ => true)
+  let stackBeforeSid := state.stack |> List.takeWhile cond
+
+  let slots : Array (Nat × Nat × (Option String.Pos)) :=
+    stackBeforeSid |> List.foldl (fun slots frame =>
+        match frame with
+        | .RestoreCapture _ slot v =>
+          if h : slot < slots.size then slots.set ⟨slot, h⟩ v else slots
+        | _ => slots) state.slots
+
+  let stack := state.stack |> List.dropWhile cond
   match stack with
   |  .Step _ «at» :: stack' =>
     let stack := Frame.Step t «at» :: stack'
-    withMsg (fun _ => s!"{state.sid}: ChangeFrameStep stack {stack}") {state with stack := stack}
+    withMsg (fun _ => s!"{state.sid}: ChangeFrameStep stack {stack} slots {slots}")
+                      {state with stack := stack, slots := slots}
   | _ =>
     withMsg (fun _ => s!"{state.sid}: ChangeFrameStep failed ") state
 
 @[inline] private def step_remove_frame_step (sid : Fin n) (state : SearchState n) : SearchState n :=
-  let stack := state.stack |> List.dropWhile (fun s => match s with | .Step f' _ => sid != f' | _ => true)
+  let cond := (fun (s : Frame n) => match s with | .Step f' _ => sid != f' | _ => true)
+  let stackBeforeSid := state.stack |> List.takeWhile cond
+
+  let slots : Array (Nat × Nat × (Option String.Pos)) :=
+    stackBeforeSid |> List.foldl (fun slots frame =>
+        match frame with
+        | .RestoreCapture _ slot v =>
+          if h : slot < slots.size then slots.set ⟨slot, h⟩ v else slots
+        | _ => slots) state.slots
+
+  let stack := state.stack |> List.dropWhile cond
+
   match stack with
   |  .Step _ _ :: stack' =>
-    withMsg (fun _ => s!"{state.sid}: RemoveFrameStep stack {stack'}") {state with stack := stack'}
+    withMsg (fun _ => s!"{state.sid}: RemoveFrameStep {sid} stack {stack'} slots {slots}")
+                      {state with stack := stack', slots := slots}
   | _ =>
     withMsg (fun _ => s!"{state.sid}: RemoveFrameStep failed ") state
 
@@ -446,12 +479,14 @@ private def encodeChar? (c: Option Char) : String :=
     else state
   | .EndWithOptionalLF =>
     if state.at.atStop then
-      let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}") {state with sid := next})
+      let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}")
+                                      {state with sid := next})
       state
     else
       match (state.at.curr?, state.at.next.atStop) with
       | (some '\n', true) =>
-          let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}") {state with sid := next})
+          let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}")
+                                          {state with sid := next})
           state
       | _ => (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF failed at pos {state.at} atStop {state.at.next.atStop}") state)
   | .StartLF =>
@@ -996,12 +1031,42 @@ private def dropLastWhile (arr : Array  α) (p :  α -> Bool) : Array α :=
     if acc.size = 0 && p a then acc
     else ⟨a :: acc.data⟩
 
-/-- Search for the first match of this regex in the haystack given and return log msgs and
-    the slots of each capture group. -/
-def slots (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)
+/-- Search for the first match of this regex in the haystack. -/
+private def slots' (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)
     : (Array String) × (Array (Option (String.Pos × String.Pos))) :=
   if h : 0 < nfa.n then
     let state := backtrack nfa (SearchState.fromNfa nfa s «at» logEnabled h)
     let pairs := toPairs state.slots
     (state.msgs, dropLastWhile pairs (·.isNone))
   else (#[], #[])
+
+/-- Search for the first match of this regex in the haystack and
+    simulate the unanchored prefix with looping. -/
+private def slotsWithUnanchoredPrefix (s : Substring) («at» : String.Pos) (nfa : Checked.NFA)
+  (logEnabled : Bool) (init : Array String)
+    : (Array String) × (Array (Option (String.Pos × String.Pos))) :=
+  if h: s.stopPos.byteIdx <= «at».byteIdx then
+    let (msgs, slots) := slots' s «at» nfa logEnabled
+    (init ++ msgs, slots)
+  else
+    let (msgs, slots) := slots' s «at» nfa logEnabled
+    match (msgs, slots) with
+    | (msgs, #[]) =>
+      let c : Char := s.get «at»
+      let size := c.utf8Size.toNat
+      have : s.stopPos.byteIdx - (at.byteIdx + size) < s.stopPos.byteIdx - at.byteIdx := by
+        have  : 0 < c.utf8Size.toNat := Char.utf8Size_pos c
+        have ha : at.byteIdx < s.stopPos.byteIdx := by omega
+        have hb : at.byteIdx < at.byteIdx + size := by omega
+        simp [Nat.sub_lt_sub_left ha hb]
+      slotsWithUnanchoredPrefix s («at» + ⟨size⟩) nfa logEnabled (init ++ msgs)
+    | _ => (init ++ msgs, slots)
+termination_by s.stopPos.byteIdx - «at».byteIdx
+
+/-- Search for the first match of this regex in the haystack given and return log msgs and
+    the slots of each capture group. -/
+def slots (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)
+    : (Array String) × (Array (Option (String.Pos × String.Pos))) :=
+  if nfa.unanchored_prefix_in_backtrack
+  then slotsWithUnanchoredPrefix s «at» nfa logEnabled #[]
+  else slots' s «at» nfa logEnabled

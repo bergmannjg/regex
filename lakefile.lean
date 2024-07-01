@@ -35,7 +35,7 @@ lean_lib Test where
   srcDir := "test"
   roots := #[`Test, `RegexTest, `TomlLoader, `PcreLoader]
 
-@[test_runner]
+@[test_driver]
 lean_exe test where
   srcDir := "test"
   root := `Test

@@ -18,8 +18,10 @@ into an NFA state graph (`NFA`).
 structure Config where
   /-- Whether to compile an unanchored prefix into this NFA. -/
   unanchored_prefix: Bool
+  /-- Whether to simulate an unanchored prefix with the backtracker. -/
+  unanchored_prefix_simulation : Bool
 
-instance : Inhabited Config := ⟨⟨true⟩⟩
+instance : Inhabited Config := ⟨⟨true, false⟩⟩
 
 /-- A value that represents the result of compiling a sub-expression of a regex's HIR.
     Specifically, this represents a sub-graph of the NFA that
@@ -470,7 +472,8 @@ private def startsWithStart (hir : Hir) : Bool :=
 
 /-- Compile the HIR expression given. -/
 private def compile' (anchored : Bool) (expr : Hir) : CompilerM PUnit := do
-  let unanchored_prefix ← if anchored then c_empty
+  let unanchored_prefix ←
+    if anchored then c_empty
     else c_repetition <| Repetition.mk 0 none false false (dot Dot.AnyChar)
   let one ← c_cap (Capture.mk 0 none expr)
   let match_state_id ← add_match 0
@@ -479,7 +482,10 @@ private def compile' (anchored : Bool) (expr : Hir) : CompilerM PUnit := do
 
 /-- Compile the HIR expression given. -/
 def compile (config : Config := default) (expr : Hir) : Except String Checked.NFA := do
-  let anchored := !config.unanchored_prefix || startsWithStart expr
+  let unanchored_prefix_simulation := expr.containsLookaround || config.unanchored_prefix_simulation
+  let anchored := !config.unanchored_prefix || startsWithStart expr || unanchored_prefix_simulation
   let (_, states) ← compile' anchored expr #[]
   let nfa ← NFA.toCkecked ⟨states, 0, 0⟩
-  Except.ok nfa
+  Except.ok {nfa with unanchored_prefix_in_backtrack :=
+                  !startsWithStart expr && unanchored_prefix_simulation
+            }

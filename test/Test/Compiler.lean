@@ -18,6 +18,7 @@ private def nfaOf'a'Checked : Checked.NFA :=
       .Capture NFA.Capture.Role.End ⟨6, by simp⟩ 0 0 1,
       .Match 0
     ]
+    false
     (by simp only [Array.size_toArray, List.length_cons, List.length_nil])
 
 private def nfaOf'a' : Unchecked.NFA :=

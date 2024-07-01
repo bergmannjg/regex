@@ -1080,12 +1080,6 @@ private def set_width (pattern : String) (g : Group) : ParserM Group := do
   | ⟨span, .Lookaround (.NegativeLookbehind _), ast⟩ =>
       let width ← get_fixed_width pattern ast
       pure (Group.mk span (.Lookaround (.NegativeLookbehind width)) ast)
-  | ⟨_, .Lookaround .PositiveLookahead, ast⟩ =>
-      let _ ← get_fixed_width pattern ast
-      pure g
-  | ⟨_, .Lookaround .NegativeLookahead, ast⟩ =>
-      let _ ← get_fixed_width pattern ast
-      pure g
   | _ => pure g
 
 /-- Pop a group AST from the parser's internal stack and set the group's AST to the concatenation.-/
@@ -1106,6 +1100,7 @@ private def pop_group (pattern : String) (i : Nat) (group_concat : Concat)
       let asts := asts.push (group_concat.into_ast)
       let alt : Alternation := ⟨span, asts⟩
       let group := Group.mk ⟨s, start, ⟨i⟩ ⟩ kind alt.into_ast
+      let group ← set_width pattern group
       let prior_concat := Concat.mk prior_concat.span (prior_concat.asts.push (Ast.Group group))
       set {parser with stack_group := stack_group }
       pure prior_concat

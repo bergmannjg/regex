@@ -24,6 +24,8 @@ structure RegexOptions where
   all : Bool := false
   unescape : Bool := false
   path : Option String := none
+  unanchoredPrefix : Bool := true
+  unanchoredPrefixSimulation : Bool := false
 
 abbrev CliMainM := ExceptT CliError MainM
 abbrev CliStateM := StateT RegexOptions CliMainM
@@ -49,6 +51,7 @@ def regexShortOption : (opt : Char) → CliM PUnit
 | 'a' => modifyThe RegexOptions ({· with all := true})
 | 'f' => do let path ← takeOptArg "-f" "path"; modifyThe RegexOptions ({· with path})
 | 'h' => modifyThe RegexOptions ({· with wantsHelp := true})
+| 'n' => modifyThe RegexOptions ({· with unanchoredPrefix := false})
 | 'u' => modifyThe RegexOptions ({· with unescape := true})
 | 'v' => modifyThe RegexOptions ({· with verbosity := Lake.Verbosity.verbose})
 | opt => throw <| CliError.unknownShortOption opt
@@ -56,6 +59,8 @@ def regexShortOption : (opt : Char) → CliM PUnit
 def regexLongOption : (opt : String) → CliM PUnit
 | "--help" => modifyThe RegexOptions ({· with wantsHelp := true})
 | "--verbose" => modifyThe RegexOptions ({· with verbosity := Lake.Verbosity.verbose})
+| "--no-unanchored-prefix" => modifyThe RegexOptions ({· with unanchoredPrefix := false})
+| "--unanchored-prefix-simulation" => modifyThe RegexOptions ({· with unanchoredPrefixSimulation := true})
 | opt =>  throw <| CliError.unknownLongOption opt
 
 def regexOption :=
@@ -73,17 +78,19 @@ def usage :=
 usage: inspect [OPTIONS] <COMMAND>
 
 COMMANDS:
-  ast <re>                    print the abstract syntax tree
-  hir <re>                    print the high level intermediate representation
-  compile <re>                print the nfa
-  captures <re> <s>           get first or all captures of <re> in <s>
+  ast <re>                       print the abstract syntax tree
+  hir <re>                       print the high level intermediate representation
+  compile <re>                   print the nfa
+  captures <re> <s>              get first or all captures of <re> in <s>
 
 OPTIONS:
-  --help, -h                  print help
-  --verbose, -v               show verbose information
-  --all, -a                   get all captures
-  --file, -f <path>           path to file with haystack
-  --unescape, -u              unescape haystack"
+  --help, -h                     print help
+  --verbose, -v                  show verbose information
+  --all, -a                      get all captures
+  --file, -f <path>              path to file with haystack
+  --no-unanchored-prefix, -n     whether not to compile an unanchored prefix into the NFA
+  --unanchored-prefix-simulation whether to simulate an unanchored prefix with the backtracker
+  --unescape, -u                 unescape haystack"
 
 namespace regex
 
@@ -124,7 +131,7 @@ def hir : CliM PUnit := do
 def compile : CliM PUnit := do
   match ← takeArg? with
   | some pat =>
-    let re ← build pat default default ⟨true⟩
+    let re ← build pat default default default
     IO.println s!"{re.nfa}"
   | none => throw <| CliError.missingArg "re"
 
@@ -148,8 +155,15 @@ def captures : CliM PUnit := do
     let chars := haystack.data |> List.map (fun (c : Char) => (UInt32.intAsString c.val))
     IO.println s!"re '{re}' haystack chars '{chars}'"
 
-  let regex ← Regex.build re
+  let flavor : Syntax.Flavor := default
+  let flags : Syntax.Flags := default
+  let config := {(default:Compiler.Config) with
+                    unanchored_prefix := opts.unanchoredPrefix
+                    unanchored_prefix_simulation := opts.unanchoredPrefixSimulation }
+
+  let regex ← Regex.build re flavor flags config
   if isVerbose then IO.println s!"nfa {regex.nfa}"
+  if isVerbose then IO.println s!"nfa unanchored_prefix_in_backtrack {regex.nfa.unanchored_prefix_in_backtrack}"
 
   let nl := "\n"
 

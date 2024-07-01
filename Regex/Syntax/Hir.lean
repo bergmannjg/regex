@@ -142,9 +142,8 @@ instance : ToString Look where
 structure Properties where
     minimum_len: Option UInt32
     maximum_len: Option UInt32
-    look_set_prefix: Array Look
 
-instance : Inhabited Properties := ⟨none, none, #[]⟩
+instance : Inhabited Properties := ⟨none, none⟩
 
 /-- A translator's representation of a regular expression's flags at any given moment in time. -/
 structure Flags where
@@ -211,40 +210,6 @@ instance : Inhabited Hir := ⟨Hir.mk HirKind.Empty default⟩
 
 namespace Hir
 
-def fold [Inhabited α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
-  let ⟨kind, _⟩ := hir
-  match kind with
-  | .Empty => f init hir
-  | .Literal _ => f init hir
-  | .BackRef _ _ => f init hir
-  | .Class _ => f init hir
-  | .Look _ => f init hir
-  | .Lookaround look =>
-      match look with
-      | .PositiveLookahead sub => fold sub f init
-      | .NegativeLookahead sub => fold sub f init
-      | .PositiveLookbehind _ sub => fold sub f init
-      | .NegativeLookbehind _  sub => fold sub f init
-  | .Repetition ⟨_, _, _, _, sub⟩  => fold sub f init
-  | .Capture _ => f init hir
-  | .Concat hirs => hirs.attach |> Array.foldl (init := init)
-      (fun a (h : { x // x ∈ hirs}) =>
-        have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
-        fold h.val f a)
-  | .Alternation hirs => hirs.attach |> Array.foldl (init := init)
-      (fun a (h : { x // x ∈ hirs}) =>
-        have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
-        fold h.val f a)
-termination_by sizeOf hir
-
-/-- check if an `hir` contains `look` -/
-def contains (hir : Hir) (look : Look) : Bool :=
-  fold (init := false) hir
-    (fun acc ⟨kind, props⟩ =>
-      match kind with
-      | .Look _ => acc || props.look_set_prefix.contains look
-      | _ => acc)
-
 def kind (hir : Hir) : HirKind := match hir with | .mk kind _ => kind
 
 theorem sizeOfKindOfHir (hir : Hir) : sizeOf hir.kind < sizeOf hir := by
@@ -257,8 +222,7 @@ def toProperties (kind: HirKind) : Properties :=
   | .Class (.Unicode cls) =>
       /- the length, in bytes, of the smallest string matched by this character class. -/
       let min := if cls.set.intervals.size > 0 then some 1 else none
-      ⟨min, none, #[]⟩
-  | .Look look => ⟨none, none, #[look]⟩
+      ⟨min, none⟩
   | _ => default
 
 def toString (hir : Hir) (col : Nat): String :=
@@ -318,6 +282,42 @@ def toString (hir : Hir) (col : Nat): String :=
           pre ++ iv ++ ": " ++ (toString ast col)))
       s!"Alternation {hirs}"
 termination_by sizeOf hir
+
+def fold [Inhabited α] [ToString α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
+  let init := f init hir
+  let ⟨kind, _⟩ := hir
+  match kind with
+  | .Empty => f init hir
+  | .Literal _ => f init hir
+  | .BackRef _ _ => f init hir
+  | .Class _ => f init hir
+  | .Look _ => f init hir
+  | .Lookaround look =>
+      match look with
+      | .PositiveLookahead sub => fold sub f init
+      | .NegativeLookahead sub => fold sub f init
+      | .PositiveLookbehind _ sub => fold sub f init
+      | .NegativeLookbehind _  sub => fold sub f init
+  | .Repetition ⟨_, _, _, _, sub⟩  => fold sub f init
+  | .Capture _ => f init hir
+  | .Concat hirs => hirs.attach |> Array.foldl (init := init)
+      (fun a (h : { x // x ∈ hirs}) =>
+        have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
+        fold h.val f a)
+  | .Alternation hirs => hirs.attach |> Array.foldl (init := init)
+      (fun a (h : { x // x ∈ hirs}) =>
+        have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
+        fold h.val f a)
+termination_by sizeOf hir
+
+/-- check if an `hir` contains `.Lookaround` -/
+def containsLookaround (hir : Hir) : Bool :=
+  fold (init := false) hir
+    (fun acc ⟨kind, _⟩ =>
+      match kind with
+      | .Lookaround _ => acc || true
+      | _ => acc)
+
 
 end Hir
 

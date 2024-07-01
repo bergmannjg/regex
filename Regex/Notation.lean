@@ -151,8 +151,9 @@ private def mkTermIsEq (n : Nat) (list : Term) : Term :=
 private def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
   let data : Term := Quote.quote nfa.states.data
   let states : Term := Syntax.mkApp (mkCIdent `Array.mk) #[data]
+  let flag : Term := Quote.quote nfa.unanchored_prefix_in_backtrack
   Syntax.mkApp (mkCIdent `NFA.Checked.NFA.mk)
-      #[Lean.Syntax.mkNumLit (ToString.toString nfa.n), states, mkTermIsEq nfa.n data]
+      #[Lean.Syntax.mkNumLit (ToString.toString nfa.n), states, flag, mkTermIsEq nfa.n data]
 
 private def mkTermOfRegex (re : Regex) : Term :=
   Syntax.mkApp (mkCIdent `Regex.mk) #[mkTermOfNfa re.nfa]

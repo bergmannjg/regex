@@ -164,7 +164,9 @@ private def hir_perl_unicode_class (cls : AstItems.ClassPerl) (flags : Flags)
     let diff := IntervalSet.difference is1 is2
     Except.ok (if cls.negated then ⟨IntervalSet.negate diff⟩ else ⟨diff⟩)
   | .HorizontalSpace =>
-    let range1 : Array ClassUnicodeRange ← range_of_property "White_Space"
+    let rangea : Array ClassUnicodeRange ← range_of_property "White_Space"
+    let rangeb : Array ClassUnicodeRange := #[⟨⟨'\u00a0', '\u00a0'⟩, by simp_arith⟩]
+    let range1 : Array ClassUnicodeRange := rangea ++ rangeb
     let range2 : Array ClassUnicodeRange := #[⟨⟨'\u000a', '\u000a'⟩, by simp_arith⟩]
     let is1 : IntervalSet Char := IntervalSet.canonicalize range1
     let is2 : IntervalSet Char := IntervalSet.canonicalize range2

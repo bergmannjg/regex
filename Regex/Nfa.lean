@@ -362,10 +362,12 @@ structure NFA where
   n : Nat
   /-- states of the NFA -/
   states : Array (State n)
+  /-- simulate a unanchored prefix by the backtracker -/
+  unanchored_prefix_in_backtrack : Bool
   /-- assertion that n equals size of states -/
   isEq : n = states.size
 
-instance : Inhabited NFA where default := ⟨0, #[], by simp_arith⟩
+instance : Inhabited NFA where default := ⟨0, #[], false, by simp_arith⟩
 
 instance {nfa : NFA} : Coe (Fin nfa.n) (Fin (Array.size nfa.states)) where
   coe n := Fin.castLE (by simp[nfa.isEq]) n
@@ -439,7 +441,7 @@ def toCkecked (nfa : Unchecked.NFA) : Except String $ Checked.NFA :=
   match nfa.states |> Array.mapM (toCkeckedState? · n) with
   | some states =>
     if h : nfa.states.size = states.size -- todo: prove it
-    then Except.ok ⟨n, states, by
+    then Except.ok ⟨n, states, false, by
       have : n = nfa.states.size := by simp
       simp_all⟩
     else Except.error "internal error: NFA.toCkecked failed"

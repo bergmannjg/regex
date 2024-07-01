@@ -2,6 +2,7 @@ import Batteries.Data.Fin.Lemmas
 import Batteries.Data.Nat.Lemmas
 import Regex.Data.Fin.Basic
 import Regex.Data.Nat.Basic
+import Init.Data.UInt.Lemmas
 
 namespace UInt32
 
@@ -14,6 +15,11 @@ theorem val_ne_of_ne {c d : UInt32} (h : Not (Eq c d)) : Not (Eq c.val d.val) :=
 
 theorem one_le_of_lt {c1 c2 : UInt32} (h : c1 < c2) : 1 ≤ c2 :=
   Nat.zero_lt_of_lt h
+
+theorem lt_toNat_lt {a b : UInt32} (h : a < b) : a.toNat < b.toNat := by
+  unfold UInt32.toNat
+  simp [UInt32.lt_def] at h
+  omega
 
 theorem toNat_toUInt_eq (u : UInt32) : u.toNat.toUInt32 = u := by
   unfold UInt32.toNat

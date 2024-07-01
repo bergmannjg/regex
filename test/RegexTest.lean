@@ -223,7 +223,7 @@ def ignoredErrors := [
       "fixed width capture group of backreference",
       "end quote without a corresponding open quote",
       -- todo: reset visited in backtracker, example regex '(?=.*X)X$'
-      "fixed width expr in look around expected",
+      --"fixed width expr in look around expected",
       "feature not implemented"]
 
 /- todo -/
