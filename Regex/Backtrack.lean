@@ -310,6 +310,13 @@ private def toPairs (slots : Array (Nat × Nat × Option String.Pos))
   if state.logEnabled then { state with msgs := state.msgs.push s!"{msg ()}"}
   else state
 
+theorem withMsg_eq {nfa : Checked.NFA} {s s1 : SearchState nfa.n} {msg : Unit -> String}
+  (h : withMsg  msg s = s1) : s.countVisited = s1.countVisited ∧ s.stack = s1.stack := by
+  unfold withMsg at h
+  split at h <;> try simp_all
+  simp [SearchState.ext_iff] at h
+  simp_all
+
 private def encodeChar? (c: Option Char) : String :=
   match c with
   | some curr => UInt32.intAsString curr.val
@@ -643,7 +650,7 @@ private def encodeChar? (c: Option Char) : String :=
     | none =>
       (withMsg
         (fun _ =>
-            s!"{state.sid}: SparseTransitions '{encodeChar? state.at.curr?}' failed") state)
+            s!"{state.sid}: SparseTransitions failed  at charpos {state.at}") state)
 
 @[inline] private def step_union (alts : Array $ Fin n) (state : SearchState n) : SearchState n :=
   match alts with
@@ -752,11 +759,13 @@ private def encodeChar? (c: Option Char) : String :=
   -- countVisited is not changed in `toNextStep`
   {searchState' with countVisited := searchState.countVisited}
 
-theorem toNextStep'_eq (nfa : Checked.NFA) (state : Checked.State nfa.n) (s s1 : SearchState nfa.n)
-  (h : toNextStep' nfa state s = s1) : s.countVisited = s1.countVisited := by
+theorem toNextStep'_eq {nfa : Checked.NFA} {state : Checked.State nfa.n} {s s1 : SearchState nfa.n}
+  {msg : Unit → String}
+  (h : toNextStep' nfa state (withMsg msg s) = s1) : s.countVisited = s1.countVisited := by
   unfold toNextStep' at h
   simp [SearchState.ext_iff] at h
-  simp_all
+  unfold withMsg at h
+  split at h <;> try simp_all
 
 /-- execute next step in NFA if state not already visited. Returns true if steps available. -/
 @[inline] private def toNextStepChecked (nfa : Checked.NFA) (state : SearchState nfa.n)
@@ -764,8 +773,12 @@ theorem toNextStep'_eq (nfa : Checked.NFA) (state : Checked.State nfa.n) (s s1 :
   match Visited.checkVisited' state with
   | (false, state') =>
       let state := nfa.states.get state'.sid
-      (true, toNextStep' nfa state state')
-  | _ => (false, state)
+      (true, toNextStep'
+                nfa
+                state
+                (withMsg (fun _ => s!"{state'.sid}: visit charpos {state'.at}") state'))
+                --state')
+  | _ => (false, (withMsg (fun _ => s!"{state.sid}: isVisited charpos {state.at}") state))
 
 theorem toNextStepChecked_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
   (h : toNextStepChecked nfa s = (true, s1)) : s.countVisited < s1.countVisited := by
@@ -773,7 +786,7 @@ theorem toNextStepChecked_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
   split at h <;> simp_all
   rename_i s2 hcv
   have heq : s1.countVisited = s2.countVisited := by
-      simp [toNextStep'_eq _ _ s2 s1 h]
+      simp [toNextStep'_eq h]
   have hlt : s.countVisited < s2.countVisited := by
     simp [Visited.checkVisited'_false_lt s hcv]
   rw [← heq] at hlt
@@ -784,6 +797,7 @@ theorem toNextStepChecked_false_eq (nfa : Checked.NFA) (s s1 : SearchState nfa.n
     : s.countVisited = s1.countVisited ∧ s.stack = s1.stack := by
   unfold toNextStepChecked at h
   split at h <;> try simp_all
+  simp [withMsg_eq h]
 
 @[inline] private def visitedSize (state : SearchState n) : Nat :=
    (Visited.getRefValue state.visited).size

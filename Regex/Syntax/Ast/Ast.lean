@@ -55,6 +55,8 @@ inductive ErrorKind
   | GroupNameEmpty
   /-- An invalid character was seen for a capture group name. -/
   | GroupNameInvalid
+  /-- A capture group name is not found of a backreference. -/
+  | GroupNameNotFound
   /-- A closing `>` could not be found for a capture group name. -/
   | GroupNameUnexpectedEof
   /-- An unclosed group, e.g., `(ab`. -/
@@ -96,8 +98,6 @@ inductive ErrorKind
   /-- A octal literal did not correspond to a Unicode scalar value. -/
   | EscapeOctalInvalid
   /-- Feature not implemented. -/
-  | FeatureNotImplementedNamedGroups
-  /-- Feature not implemented. -/
   | FeatureNotImplementedSubroutines
   /-- Feature not implemented. -/
   | FeatureNotImplementedFlagShorthand
@@ -137,6 +137,7 @@ def toString : ErrorKind -> String
   | .GroupNameDuplicate => "duplicate capture group name"
   | .GroupNameEmpty => "empty capture group name"
   | .GroupNameInvalid => "invalid capture group character"
+  | .GroupNameNotFound => "capture group of backreference not found."
   | .GroupNameUnexpectedEof => "unclosed capture group name"
   | .GroupUnclosed => "unclosed group"
   | .GroupUnopened => "unopened group"
@@ -159,7 +160,6 @@ def toString : ErrorKind -> String
   | .UnsupportedBackreference => "backreferences are not supported"
   | .UnsupportedLookAround => "look-around, including look-ahead and look-behind, is not supported"
   | .UnkownAsciiClass => "ascii class unkown"
-  | .FeatureNotImplementedNamedGroups => "feature not implemented: NamedGroups"
   | .FeatureNotImplementedSubroutines => "feature not implemented: Subroutines"
   | .FeatureNotImplementedFlagShorthand => "feature not implemented: Flag ^"
   | .FeatureNotImplementedAtomicGroup => "feature not implemented: AtomicGroup"
@@ -425,14 +425,14 @@ instance : ToString LookaroundKind where
 
 /-- The kind of a group. -/
 inductive GroupKind where
-  | CaptureIndex : Nat -> GroupKind
+  | CaptureIndex : Nat -> Option String -> GroupKind
   | NonCapturing : Flags -> GroupKind
   | Lookaround : LookaroundKind -> GroupKind
 
 namespace GroupKind
 
 def toString : GroupKind -> String
-  | .CaptureIndex i => s!"CaptureIndex {i}"
+  | .CaptureIndex i s => s!"CaptureIndex {i} name {s}"
   | .NonCapturing flags => s!"NonCapturing {flags}"
   | .Lookaround kind => s!"Lookaround {kind}"
 

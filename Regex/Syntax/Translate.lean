@@ -252,7 +252,7 @@ private def hir_assertion (ast : AstItems.Assertion) (flags : Syntax.Flags) : Hi
 private def hir_capture (g : AstItems.Group) (expr: Hir) : Hir :=
   let (index, name) : Option Nat × Option String :=
     match g.kind with
-    | .CaptureIndex captureIndex => (some captureIndex, none)
+    | .CaptureIndex captureIndex _ => (some captureIndex, none)
     | .NonCapturing _ => (none, none)
     | .Lookaround _ => (none, none)
 

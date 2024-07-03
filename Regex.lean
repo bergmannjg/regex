@@ -1,6 +1,5 @@
 import Regex.Syntax.Hir
 import Regex.Nfa
-import Regex.Unicode
 import Regex.Regex
 import Regex.Notation
 
@@ -36,7 +35,6 @@ The following features are not yet implemented in the Pcre flavor:
 * [backtracking control](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC28),
 * [variable length look behind](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22),
 * [extended patterns](https://perldoc.perl.org/perlre#Extended-Patterns),
-* [named capture groups](https://perldoc.perl.org/perlre#(?NAME%3Epattern)),
 * capture groups with a backreference should have fixed width (a restriction of the backtrack algorithm).
 
 The following features are not implemented in the Rust flavor:

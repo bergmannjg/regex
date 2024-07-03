@@ -145,14 +145,22 @@ private def inRangesOfProperty (c : Char) (prop : String) : Except String String
       s!"{c} {UInt32.intAsString c.val} in range '{UInt32.intAsString range.fst.val} {UInt32.intAsString range.snd.val}'"
   | none => Except.error s!"{c} not found"
 
-/-- has `c` the word property -/
-def is_word_char (c : Char) : Bool :=
-  match rangesOfProperty "Word" with
+private def isCharInIntervals (c : Char)
+    (intervals : Except String (Array (NonemptyInterval Char))) : Bool :=
+  match intervals with
   | Except.ok arr =>
       match Array.find? arr (fun ⟨⟨c1, c2⟩, _⟩ => c1.val <= c.val && c.val <= c2.val) with
       | some _ => true
       | none => false
   | Except.error _ => false
+
+/-- has `c` the word property -/
+def is_word_char (c : Char) : Bool :=
+  rangesOfProperty "Word" |> isCharInIntervals c
+
+/-- has `c` the general category -/
+def isCharOfGeneralCategory (category : GeneralCategory) (c : Char) : Bool :=
+  rangesOfGeneralCategory category |> isCharInIntervals c
 
 /-- get ranges of case folds of char -/
 def case_fold_char (c : Char) :  Array (NonemptyInterval Char) :=

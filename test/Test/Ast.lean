@@ -59,7 +59,7 @@ private def «astOf'(a)'» : Ast :=
     Syntax.AstItems.Ast.Group
       (Syntax.AstItems.Group.mk
         (String.toSpan "(a)" 0 3)
-        (GroupKind.CaptureIndex 1)
+        (GroupKind.CaptureIndex 1 none)
         (Ast.Literal ⟨String.toSpan "(a)" 1 2, LiteralKind.Verbatim, 'a'⟩))
 
 example : (parse "a" Syntax.Flavor.Rust |> toString) = s!"{astOf'a'}" := by native_decide

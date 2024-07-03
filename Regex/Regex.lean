@@ -1,3 +1,4 @@
+import Regex.Unicode
 import Regex.Nfa
 import Regex.Backtrack
 import Regex.Utils

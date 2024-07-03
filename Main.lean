@@ -52,6 +52,7 @@ def regexShortOption : (opt : Char) → CliM PUnit
 | 'f' => do let path ← takeOptArg "-f" "path"; modifyThe RegexOptions ({· with path})
 | 'h' => modifyThe RegexOptions ({· with wantsHelp := true})
 | 'n' => modifyThe RegexOptions ({· with unanchoredPrefix := false})
+| 's' => modifyThe RegexOptions ({· with unanchoredPrefixSimulation := true})
 | 'u' => modifyThe RegexOptions ({· with unescape := true})
 | 'v' => modifyThe RegexOptions ({· with verbosity := Lake.Verbosity.verbose})
 | opt => throw <| CliError.unknownShortOption opt
@@ -84,13 +85,13 @@ COMMANDS:
   captures <re> <s>              get first or all captures of <re> in <s>
 
 OPTIONS:
-  --help, -h                     print help
-  --verbose, -v                  show verbose information
-  --all, -a                      get all captures
-  --file, -f <path>              path to file with haystack
-  --no-unanchored-prefix, -n     whether not to compile an unanchored prefix into the NFA
-  --unanchored-prefix-simulation whether to simulate an unanchored prefix with the backtracker
-  --unescape, -u                 unescape haystack"
+  --help, -h                         print help
+  --verbose, -v                      show verbose information
+  --all, -a                          get all captures
+  --file, -f <path>                  path to file with haystack
+  --no-unanchored-prefix, -n         whether not to compile an unanchored prefix into the NFA
+  --unanchored-prefix-simulation, -s whether to simulate an unanchored prefix with the backtracker
+  --unescape, -u                     unescape haystack"
 
 namespace regex
 

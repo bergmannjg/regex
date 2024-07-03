@@ -2,6 +2,7 @@ import Batteries.Data.Nat.Lemmas
 import Regex.Data.Array.Basic
 import Regex.Syntax.Ast.Ast
 import Regex.Utils
+import Regex.Unicode
 
 namespace Syntax
 
@@ -73,6 +74,8 @@ private inductive ClassState where
 private structure Parser where
   /-- The current capture index. -/
   capture_index : Nat
+  /-- The names of capture groups. -/
+  capture_group_names : List (Nat × String)
   /-- The maximal single digit backreference. -/
   max_backreference : Nat
   /-- Disable pattern metacharacters from \Q until \E -/
@@ -82,7 +85,7 @@ private structure Parser where
   /-- A stack of nested character classes. -/
   stack_class: Array ClassState
 
-instance : Inhabited Parser := ⟨0, 0, false, #[], #[]⟩
+instance : Inhabited Parser := ⟨0, [], 0, false, #[], #[]⟩
 
 abbrev ParserM := ReaderT Flavor $ StateT Parser (Except String)
 
@@ -253,6 +256,50 @@ private def maybe_parse_special_word_boundary (pattern : String) (i : Nat)
   else
     Except.ok none
 
+private def is_start_of_group_name (c : Char) :=
+  c = '_'
+  || Unicode.isCharOfGeneralCategory Unicode.GeneralCategory.L c
+
+private def is_char_in_group_name (c : Char) :=
+  c = '_'
+  || Unicode.isCharOfGeneralCategory Unicode.GeneralCategory.L c
+  || Unicode.isCharOfGeneralCategory Unicode.GeneralCategory.Nd c
+
+private def read_group_name? (pattern : String) (i : Nat) (offset : Nat)  (end_marker : Char)
+    : Option (NChars × String) := do
+  let chars := (pattern.data.drop (i + offset))
+        |> List.takeWhile (fun c => is_char_in_group_name c || c = ' ')
+  if chars.length > 0 && end_marker = pattern.getAtCodepoint (i + offset + chars.length) then
+    let offset := offset + chars.length + 1
+    let name : String := ⟨chars⟩
+    some (offset, name.trim)
+  else none
+
+private def parse_backref_name (pattern : String) (i : Nat) (end_marker : Char)
+    : ParserM (NChars × BackRef) := do
+  let state ← get
+  match read_group_name? pattern i 0 end_marker with
+  | some (offset, name) =>
+      match state.capture_group_names |> List.find? (fun (_, n) => n = name) with
+      | some (n, _) =>
+        if n > state.max_backreference then set {state with max_backreference := n}
+        let span := String.toSpan pattern (i - 1) (i + offset)
+        pure (offset - 1, ⟨span, n⟩)
+      | none => throw (toError pattern .GroupNameNotFound)
+  | none => throw (toError pattern .GroupNameNotFound)
+
+private def maybe_parse_backref_name (pattern : String) (i : Nat) (end_marker : Char)
+    : ParserM $ Option (NatPos × Primitive) := do
+  let c := pattern.getAtCodepoint i
+  let c1 := pattern.getAtCodepoint (i + 1)
+  let c2 := pattern.getAtCodepoint (i + 2)
+  if c = '?' && c1 = 'P' && c2 = '=' then
+    let (offset, br) ← parse_backref_name pattern (i + 3) end_marker
+    pure (some (NatPos.succ (offset + 4), Primitive.BackRef br))
+  else if c = '?' && c1 = 'P' && c2 = '>' then
+    throw (toError pattern .FeatureNotImplementedSubroutines)
+  else pure none
+
 private def maybe_parse_backref_num (pattern : String) (i : Nat)
     : ParserM $ Option (NChars × BackRef) := do
   let state ← get
@@ -273,7 +320,9 @@ private def maybe_parse_backref_num (pattern : String) (i : Nat)
     if 0 < n && n ≤ state.capture_index
     then pure (some (offset0 + 1, ⟨span, n⟩))
     else pure none
-  | (_, _, _) => pure none
+  | (_, _, _) =>
+    if offset0 - 1 = 0 && is_start_of_group_name c then parse_backref_name pattern i '}'
+    else pure none
 
 private def maybe_parse_backref (pattern : String) (i : Nat)
     : ParserM $ Option (NChars × BackRef) := do
@@ -410,6 +459,18 @@ private def parse_escape (pattern : String) (i : Nat) (inSetClass : Bool := fals
     else Except.error (toError pattern .EscapeUnrecognized)
   | 'e' => pure (NatPos.one, toVerbatim '\x07')
   | 'f' => pure (NatPos.one, toVerbatim '\x0C')
+  | 'k' =>
+    if flavor == Flavor.Pcre
+    then
+      let c1 := pattern.getAtCodepoint (i+1)
+      if c1 = '<' then
+        let (offset, br) ← parse_backref_name pattern (i + 2) '>'
+        pure (NatPos.succ (offset + 2), Primitive.BackRef br)
+      else if c1 = '{' then
+        let (offset, br) ← parse_backref_name pattern (i + 2) '}'
+        pure (NatPos.succ (offset + 2), Primitive.BackRef br)
+      else Except.error (toError pattern .EscapeUnrecognized)
+    else Except.error (toError pattern .EscapeUnrecognized)
   | 'n' => pure (NatPos.one, toVerbatim '\n')
   | 'o' =>
       let c1 := pattern.getAtCodepoint (i+1)
@@ -923,6 +984,23 @@ private def parse_flags (pattern : String) (i : Nat)
   let flags : Flags := ⟨(String.toSpan pattern i chars.size), items⟩
   Except.ok (chars.size, flags)
 
+private def parse_group_name (pattern : String) (i : Nat) (offset : Nat)  (end_marker : Char)
+    : ParserM (NChars × (Sum SetFlags Group)) := do
+  match read_group_name? pattern i offset end_marker with
+  | some (offset, name) =>
+      let parser ← get
+      if parser.capture_group_names |> List.find? (fun (_, n) => n = name) |> Option.isSome
+      then throw (toError pattern .GroupNameDuplicate) else
+      let capture_index := parser.capture_index + 1
+      let g := Group.mk (String.toSpan pattern i (i + offset)) (.CaptureIndex capture_index (some name)) Ast.Empty
+      let parser := {parser with
+                      capture_index := capture_index
+                      capture_group_names := parser.capture_group_names ++ [(capture_index, name)]
+                    }
+      set parser
+      pure (offset, Sum.inr g)
+  | none => throw (toError pattern .GroupNameInvalid)
+
 /-- Parse a group (which contains a sub-expression) or a set of flags. -/
 private def parse_group (pattern : String) (i : Nat)
     : ParserM (NChars × (Sum SetFlags Group)) := do
@@ -931,12 +1009,12 @@ private def parse_group (pattern : String) (i : Nat)
   let c1 := pattern.getAtCodepoint i
   let c2 := pattern.getAtCodepoint (i + 1)
   let c3 := pattern.getAtCodepoint (i + 2)
-  if c1 = '?' && c2  = '<' && c3.isAlpha then
-    throw  (toError pattern .FeatureNotImplementedNamedGroups)
-  else if c1 = '?' && c2  = 'P' && (c3 = '<'  || c3 = '=') then
-    throw  (toError pattern .FeatureNotImplementedNamedGroups)
+  if c1 = '?' && c2  = '<' && is_start_of_group_name c3 then
+    parse_group_name pattern i 2 '>'
+  else if c1 = '?' && c2  = 'P' && c3 = '<' then
+    parse_group_name pattern i 3 '>'
   else if c1 = '?' && c2  = '\'' then
-    throw  (toError pattern .FeatureNotImplementedNamedGroups)
+    parse_group_name pattern i 2 '\''
   else if c1 = '?' && c2.isDigit then
     throw  (toError pattern .FeatureNotImplementedSubroutines)
   else if c1 = '?' && (c2 = '-'  || c2 = '+') && c3.isDigit then
@@ -1010,7 +1088,7 @@ private def parse_group (pattern : String) (i : Nat)
       pure (n + 2, Sum.inr g)
   else
     let parser := {parser with capture_index := parser.capture_index + 1 }
-    let g := Group.mk (String.toSpan pattern i (i + 1)) (.CaptureIndex parser.capture_index) Ast.Empty
+    let g := Group.mk (String.toSpan pattern i (i + 1)) (.CaptureIndex parser.capture_index none) Ast.Empty
     set parser
     pure (0, Sum.inr g)
 
@@ -1063,7 +1141,7 @@ private def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat :
       match rep with
       | AstItems.Repetition.mk _ (RepetitionOp.mk _ (.Range (.Exactly n))) _ _ _ => pure n
       | _ => throw (toError pattern .FixedWidtExcpected)
-  | .Group ⟨_, GroupKind.CaptureIndex _, ast⟩  =>
+  | .Group ⟨_, GroupKind.CaptureIndex _ _, ast⟩  =>
         let width ← get_fixed_width pattern ast
         pure width
   | .Group ⟨_, GroupKind.Lookaround _, _⟩  =>
@@ -1130,7 +1208,7 @@ private def add_char_to_concat (pattern : String) (i : Nat) (c : Char) (concat :
 private def checkBackRefence (b : Nat) (ast: Ast) : Except String Bool := do
   let check (ast : Ast) :=
     match ast with
-    | .Group ⟨_, AstItems.GroupKind.CaptureIndex b', _⟩ => b = b'
+    | .Group ⟨_, AstItems.GroupKind.CaptureIndex b' _, _⟩ => b = b'
     | _ => false
 
   match AstItems.find ast check with
@@ -1171,10 +1249,17 @@ def parse (pattern : String) (flavor : Syntax.Flavor) : Except String Ast := do
         | '(' =>
           if state.disabled_metacharacters
           then loop pattern (i+1) (add_char_to_concat pattern i c concat) else
-            let (n, concat) ← push_group pattern (i + 1) concat
-            have : pattern.length - (i + n + 1) < pattern.length - i := by
-              simp [Nat.sum_succ_lt_of_not_gt _ _ _ h₀]
-            loop pattern (i+n+1) concat
+            match ← maybe_parse_backref_name pattern (i+1) ')' with
+            | some (⟨n, h₁⟩ , p) =>
+                let asts := concat.asts.push p.into_ast
+                have : pattern.length - (i + n) < pattern.length - i := by
+                  simp [Nat.sum_lt_of_not_gt _ _ _ h₀ h₁]
+                loop pattern (i+n) (Concat.mk (concat.span) asts)
+            | none =>
+              let (n, concat) ← push_group pattern (i + 1) concat
+              have : pattern.length - (i + n + 1) < pattern.length - i := by
+                simp [Nat.sum_succ_lt_of_not_gt _ _ _ h₀]
+              loop pattern (i+n+1) concat
         | ')' =>
           if state.disabled_metacharacters
           then loop pattern (i+1) (add_char_to_concat pattern i c concat) else
