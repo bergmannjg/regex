@@ -5,9 +5,6 @@ import Batteries.Data.Fin.Lemmas
 import Batteries.Data.Int.Lemmas
 import Batteries.Data.List.Basic
 import Batteries.Data.Array.Lemmas
-import Mathlib.Data.List.Chain
-import Mathlib.Order.BoundedOrder
-import Mathlib.Order.Interval.Basic
 import Regex.Utils
 import Regex.Data.UInt.Basic
 import Regex.Data.Char.Basic
@@ -20,7 +17,7 @@ namespace Intervals
 
 open Interval
 
-theorem empty_isNonOverlapping {α : Type u} [LE α] [HSub α α Nat]
+theorem empty_isNonOverlapping {α : Type} [LE α] [HSub α α Nat]
     : nonOverlapping (#[] : Array (NonemptyInterval α)) := by
   unfold nonOverlapping dataIsNonOverlapping
   split <;> simp_all
@@ -33,7 +30,7 @@ theorem single_isNonOverlapping (ranges : Array (NonemptyInterval Char)) (h : ra
   unfold List.length at h
   split at h <;> try simp_all
 
-instance (α : Type u) [LT α] [LE α] [HSub α α Nat]
+instance (α : Type) [LT α] [LE α] [HSub α α Nat]
     [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a = b)]
     : Inhabited $ IntervalSet α where
   default := ⟨#[], Intervals.empty_isNonOverlapping⟩
@@ -166,9 +163,9 @@ theorem nonOverlapping_of_push (acc : Acc) (next : NonemptyInterval Char)
         unfold Intervals.dataIsNonOverlapping at hn
         simp_all [hn]
       have hy : List.Chain Interval.nonOverlapping head (tail ++ [last]  ++ [next]) := by
-        simp [List.chain_append_cons_cons.mpr]
-        simp [h2]
-        simp [hn]
+        simp [List.append_assoc, List.singleton_append, List.chain_append_cons_cons,
+              List.Chain.nil, and_true]
+        simp_all [h2]
       rw [←hh, ←ht]
       simp_all [hy]
   simp_all [h5]
@@ -199,8 +196,8 @@ theorem Array.eq_succ_of_tail_nth (arr : Array α) (h1 : i+1 < arr.size)
 
 theorem nonOverlapping_of_nth (ranges : Array $ NonemptyInterval Char) (n : Nat)
   (h1 : 0 < n) (h2 : n+1 < Array.size ranges) (h3: ranges.data = head :: tail)
-  (h4 : ∀ (i : ℕ) (h : i < List.length tail-1),
-    Interval.nonOverlapping (tail.get ⟨i, Nat.lt_of_lt_pred h⟩) (tail.get ⟨i+1, Nat.lt_pred_iff.mp h⟩))
+  (h4 : ∀ (i : Nat) (h : i < List.length tail-1),
+    Interval.nonOverlapping (tail.get ⟨i, by omega⟩) (tail.get ⟨i+1, Nat.add_lt_of_lt_sub h⟩))
     : Interval.nonOverlapping (ranges.get ⟨n, Nat.lt_of_succ_lt h2⟩) (ranges.get ⟨n+1, h2⟩) := by
   have hlt : n < Array.size ranges := Nat.lt_of_succ_lt h2
   have hf : n+1 < ranges.data.length := by unfold Array.size at h2; simp_all [h2]
@@ -211,7 +208,7 @@ theorem nonOverlapping_of_nth (ranges : Array $ NonemptyInterval Char) (n : Nat)
     have h : n < tail.length := Nat.lt_of_lt_of_eq h (by simp_all)
     simp [h]
   have ht1 : n-1 < tail.length-1 := Nat.pred_lt_pred (by simp_all) ht0
-  have ht2 : n-1 < tail.length := Nat.lt_of_lt_pred ht1
+  have ht2 : n-1 < tail.length := by omega
   have ht3 : n-1+1 < tail.length := by simp [hps, ht0]
   have : Interval.nonOverlapping (tail.get ⟨n-1, ht2⟩) (tail.get ⟨n-1+1, ht3⟩) := h4 (n-1) ht1
   have : tail.get ⟨n-1, ht2⟩ = ranges.get ⟨n, hlt⟩ := by

@@ -4,8 +4,6 @@ import Batteries.Data.Nat.Lemmas
 import Batteries.Data.Fin.Lemmas
 import Batteries.Data.Int.Lemmas
 import Batteries.Data.List.Basic
-import Mathlib.Order.BoundedOrder
-import Mathlib.Order.Interval.Basic
 import Regex.Utils
 import Regex.Data.Array.Basic
 import Regex.Data.UInt.Basic
@@ -18,6 +16,21 @@ This file contains the definition of interval sets (`IntervalSet`),
 a sorted set of non-overlapping intervals (`Interval.nonOverlapping`).
 -/
 
+/- We define intervals by the pair of endpoints `fst`, `snd`,
+   see Mathlib.Order.Interval.Basic  -/
+@[ext (flat := false)]
+structure NonemptyInterval (α : Type) [LE α] extends Prod α α where
+  /-- The starting point of an interval is smaller than the endpoint. -/
+  fst_le_snd : fst ≤ snd
+
+/-- A bounded order describes an order `(≤)` with a top and bottom element,
+    see Mathlib.Order.BoundedOrder -/
+class BoundedOrder (α : Type) [LE α] where
+  bot : α
+  bot_le : ∀ a : α, bot ≤ a
+  top : α
+  le_top : ∀ a : α, a ≤ top
+
 /-- BoundedOrder is used to define negation of interval sets (`IntervalSet.negate`). -/
 instance : BoundedOrder Char where
   bot := Char.min
@@ -25,11 +38,11 @@ instance : BoundedOrder Char where
   top := Char.max
   le_top := Char.le_max
 
-theorem NonemptyInterval.eq_val_of_eq {α : Type*} [LE α]
+theorem NonemptyInterval.eq_val_of_eq {α : Type} [LE α]
   {x y : NonemptyInterval α} (h : x = y) : x.fst = y.fst ∧ x.snd = y.snd := by
   simp_all
 
-instance (α : Type*) [LE α] [DecidableEq α] : DecidableEq (NonemptyInterval α) :=
+instance (α : Type) [LE α] [DecidableEq α] : DecidableEq (NonemptyInterval α) :=
   fun ⟨(a, b), _⟩ ⟨(a', b'), _⟩ =>
     match decEq a a' with
     | isTrue e₁ =>
@@ -50,15 +63,15 @@ namespace Interval
     they are not overlapping or adjacent, i.e. the difference of `r2.fst` and `r1.snd`
     is greater than one. Intervals with a difference of one are canonicalized
     to a new NonemptyInterval (`IntervalSet.canonicalize`). -/
-def nonOverlapping {α : Type u} [LE α] [HSub α α Nat] (r1 r2 : NonemptyInterval α) : Prop :=
+def nonOverlapping {α : Type} [LE α] [HSub α α Nat] (r1 r2 : NonemptyInterval α) : Prop :=
    1 < ((r2.fst - r1.snd) : Nat)
 
-instance {α : Type u} [LE α] [HSub α α Nat]
+instance {α : Type} [LE α] [HSub α α Nat]
     (r1 r2 : NonemptyInterval α) : Decidable (Interval.nonOverlapping r1 r2) :=
   inferInstanceAs (Decidable (LT.lt 1 ((r2.fst - r1.snd) : Nat)))
 
 /-- create intersection of intervals `r1` and `r2` if it exists. -/
-def intersection {α : Type u} [LE α]
+def intersection {α : Type} [LE α]
     [(a b : α) → Decidable (a ≤ b)] (r1 r2 : NonemptyInterval  α) : Option $ NonemptyInterval α :=
   let lower := if r1.fst ≤ r2.fst then r2.fst else r1.fst
   let upper := if r1.snd ≤ r2.snd then r1.snd else r2.snd
@@ -97,7 +110,7 @@ def unique (intervals: Array (NonemptyInterval Char)) : Array (NonemptyInterval 
 
 /-- a list of intervals is non overlapping when intervals are sorted
     and no intervals are overlapping or adjacent -/
-def dataIsNonOverlapping {α : Type u} [LE α] [HSub α α Nat]
+def dataIsNonOverlapping {α : Type} [LE α] [HSub α α Nat]
     (intervals: List (NonemptyInterval α)) : Prop :=
   match intervals with
   | [] => true
@@ -105,14 +118,14 @@ def dataIsNonOverlapping {α : Type u} [LE α] [HSub α α Nat]
   | head :: tail  => List.Chain (Interval.nonOverlapping) head tail
 
 /-- an array of intervals is non overlapping when `intervals.data` is non overlapping -/
-def nonOverlapping {α : Type u} [LE α] [HSub α α Nat]
+def nonOverlapping {α : Type} [LE α] [HSub α α Nat]
     (intervals: Array (NonemptyInterval α)) : Prop :=
   dataIsNonOverlapping intervals.data
 
 end Intervals
 
 /-- A sorted set of non-overlapping intervals. -/
-structure IntervalSet (α : Type u)[LT α] [LE α] [HSub α α Nat]
+structure IntervalSet (α : Type)[LT α] [LE α] [HSub α α Nat]
     [(a b : α) → Decidable (a < b)] [(a b : α) → Decidable (a = b)] where
   intervals: Array (NonemptyInterval α)
   isNonOverlapping: Intervals.nonOverlapping intervals

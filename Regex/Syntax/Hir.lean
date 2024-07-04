@@ -238,36 +238,36 @@ def toString (hir : Hir) (col : Nat): String :=
   | .Lookaround lk  =>
     match hr: lk with
     | .PositiveLookahead sub =>
-        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
-        have : sizeOf sub < sizeOf lk := by simp [hr]
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]; omega
+        have : sizeOf sub < sizeOf lk := by simp [hr]; omega
         s!"PositiveLookahead {toString sub col}"
     | .NegativeLookahead sub =>
-        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
-        have : sizeOf sub < sizeOf lk := by simp [hr]
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]; omega
+        have : sizeOf sub < sizeOf lk := by simp [hr]; omega
         s!"NegativeLookahead {toString sub col}"
     | .PositiveLookbehind i sub =>
-        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]; omega
         have : sizeOf sub < sizeOf lk := by simp [hr]; omega
         s!"PositiveLookbehind Length {i} {toString sub col}"
     | .NegativeLookbehind i sub =>
-        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]
+        have : sizeOf lk < sizeOf hir.kind := by simp [hk, hr]; omega
         have : sizeOf sub < sizeOf lk := by simp [hr]; omega
         s!"NegativeLookbehind Length {i} {toString sub col}"
   | .Repetition rep =>
     match hr : rep with
     | .mk min max greedy possessive sub =>
-        have : sizeOf rep < sizeOf hir.kind := by simp [hk, hr]
-        have : sizeOf sub < sizeOf rep := by simp [hr]
+        have : sizeOf rep < sizeOf hir.kind := by simp [hk, hr]; omega
+        have : sizeOf sub < sizeOf rep := by simp [hr]; omega
         s!"Repetition {min} {max} possessive {possessive} greedy {greedy}{pre}sub {toString sub col}"
   | .Capture c =>
     match hc : c with
     | .mk index name sub =>
-        have : sizeOf c < sizeOf hir.kind := by simp [hk, hc]
+        have : sizeOf c < sizeOf hir.kind := by simp [hk, hc]; omega
         have : sizeOf sub < sizeOf c := by simp [hc]; omega
         s!"Capture {index} {name}{pre}sub {toString sub col}"
   | .Concat items =>
       let hirs := Array.mapIdx items.attach (fun i s => (i, s))
-      have : sizeOf items < sizeOf hir.kind := by simp [hk]
+      have : sizeOf items < sizeOf hir.kind := by simp [hk]; omega
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
@@ -275,7 +275,7 @@ def toString (hir : Hir) (col : Nat): String :=
       s!"Concat {hirs}"
   | .Alternation items =>
       let hirs := Array.mapIdx items.attach (fun i s => (i, s))
-      have : sizeOf items < sizeOf hir.kind := by simp [hk]
+      have : sizeOf items < sizeOf hir.kind := by simp [hk]; omega
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property

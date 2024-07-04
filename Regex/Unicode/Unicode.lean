@@ -196,7 +196,7 @@ theorem Fin.sub_le_of_le {a b : Fin n} (h : a ≤ b) : b - a ≤ b := by
   apply Nat.sub_le
 
 theorem Uint32.sub_le_of_le {a b : UInt32} (h : a ≤ b) : b - a ≤ b := by
-  apply UInt32.le_def.mp at h
+  --apply UInt32.le_def.mp at h
   exact Fin.sub_le_of_le h
 
 /-- get ranges of case folds of chars in range -/

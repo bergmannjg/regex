@@ -58,3 +58,41 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
 theorem get_last_of_concat {l : List α} (h : (l ++ [last]).length - 1 < (l ++ [last]).length)
     : List.get (l ++ [last]) ⟨(l ++ [last]).length - 1, h⟩ = last  := by
   simp [List.get_last _]
+
+/- see Mathlib/Data/List/Chain.lean -/
+theorem chain_split {a b : α} {l₁ l₂ : List α} :
+    Chain R a (l₁ ++ b :: l₂) ↔ Chain R a (l₁ ++ [b]) ∧ Chain R b l₂ := by
+  induction l₁ generalizing a with
+  | nil => simp
+  | cons x l₁ IH => simp only [cons_append, chain_cons, and_assoc, IH]
+
+/- see Mathlib/Data/List/Chain.lean -/
+theorem chain_append_cons_cons {a b c : α} {l₁ l₂ : List α} :
+    Chain R a (l₁ ++ b :: c :: l₂) ↔ Chain R a (l₁ ++ [b]) ∧ R b c ∧ Chain R c l₂ := by
+  rw [chain_split, chain_cons]
+
+/- see Mathlib/Data/List/Chain.lean -/
+theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, Chain R a l ↔
+    (∀ h : 0 < length l, R a (get l ⟨0, h⟩)) ∧
+      ∀ (i : Nat) (h : i < l.length - 1),
+        R (get l ⟨i, by omega⟩) (get l ⟨i+1, by omega⟩)
+  | a, [] => iff_of_true (by simp) ⟨fun h => by simp at h, fun _ h => by simp at h; omega⟩
+  | a, b :: t => by
+    rw [chain_cons, @chain_iff_get _ _ _ t]
+    constructor
+    · rintro ⟨R, ⟨h0, h⟩⟩
+      constructor
+      · intro _
+        exact R
+      intro i w
+      cases i
+      · simp [h0]
+      · rename_i i
+        exact h i (by simp only [length_cons] at w; omega)
+    rintro ⟨h0, h⟩; constructor
+    · apply h0
+      simp
+    constructor
+    · apply h 0
+    intro i w
+    exact h (i+1) (by simp only [length_cons]; omega)

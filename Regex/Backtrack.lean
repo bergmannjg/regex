@@ -899,7 +899,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   rw [hs] at hx
   simp_all
 
-@[inline] private def toNextFrameRestoreCapture (slot : Nat) (offset : ℕ × ℕ × Option String.Pos)
+@[inline] private def toNextFrameRestoreCapture (slot : Nat) (offset : Nat × Nat × Option String.Pos)
   (stack : Stack n) (state : SearchState n) : Bool × SearchState n :=
   if h : slot < state.slots.size
   then
@@ -908,7 +908,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
     (true, state)
   else (false, state)
 
-theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat) (offset : ℕ × ℕ × Option String.Pos)
+theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat) (offset : Nat × Nat × Option String.Pos)
   (stack : Stack n) (s : SearchState n)
     (h : toNextFrameRestoreCapture slot offset stack s = (true, s1))
     : s.countVisited = s1.countVisited ∧ stack = s1.stack := by

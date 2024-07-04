@@ -8,8 +8,7 @@ require «doc-gen4» from git "https://github.com/leanprover/doc-gen4"
 require UnicodeBasic from git "https://github.com/fgdorais/lean4-unicode-basic.git"
     @ "48563d6b516f178851bd9abad05ebfaba84a3ee8"
 
-require mathlib from git "https://github.com/leanprover-community/mathlib4"
-    @ "v4.9.0"
+require batteries from git "https://github.com/leanprover-community/batteries" @ "v4.9.0"
 
 package «Regex» {
 }

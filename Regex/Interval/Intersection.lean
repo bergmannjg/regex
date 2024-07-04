@@ -104,7 +104,7 @@ def canonicalize (ranges : Array (NonemptyInterval Char)) : IntervalSet Char :=
 def negate (interval : IntervalSet Char) : IntervalSet Char :=
   if interval.intervals.size = 0
   then
-    Intervals.singleton ⟨⟨Bot.bot, Top.top⟩, OrderBot.bot_le Top.top⟩
+    Intervals.singleton ⟨⟨BoundedOrder.bot, BoundedOrder.top⟩, BoundedOrder.bot_le BoundedOrder.top⟩
   else
     let ranges : Array (NonemptyInterval Char) :=
       Array.mapIdx interval.intervals  (fun i x => (i, x))
@@ -120,15 +120,15 @@ def negate (interval : IntervalSet Char) : IntervalSet Char :=
               (interval.intervals.get i) h
               (by simp_all) (by simp_all) interval.isNonOverlapping)
         else
-          if Bot.bot < y.fst
-          then ⟨⟨ Bot.bot, Char.decrement y.fst⟩ , by simp⟩
+          if BoundedOrder.bot < y.fst
+          then ⟨⟨ BoundedOrder.bot, Char.decrement y.fst⟩ , by simp [BoundedOrder.bot_le]⟩
           else y
         )
     let last : Array (NonemptyInterval Char) :=
       match interval.intervals.pop? with
       | some (x, _) =>
-          if x.snd <Top.top
-          then #[⟨⟨Char.increment x.snd, Top.top⟩, by simp⟩]
+          if x.snd < BoundedOrder.top
+          then #[⟨⟨Char.increment x.snd, BoundedOrder.top⟩, by simp [BoundedOrder.le_top]⟩]
           else #[]
       | none => #[]
 

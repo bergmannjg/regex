@@ -76,6 +76,9 @@ end UInt32
 
 namespace String
 
+instance : Coe String Substring where
+  coe s := s.toSubstring
+
 /-- get `i` char in `s`, tood: switch to String.Pos logic -/
 def getAtCodepoint (s : String) (i : Nat) : Char :=
   if h : i < s.length then s.data.get ⟨i, h⟩ else default
