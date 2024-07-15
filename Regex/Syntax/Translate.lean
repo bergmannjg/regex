@@ -1,5 +1,4 @@
 import Regex.Syntax.Ast.Ast
-import Regex.Syntax.Ast.Parse
 import Regex.Syntax.Ast.Visitor
 import Regex.Syntax.Hir
 import Regex.Utils

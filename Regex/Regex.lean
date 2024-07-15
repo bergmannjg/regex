@@ -1,8 +1,9 @@
+import Regex.Syntax.Flavor
 import Regex.Unicode
 import Regex.Nfa
 import Regex.Backtrack
 import Regex.Utils
-import Regex.Syntax.Ast.Parse
+import Regex.Syntax.Ast.Parser
 import Regex.Syntax.Translate
 
 open NFA

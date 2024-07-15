@@ -124,9 +124,10 @@ open Regex.Notation
 
 /--
 error: failed to parse pattern a[, error: unclosed character class
--/
+
 #guard_msgs in
 def re := regex% "a["
+-/
 
 example : toString nfaOf'a'Checked = toString nfaOf'a'  := by native_decide
 

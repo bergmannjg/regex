@@ -243,6 +243,9 @@ namespace Literal
 def toString (lit : Literal) : String :=
   s!"Literal {spanToString lit.span} {lit.kind} '{UInt32.intAsString lit.c.val}'"
 
+def toLiteral (c : Char) (p : String) (f t : String.Pos): Literal :=
+  ⟨⟨p, f, t⟩, .Verbatim, c⟩
+
 end Literal
 
 instance : ToString Literal where
@@ -914,14 +917,23 @@ termination_by sizeOf r
 
 def toStringClassSetItem (r : ClassSetItem) (col : Nat) : String :=
   match r with
-  | .Empty _ => s!"Empty"
-  | .Literal lit => s!"{lit}"
-  | .Range range => s!"{range}"
-  | .Ascii cls => s!"{cls}"
-  | .Perl cls => s!"{cls}"
-  | .Unicode cls => s!"{cls}"
-  | .Bracketed ⟨_, neg, _⟩  => s!"Bracketed {neg}"
-  | .Union union => s!"Union {toStringClassSetUnion union col}"
+  | .Empty _ => s!"ItemEmpty"
+  | .Literal lit => s!"Item {lit}"
+  | .Range range => s!"Item {range}"
+  | .Ascii cls => s!"Item {cls}"
+  | .Perl cls => s!"Item {cls}"
+  | .Unicode cls => s!"Item {cls}"
+  | .Bracketed ⟨_, neg, cls⟩ =>
+      match cls with
+      | .Item item => s!"Bracketed Item {neg} {ClassSetItem.toStringClassSetItem item col}"
+      | .BinaryOp ⟨_, kind, lhs, rhs⟩ =>
+        let kind :=
+            match kind with
+            | .Intersection => s!"Intersection"
+            | .Difference => s!"Difference"
+            | .SymmetricDifference => s!"SymmetricDifference"
+        s!"Item Bracketed BinaryOp {neg} {kind}"
+  | .Union union => s!"Item Union {toStringClassSetUnion union col}"
 termination_by sizeOf r
 
 end
@@ -951,7 +963,7 @@ def toString (r : ClassSet) (col : Nat) : String :=
   let pre := "\n" ++ (Char.multiple ' ' col "")
 
   match r with
-  | .Item item => s!"{ClassSetItem.toStringClassSetItem item col}"
+  | .Item item => s!"ClassSet {ClassSetItem.toStringClassSetItem item col}"
   | .BinaryOp ⟨_, kind, lhs, rhs⟩ =>
       let op := s!"BinaryOp {ClassSetBinaryOpKind.toString kind}"
       let lhs := s!"lhs {ClassSet.toString lhs col}"
@@ -1052,3 +1064,65 @@ partial def find (ast : Ast) (p : Ast -> Bool) : Option Ast :=
         | _ => none
 
     | _ => none
+
+def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat := do
+  match ast with
+  | .Literal _ => pure 1
+  | .Dot _ => pure 1
+  | .ClassBracketed _ => pure 1
+  | .ClassUnicode _ => pure 1
+  | .ClassPerl _ => pure 1
+  | .Assertion _ => pure 0
+  | .Flags _ => pure 0
+  | .Concat concat =>
+      match concat with
+      | ⟨_, asts⟩ =>
+        let width ← asts.attach.foldlM (init := 0) (fun s (ast : { x // x ∈ asts}) => do
+            have : sizeOf ast.val < sizeOf asts := Array.sizeOf_lt_of_mem ast.property
+            let width ← get_fixed_width pattern ast.val
+            pure (s + width))
+        pure width
+  | .Alternation alt =>
+      match alt with
+      | ⟨_, asts⟩ =>
+        let widths ← asts.attach.mapM (fun (ast : { x // x ∈ asts}) => do
+            have : sizeOf ast.val < sizeOf asts := Array.sizeOf_lt_of_mem ast.property
+            let width ← get_fixed_width pattern ast.val
+            pure width)
+        if h : 0 < widths.size
+        then
+          let width := widths.get ⟨0, h⟩
+          if Array.all widths (fun w => w = width)
+          then pure width
+          else throw (toError pattern .FixedWidtExcpected)
+        else throw (toError pattern .FixedWidtExcpected)
+  | .Repetition rep  =>
+      match rep with
+      | AstItems.Repetition.mk _ (RepetitionOp.mk _ (.Range (.Exactly n))) _ _ _ => pure n
+      | _ => throw (toError pattern .FixedWidtExcpected)
+  | .Group ⟨_, GroupKind.CaptureIndex _ _, ast⟩  =>
+        let width ← get_fixed_width pattern ast
+        pure width
+  | .Group ⟨_, GroupKind.Lookaround _, _⟩  =>
+        pure 0
+  | _ => throw (toError pattern .FixedWidtExcpected)
+termination_by sizeOf ast
+
+def checkBackRefence (b : Nat) (ast: Ast) : Except String Bool := do
+  let check (ast : Ast) :=
+    match ast with
+    | .Group ⟨_, AstItems.GroupKind.CaptureIndex b' _, _⟩ => b = b'
+    | _ => false
+
+  match AstItems.find ast check with
+  | some ast =>
+      match get_fixed_width "" ast with
+      | Except.ok _ => pure true
+      | Except.error _ => Except.error s!"fixed width capture group of backreference {b} expected"
+  | none => Except.error s!"capture group {b} not found"
+
+/-- capture groups with a backreference should have fixed width -/
+def checkBackRefences (b : Nat) (ast: Ast) : Except String Bool := do
+  if b = 0 then pure true
+  else
+    if ← checkBackRefence b ast then checkBackRefences (b - 1) ast else pure false

@@ -1,6 +1,7 @@
 import Regex
 
 import Test.Interval
+import Test.Grammar
 import Test.Ast
 import Test.Hir
 import Test.Compiler

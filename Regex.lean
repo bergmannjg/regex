@@ -1,3 +1,6 @@
+import Regex.Syntax.Grammar.Grammar
+import Regex.Syntax.Grammar.Translate
+import Regex.Syntax.Ast.Parser
 import Regex.Syntax.Hir
 import Regex.Nfa
 import Regex.Regex

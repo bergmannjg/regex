@@ -18,7 +18,7 @@ private def astOf'a?' : Ast :=
     Ast.Repetition
       (Repetition.mk
         (String.toSpan "a?" 0 2)
-        ⟨String.toSpan "a?" 1 2, RepetitionKind.ZeroOrOne⟩
+        ⟨String.toSpan "a?" 1 2, RepetitionKind.Range (.Bounded 0 1)⟩
         true
         false
         (Ast.Literal ⟨String.toSpan "a?" 0 1, LiteralKind.Verbatim, 'a'⟩))

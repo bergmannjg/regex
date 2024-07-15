@@ -26,6 +26,8 @@ structure RegexOptions where
   path : Option String := none
   unanchoredPrefix : Bool := true
   unanchoredPrefixSimulation : Bool := false
+  flavor : Syntax.Flavor := Syntax.Flavor.Pcre
+  experimental : Bool := false
 
 abbrev CliMainM := ExceptT CliError MainM
 abbrev CliStateM := StateT RegexOptions CliMainM
@@ -55,6 +57,7 @@ def regexShortOption : (opt : Char) → CliM PUnit
 | 's' => modifyThe RegexOptions ({· with unanchoredPrefixSimulation := true})
 | 'u' => modifyThe RegexOptions ({· with unescape := true})
 | 'v' => modifyThe RegexOptions ({· with verbosity := Lake.Verbosity.verbose})
+| 'x' => modifyThe RegexOptions ({· with experimental := true})
 | opt => throw <| CliError.unknownShortOption opt
 
 def regexLongOption : (opt : String) → CliM PUnit
@@ -62,6 +65,9 @@ def regexLongOption : (opt : String) → CliM PUnit
 | "--verbose" => modifyThe RegexOptions ({· with verbosity := Lake.Verbosity.verbose})
 | "--no-unanchored-prefix" => modifyThe RegexOptions ({· with unanchoredPrefix := false})
 | "--unanchored-prefix-simulation" => modifyThe RegexOptions ({· with unanchoredPrefixSimulation := true})
+| "--flavor" => do
+      let flavor ← takeOptArg "--flavor" "path"
+      modifyThe RegexOptions ({· with flavor := if flavor = "Rust" then Syntax.Flavor.Rust else Syntax.Flavor.Pcre})
 | opt =>  throw <| CliError.unknownLongOption opt
 
 def regexOption :=
@@ -114,25 +120,50 @@ where
     | '\\' :: '\\' :: tail => '\\' :: (loop tail acc)
     | head :: tail => head :: (loop tail acc)
 
-def ast : CliM PUnit := do
+def grammar : CliM PUnit := do
+  processOptions regexOption
+  let opts ← getThe RegexOptions
   match ← takeArg? with
   | some re =>
-      let ast ← AstItems.parse re default
-      IO.println s!"Ast\n{ast}"
+      let g ← Regex.Grammar.parse re opts.flavor
+      IO.println s!"Grammar {opts.flavor}\n{g}"
+  | none => throw <| CliError.missingArg "re"
+
+def grammarT : CliM PUnit := do
+  processOptions regexOption
+  let opts ← getThe RegexOptions
+  match ← takeArg? with
+  | some re =>
+      let g ← Regex.Grammar.parse re opts.flavor
+      let g' ← Regex.Grammar.translate g
+      IO.println s!"Grammar translated\n{g'}"
+  | none => throw <| CliError.missingArg "re"
+
+def ast : CliM PUnit := do
+  processOptions regexOption
+  let opts ← getThe RegexOptions
+  match ← takeArg? with
+  | some re =>
+      let ast ← AstItems.parse re opts.flavor
+      IO.println s!"Ast{if opts.experimental then " experimental" else ""} {opts.flavor}\n{ast}"
   | none => throw <| CliError.missingArg "re"
 
 def hir : CliM PUnit := do
+  processOptions regexOption
+  let opts ← getThe RegexOptions
   match ← takeArg? with
   | some re =>
-      let ast ← AstItems.parse re default
+      let ast ← AstItems.parse re opts.flavor
       let hir ← Syntax.translate default ast
       IO.println s!"Hir\n{hir}"
   | none => throw <| CliError.missingArg "re"
 
 def compile : CliM PUnit := do
+  processOptions regexOption
+  let opts ← getThe RegexOptions
   match ← takeArg? with
   | some pat =>
-    let re ← build pat default default default
+    let re ← build pat opts.flavor default default
     IO.println s!"{re.nfa}"
   | none => throw <| CliError.missingArg "re"
 
@@ -156,13 +187,12 @@ def captures : CliM PUnit := do
     let chars := haystack.data |> List.map (fun (c : Char) => (UInt32.intAsString c.val))
     IO.println s!"re '{re}' haystack chars '{chars}'"
 
-  let flavor : Syntax.Flavor := default
   let flags : Syntax.Flags := default
   let config := {(default:Compiler.Config) with
                     unanchored_prefix := opts.unanchoredPrefix
                     unanchored_prefix_simulation := opts.unanchoredPrefixSimulation }
 
-  let regex ← Regex.build re flavor flags config
+  let regex ← Regex.build re opts.flavor flags config
   if isVerbose then IO.println s!"nfa {regex.nfa}"
   if isVerbose then IO.println s!"nfa unanchored_prefix_in_backtrack {regex.nfa.unanchored_prefix_in_backtrack}"
 
@@ -192,6 +222,8 @@ def captures : CliM PUnit := do
 end regex
 
 def regexCli : (cmd : String) → CliM PUnit
+| "grammar" => regex.grammar
+| "grammarT" => regex.grammarT
 | "ast" => regex.ast
 | "hir" => regex.hir
 | "compile" => regex.compile

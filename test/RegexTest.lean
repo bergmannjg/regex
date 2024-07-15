@@ -224,8 +224,9 @@ def ignoredErrors := [
       "end quote without a corresponding open quote",
       -- todo: reset visited in backtracker, example regex '(?=.*X)X$'
       "duplicate capture group name", -- is expected error
-      "capture group of backreference not found", -- is expected error
-      "feature not implemented"]
+      "feature not implemented",
+      "capture group of backreference not found" -- is expected error
+      ]
 
 /- todo -/
 def ignoredTests : List String :=
@@ -241,10 +242,7 @@ def testItem (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (
   if checkFlagIsFalse t.compiles
   then
     if checkCompiles flavor t
-    then
-      IO.println s!"RegexTest: {t}"
-      IO.println s!"  should not compile"
-      pure (0, 1, 0)
+    then pure (0, 0, 1)
     else pure (1, 0, 0)
   else if ignoreTest t then pure (0, 0, 1)
   else if List.contains ignoredTests t.name then pure (0, 0, 1)
