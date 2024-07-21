@@ -59,39 +59,31 @@ private def parseHyphen (p : String) (x : Syntax) : ParserM Ast := do
       pure $ .Literal $ Literal.toLiteral c p f t
   | _ => Except.error s!"ill-formed literal syntax {x}"
 
-private def nameToClassSetItems : List (String × ClassAsciiKind × Bool) :=
+private def nameToClassSetItems : List (String × ClassAsciiKind) :=
   [
-    ("[:alnum:]", .Alnum, false),
-    ("[:alpha:]", .Alpha, false),
-    ("[:ascii:]", .Ascii, false),
-    ("[:blank:]", .Blank, false),
-    ("[:cntrl:]", .Cntrl, false),
-    ("[:digit:]", .Digit, false),
-    ("[:lower:]", .Lower, false),
-    ("[:print:]", .Print, false),
-    ("[:punct:]", .Punct, false),
-    ("[:space:]", .Space, false),
-    ("[:upper:]", .Upper, false),
-    ("[:word:]", .Word, false),
-    ("[:^alnum:]", .Alnum, true),
-    ("[:^alpha:]", .Alpha, true),
-    ("[:^ascii:]", .Ascii, true),
-    ("[:^blank:]", .Blank, true),
-    ("[:^cntrl:]", .Cntrl, true),
-    ("[:^digit:]", .Digit, true),
-    ("[:^lower:]", .Lower, true),
-    ("[:^print:]", .Print, true),
-    ("[:^punct:]", .Punct, true),
-    ("[:^space:]", .Space, true),
-    ("[:^upper:]", .Upper, true),
-    ("[:^word:]", .Word, true)
+    ("alnum", .Alnum),
+    ("alpha", .Alpha),
+    ("ascii", .Ascii),
+    ("blank", .Blank),
+    ("cntrl", .Cntrl),
+    ("digit", .Digit),
+    ("lower", .Lower),
+    ("print", .Print),
+    ("punct", .Punct),
+    ("space", .Space),
+    ("upper", .Upper),
+    ("word", .Word),
   ]
 
 private def parsePosixCharacterClass (p : String) (x : Syntax) : ParserM ClassSetItem := do
   match x with
   | Syntax.node _ `posixCharacterClass #[Lean.Syntax.atom (.synthetic f t) name] =>
+    let (negated, name) :=
+      match name.data with
+      | '^' :: tail => (true, String.mk tail)
+      | _ => (false, name)
     match nameToClassSetItems |> List.find? (fun (n, _) => n = name) with
-    | some (_, cls, negated) => pure $ ClassSetItem.Ascii ⟨⟨p, f, t⟩ , cls, negated⟩
+    | some (_, cls) => pure $ ClassSetItem.Ascii ⟨⟨p, f, t⟩ , cls, negated⟩
     | none => Except.error s!"unkown posixCharacterClass {name}"
   | _ => Except.error s!"ill-formed literal syntax {x}"
 
@@ -211,14 +203,13 @@ private def toFlags (chars : List Char) : ParserM $ Array FlagsItem := do
   let items ← chars |> List.mapM (fun c =>
     match c with
     | '-' => pure ⟨"", FlagsItemKind.Negation⟩
-    | '^' => pure ⟨"", FlagsItemKind.Negation⟩
     | 'i' => pure ⟨"", FlagsItemKind.Flag .CaseInsensitive⟩
     | 'm' => pure ⟨"", FlagsItemKind.Flag .MultiLine⟩
     | 's' => pure ⟨"", FlagsItemKind.Flag .DotMatchesNewLine⟩
     | 'u' => pure ⟨"", FlagsItemKind.Flag .Unicode⟩
     | 'U' => pure ⟨"", FlagsItemKind.Flag .SwapGreed⟩
     | 'R' => pure ⟨"", FlagsItemKind.Flag .CRLF⟩
-    | 'x' => throw (toError "" .FeatureNotImplementedFlagExtended)
+    | 'x' => pure ⟨"", FlagsItemKind.Flag .Extended⟩
     | _ => throw (toError "" .FlagUnrecognized))
   pure items.toArray
 
@@ -315,7 +306,7 @@ private def set_width (pattern : String) (g : Group) : ParserM Group := do
       pure (Group.mk span (.Lookaround (.NegativeLookbehind width)) ast)
   | _ => pure g
 
-def unfoldUnion (union : ClassSetUnion) : Sum ClassSetItem ClassSetBinaryOp :=
+private def unfoldUnion (union : ClassSetUnion) : Sum ClassSetItem ClassSetBinaryOp :=
   let ⟨span, items⟩ := union
   match items.size with
   | 0 => Sum.inl $ ClassSetItem.Empty span
@@ -330,6 +321,7 @@ mutual
 
 private def parseClassSetItem (p : String) (x : Syntax) : ParserM ClassSetItem := do
   match x with
+  | Syntax.node _ `whitespace _ => pure $ ClassSetItem.Empty ""
   | Syntax.node _ `literal _ => parseLiteral p x >>= toClassSetItem
   | Syntax.node _ `hyphen _ => parseHyphen p x >>= toClassSetItem
   | Syntax.node _ `range #[a, b] => rangeToClassSetItem p a b
@@ -346,6 +338,8 @@ termination_by sizeOf x
 private def parseVal (p : String) (x : Syntax)
     : ParserM Ast := do
   match x.getKind with
+  | `whitespace => pure Ast.Empty
+  | `comment => pure Ast.Empty
   | `literal => parseLiteral p x
   | `dot => parseDot p x
   | `group =>
@@ -488,10 +482,9 @@ private def parseSequence' (p : String) (x : Syntax) : ParserM Ast := do
   | Syntax.node _ `sequence arr => parseSequence p arr
   | _ => Except.error s!"ill-formed sequence syntax {x}"
 
-
 /-- Parse the regular expression and return an abstract syntax tree. -/
-def parse (p : String)  (flavor : Syntax.Flavor) : Except String Ast := do
-  let stx ← Regex.Grammar.parse p flavor >>= Regex.Grammar.translate
+def parse (p : String)  (flavor : Syntax.Flavor) (extended : Regex.Grammar.ExtendedKind := .None) : Except String Ast := do
+  let stx ← Regex.Grammar.parse p flavor extended >>= Regex.Grammar.translate
   let (ast, parser) ← parseSequence' p stx.raw flavor default
 
   if parser.capture_index < parser.max_backreference

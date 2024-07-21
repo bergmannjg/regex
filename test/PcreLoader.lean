@@ -125,24 +125,29 @@ private def setOption (c : Char) (t : RegexTest) : RegexTest :=
   | 's' => { t with single_line := some true }
   | 'm' => { t with multi_line := some true }
   | 'g' => { t with «global» := some true }
-  | 'x' => { t with extended := some true }
+  | 'x' => { t with extended := some .Extended }
   | _ => t
 
 private def toPattern (p : PcreTest) (t : RegexTest) : RegexTest :=
   let pattern := p.pattern.trim
-  match (pattern.data.head?, pattern.data.getLast?) with
-  | (some '/', some '/') =>
-      { t with regex :=  Sum.inl ⟨(pattern.data.drop 1).dropLast⟩ }
-  | (some '/', some c1) =>
-    let t := setOption c1 t
-    let data := (pattern.data.drop 1).dropLast
-    match data.getLast? with
-    | some '/' => { t with regex :=  Sum.inl ⟨data.dropLast⟩ }
-    | some c2 =>
-      let t := setOption c2 t
-      { t with regex :=  Sum.inl ⟨data.dropLast.dropLast⟩ }
-    | none => t
-  | (_, _) => t
+  if pattern.endsWith "/xx" then
+    { t with
+      regex :=  Sum.inl ⟨(pattern.data.drop 1).take (pattern.length - 4)⟩
+      extended := some .ExtendedMore }
+  else
+    match (pattern.data.head?, pattern.data.getLast?) with
+    | (some '/', some '/') =>
+        { t with regex :=  Sum.inl ⟨(pattern.data.drop 1).dropLast⟩ }
+    | (some '/', some c1) =>
+      let t := setOption c1 t
+      let data := (pattern.data.drop 1).dropLast
+      match data.getLast? with
+      | some '/' => { t with regex :=  Sum.inl ⟨data.dropLast⟩ }
+      | some c2 =>
+        let t := setOption c2 t
+        { t with regex :=  Sum.inl ⟨data.dropLast.dropLast⟩ }
+      | none => t
+    | (_, _) => t
 
 private def toRegexTest (i : Nat) (p : PcreTest) : Except String $ RegexTest := do
   pure <| toPattern p

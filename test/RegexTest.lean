@@ -70,7 +70,7 @@ structure RegexTest where
   multi_line : Option Bool := none
   single_line : Option Bool := none
   «global» : Option Bool := none
-  extended : Option Bool := none
+  extended : Option Regex.Grammar.ExtendedKind := none
 
 namespace RegexTest
 
@@ -110,7 +110,8 @@ instance : ToString RegexTest where
     let str := str ++ (if checkFlagIsTrue s.single_line then " single_line" else "")
     let str := str ++ (if checkFlagIsTrue s.multi_line then " multi_line" else "")
     let str := str ++ (if checkFlagIsTrue s.global then " global" else "")
-    let str := str ++ (if checkFlagIsTrue s.extended then " extended" else "")
+    let str := str ++ (match s.extended with
+          | some .Extended => " extended" | some .ExtendedMore => " extendedMore" | _ => "")
     str
 
 instance : ToString RegexTests where
@@ -148,12 +149,12 @@ def captures (flavor : Syntax.Flavor) (t : RegexTest) : Except String (Array Reg
 
   let flags := {flags with case_insensitive := t.«case-insensitive»,
                            dot_matches_new_line := t.single_line,
-                           multi_line := t.multi_line
-                           extended := t.extended}
+                           multi_line := t.multi_line}
   let config := {config with unanchored_prefix := !t.anchored.getD false}
+  let extended := Option.getD t.extended .None
 
   let haystack := if t.unescape.getD false then unescapeStr t.haystack else t.haystack
-  let re ← Regex.build (Sum.val t.regex) flavor flags config
+  let re ← Regex.build (Sum.val t.regex) flavor flags config extended
   Except.ok (Regex.all_captures haystack.toSubstring re)
 
 def checkMatches (arr : Array Regex.Captures) (t : RegexTest) : Bool :=

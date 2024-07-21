@@ -2,6 +2,7 @@ import Batteries.Data.Array.Basic
 import Regex.Utils
 import Regex.Interval
 import Regex.Unicode
+import Regex.Syntax.Grammar.Grammar
 
 /-!
 ## High-level intermediate representation for a regular expression.
@@ -152,7 +153,7 @@ structure Flags where
   dot_matches_new_line: Option Bool
   swap_greed: Option Bool
   crlf: Option Bool
-  extended : Option Bool
+  extended : Option Regex.Grammar.ExtendedKind
 
 instance : Inhabited Flags := ⟨⟨none, none, none, none, none, none⟩⟩
 

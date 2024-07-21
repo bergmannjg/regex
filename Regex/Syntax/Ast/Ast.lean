@@ -365,7 +365,7 @@ inductive Flag where
     /-- `R` -/
     | CRLF
     /-- `x` -/
-    | IgnoreWhitespace
+    | Extended
 
 instance : ToString Flag where
   toString s := match s with
@@ -375,7 +375,7 @@ instance : ToString Flag where
     | .SwapGreed => "SwapGreed"
     | .Unicode => "Unicode"
     | .CRLF => "CRLF"
-    | .IgnoreWhitespace => "IgnoreWhitespace"
+    | .Extended => "Extended"
 
 /-- The kind of an item in a group of flags. -/
 inductive FlagsItemKind where

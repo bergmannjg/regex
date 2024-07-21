@@ -23,11 +23,12 @@ structure RegexOptions where
   wantsHelp : Bool := false
   all : Bool := false
   unescape : Bool := false
-  path : Option String := none
+  haystackPath : Option String := none
+  patternPath : Option String := none
   unanchoredPrefix : Bool := true
   unanchoredPrefixSimulation : Bool := false
   flavor : Syntax.Flavor := Syntax.Flavor.Pcre
-  experimental : Bool := false
+  extended : Regex.Grammar.ExtendedKind := .None
 
 abbrev CliMainM := ExceptT CliError MainM
 abbrev CliStateM := StateT RegexOptions CliMainM
@@ -51,13 +52,15 @@ def takeOptArg (opt arg : String) : CliM String := do
 
 def regexShortOption : (opt : Char) → CliM PUnit
 | 'a' => modifyThe RegexOptions ({· with all := true})
-| 'f' => do let path ← takeOptArg "-f" "path"; modifyThe RegexOptions ({· with path})
+| 'f' => do let haystackPath ← takeOptArg "-f" "path"; modifyThe RegexOptions ({· with haystackPath})
+| 'F' => do let patternPath ← takeOptArg "-F" "path"; modifyThe RegexOptions ({· with patternPath})
 | 'h' => modifyThe RegexOptions ({· with wantsHelp := true})
 | 'n' => modifyThe RegexOptions ({· with unanchoredPrefix := false})
 | 's' => modifyThe RegexOptions ({· with unanchoredPrefixSimulation := true})
 | 'u' => modifyThe RegexOptions ({· with unescape := true})
 | 'v' => modifyThe RegexOptions ({· with verbosity := Lake.Verbosity.verbose})
-| 'x' => modifyThe RegexOptions ({· with experimental := true})
+| 'x' => modifyThe RegexOptions ({· with extended := .Extended})
+| 'X' => modifyThe RegexOptions ({· with extended := .ExtendedMore})
 | opt => throw <| CliError.unknownShortOption opt
 
 def regexLongOption : (opt : String) → CliM PUnit
@@ -125,7 +128,8 @@ def grammar : CliM PUnit := do
   let opts ← getThe RegexOptions
   match ← takeArg? with
   | some re =>
-      let g ← Regex.Grammar.parse re opts.flavor
+      let re := if opts.unescape then unescapeString re else re
+      let g ← Regex.Grammar.parse re opts.flavor opts.extended
       IO.println s!"Grammar {opts.flavor}\n{g}"
   | none => throw <| CliError.missingArg "re"
 
@@ -134,7 +138,7 @@ def grammarT : CliM PUnit := do
   let opts ← getThe RegexOptions
   match ← takeArg? with
   | some re =>
-      let g ← Regex.Grammar.parse re opts.flavor
+      let g ← Regex.Grammar.parse re opts.flavor opts.extended
       let g' ← Regex.Grammar.translate g
       IO.println s!"Grammar translated\n{g'}"
   | none => throw <| CliError.missingArg "re"
@@ -144,8 +148,8 @@ def ast : CliM PUnit := do
   let opts ← getThe RegexOptions
   match ← takeArg? with
   | some re =>
-      let ast ← AstItems.parse re opts.flavor
-      IO.println s!"Ast{if opts.experimental then " experimental" else ""} {opts.flavor}\n{ast}"
+      let ast ← AstItems.parse re opts.flavor opts.extended
+      IO.println s!"Ast {opts.flavor}\n{ast}"
   | none => throw <| CliError.missingArg "re"
 
 def hir : CliM PUnit := do
@@ -173,14 +177,18 @@ def captures : CliM PUnit := do
   let (re, haystack) :=
     ← match ← takeArg?, ← takeArg? with
     | some re, some haystack => pure (re, haystack)
-    | none, _ => throw <| CliError.missingArg "regex"
-    | some re, none =>
-      match opts.path with
+    | some x, none =>
+      match opts.haystackPath with
       | some path => do
         let haystack ← IO.FS.readFile path
-        pure (re, haystack)
-      | none => throw <| CliError.missingArg "haystack"
-
+        pure (x, haystack)
+      | none =>
+          match opts.patternPath with
+          | some path => do
+            let re ← IO.FS.readFile path
+            pure (re, x)
+          | none => throw <| CliError.missingArg "regex or haystack"
+    | none, _ => throw <| CliError.missingArg "regex and haystack"
   let haystack := if opts.unescape then unescapeString haystack else haystack
   let isVerbose := opts.verbosity == Lake.Verbosity.verbose
   if isVerbose then
@@ -188,11 +196,11 @@ def captures : CliM PUnit := do
     IO.println s!"re '{re}' haystack chars '{chars}'"
 
   let flags : Syntax.Flags := default
-  let config := {(default:Compiler.Config) with
+  let config := {(default : Compiler.Config) with
                     unanchored_prefix := opts.unanchoredPrefix
                     unanchored_prefix_simulation := opts.unanchoredPrefixSimulation }
 
-  let regex ← Regex.build re opts.flavor flags config
+  let regex ← Regex.build re opts.flavor flags config opts.extended
   if isVerbose then IO.println s!"nfa {regex.nfa}"
   if isVerbose then IO.println s!"nfa unanchored_prefix_in_backtrack {regex.nfa.unanchored_prefix_in_backtrack}"
 

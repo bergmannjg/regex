@@ -48,7 +48,7 @@ private def from_ast (ast: Syntax.AstItems.Flags) : Syntax.Flags :=
     (fun (enabled, acc) f =>
     match f.kind with
     | .Negation => (false, acc)
-    | .Flag Flag.IgnoreWhitespace => (enabled, acc)
+    | .Flag Flag.Extended => (enabled, acc)
     | .Flag  Flag.CRLF => (enabled, {acc with crlf := enabled})
     | .Flag Flag.Unicode => (enabled, acc)
     | .Flag Flag.SwapGreed => (enabled, {acc with swap_greed := enabled})
