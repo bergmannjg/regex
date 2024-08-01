@@ -70,6 +70,9 @@ theorem toNat_sub_toNat {n m : UInt32} (hmn : m.val ≤ n.val) (h2 : n.val < UIn
   have h : (n.val.val + (UInt32.size - m.val.val)) % UInt32.size
             = n.val.val - m.val.val := Nat.mod_sub_eq_of_lt hmn h1 (Nat.le_of_lt h2)
   simp [h]
+  have : n.val.val + (UInt32.size - m.val.val) = (UInt32.size - m.val.val) +  n.val.val := by simp_arith
+  rw [← this]
+  simp [h]
 
 theorem toUInt32_add_toUInt32 (n m : Nat) (hn : n < UInt32.size) (hm : m < UInt32.size)
   (hnm : n + m < UInt32.size) : n.toUInt32 + m.toUInt32 = (n + m).toUInt32 := by

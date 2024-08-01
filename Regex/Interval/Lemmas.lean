@@ -128,7 +128,6 @@ theorem nonOverlappingWithLast_of_singleton (l r : NonemptyInterval Char) (h : I
   split at heq <;> simp_all
   unfold Interval.nonOverlapping  at h
   rename_i last' _ _ _
-  have heq' : List.get #[l].data ⟨0, by simp⟩ = l := List.singleton_val l (by simp)
   simp_all
 
 theorem nonOverlapping_of_push (acc : Acc) (next : NonemptyInterval Char)
@@ -182,18 +181,6 @@ theorem Array.eq_head_of_get_first (arr : Array α) (h1 : 0 < arr.size)
   (h2 : arr.data = head :: tail) : head = arr.get ⟨0, h1⟩ :=
   List.eq_head_of_get_first arr.data h1 h2
 
-theorem List.eq_succ_of_tail_nth (arr : List α) (h1 : i+1 < arr.length)
-  (h2 : arr = head :: tail) (h3 : i < tail.length)
-    : tail.get ⟨i, h3⟩ = arr.get ⟨i+1, h1⟩ := by
-  cases h2
-  have h : (head :: tail).get ⟨i+1, h1⟩ = tail.get ⟨i, h3⟩ := List.get_cons_succ
-  exact h.symm
-
-theorem Array.eq_succ_of_tail_nth (arr : Array α) (h1 : i+1 < arr.size)
-  (h2 : arr.data = head :: tail) (h3 : i < tail.length)
-    : tail.get ⟨i, h3⟩ = arr.get ⟨i+1, h1⟩ :=
-  List.eq_succ_of_tail_nth arr.data h1 h2 h3
-
 theorem nonOverlapping_of_nth (ranges : Array $ NonemptyInterval Char) (n : Nat)
   (h1 : 0 < n) (h2 : n+1 < Array.size ranges) (h3: ranges.data = head :: tail)
   (h4 : ∀ (i : Nat) (h : i < List.length tail-1),
@@ -211,18 +198,10 @@ theorem nonOverlapping_of_nth (ranges : Array $ NonemptyInterval Char) (n : Nat)
   have ht2 : n-1 < tail.length := by omega
   have ht3 : n-1+1 < tail.length := by simp [hps, ht0]
   have : Interval.nonOverlapping (tail.get ⟨n-1, ht2⟩) (tail.get ⟨n-1+1, ht3⟩) := h4 (n-1) ht1
-  have : tail.get ⟨n-1, ht2⟩ = ranges.get ⟨n, hlt⟩ := by
-    let i := n-1
-    have h : i+1 < ranges.size := by simp [hps, hlt]
-    simp [Array.eq_succ_of_tail_nth ranges h h3 ht2]
-    simp [hps]
-  have : tail.get ⟨n-1+1, ht3⟩ = ranges.get ⟨n+1, hf⟩ := by
-    let i := n-1+1
-    have hi : i = n-1+1 := by simp
-    have hi' : i = n := by simp_all only [hi]
-    have h : i < tail.length := by simp_all [hps, ht0]
-    simp [Array.eq_succ_of_tail_nth ranges (by rw [← hi'] at hf; simp_all) h3 h]
-    simp_all [hps]
+  have : tail.get ⟨n-1, ht2⟩ = ranges.get ⟨n, hlt⟩ :=
+    List.eq_succ_of_tail_nth_pred ranges.data hne hlt h3 ht2
+  have : tail.get ⟨n, ht0⟩ = ranges.get ⟨n+1, hf⟩ :=
+    List.eq_succ_of_tail_nth ranges.data (by simp [h2]) h3 ht0
   simp_all
 
 theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin (Array.size ranges))
@@ -250,7 +229,7 @@ theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin
       have hx1 : 0 < ranges.size := by simp [Nat.lt_trans h hf]
       have hx2 : 0 < tail.length := by cases tail <;> simp_all
       have : head = ranges.get ⟨0, hx1⟩  := Array.eq_head_of_get_first ranges hx1 heq
-      have : tail.get ⟨0, hx2⟩  = ranges.get ⟨1, hf⟩ := Array.eq_succ_of_tail_nth ranges hf heq hx2
+      have : tail.get ⟨0, hx2⟩  = ranges.get ⟨1, hf⟩ := List.eq_succ_of_tail_nth ranges.data hf heq hx2
       simp_all
     | ⟨n+2, hf⟩ =>
       have hx1 : n+1 < ranges.size := by simp [Nat.lt_trans _ hf]
@@ -266,16 +245,3 @@ theorem nonOverlappingWithLast_of_push(acc : Acc)
   rename_i last next heq _
   unfold Array.last? at heq
   split at heq <;> try simp_all
-  have hne : acc.set.intervals.data ++ [l] ≠ [] := by simp_all
-  have h : List.getLast (acc.set.intervals.data ++ [l]) hne
-    = List.get (acc.set.intervals.data ++ [l]) ⟨acc.set.intervals.data.length, (by simp_all)⟩ := by
-    have h : List.get (acc.set.intervals.data ++ [l]) ⟨acc.set.intervals.data.length, (by simp_all)⟩
-            = List.get (acc.set.intervals.data ++ [l])
-                ⟨(acc.set.intervals.data ++ [l]).length-1, (by simp_all)⟩ := by
-      simp_all
-    rw [h]
-    rw [List.getLast_eq_get (acc.set.intervals.data ++ [l]) hne]
-  rw [← h] at heq
-  simp [List.getLast_append] at heq
-  rw [heq] at h3
-  simp [h3]

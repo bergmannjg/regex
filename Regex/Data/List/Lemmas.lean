@@ -10,10 +10,7 @@ namespace List
 
 theorem singleton_val_of (a : α) (arr : List α) (h1 : arr = [a]) (h2 : 0 < List.length arr)
     : List.get arr ⟨0, h2⟩ = a  := by
-  unfold List.get
-  split <;> simp_all
-  unfold List.get
-  split <;> simp_all
+  simp_all [List.get]
 
 theorem singleton_val (a : α) (h : 0 < List.length [a])
     : List.get [a] ⟨0, h⟩ = a  := by
@@ -37,8 +34,8 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
   List.ext_get hl fun n h1 h2 =>
     if hx1 : n < l1.dropLast.length then by
       have hx2 : n < l2.dropLast.length := Nat.lt_of_lt_of_eq hx1 hdl
-      have hy1 : l1.dropLast.get ⟨n, hx1⟩ = l1.get ⟨n, h1⟩ := List.get_dropLast l1 ⟨n, hx1⟩
-      have hy2 : l2.dropLast.get ⟨n, hx2⟩ = l2.get ⟨n, h2⟩ := List.get_dropLast l2 ⟨n, hx2⟩
+      have hy1 : l1.dropLast.get ⟨n, hx1⟩ = l1.get ⟨n, h1⟩ := List.getElem_dropLast l1 n hx1
+      have hy2 : l2.dropLast.get ⟨n, hx2⟩ = l2.get ⟨n, h2⟩ := List.getElem_dropLast l2 n hx2
       have hy3 : l1.dropLast.get ⟨n, hx1⟩ = l2.dropLast.get ⟨n, hx2⟩ := List.get_of_fun_eq hd ⟨n, hx1⟩
       rw [hy3, hy2] at hy1
       rw [hy1]
@@ -58,6 +55,22 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
 theorem get_last_of_concat {l : List α} (h : (l ++ [last]).length - 1 < (l ++ [last]).length)
     : List.get (l ++ [last]) ⟨(l ++ [last]).length - 1, h⟩ = last  := by
   simp [List.get_last _]
+
+theorem eq_succ_of_tail_nth {head : α} {tail : List α} (data : List α) (h1 : n+1 < data.length)
+  (h2 : data = head :: tail) (h3 : n < tail.length)
+    : tail.get ⟨n, h3⟩ = data.get ⟨n+1, h1⟩ := by
+  cases h2
+  have h : (head :: tail).get ⟨n+1, h1⟩ = tail.get ⟨n, h3⟩ := List.get_cons_succ
+  exact h.symm
+
+theorem eq_succ_of_tail_nth_pred {head : α} {tail : List α} (data : List α) (h0 : n ≠ 0)
+  (h1 : n < data.length) (h2 : data = head :: tail) (h3 : n - 1 < tail.length)
+    : tail.get ⟨n - 1, h3⟩ = data.get ⟨n, h1⟩ := by
+  have hps : n - 1 + 1 = n := Nat.succ_pred (by simp_all)
+  have hpl : n - 1 + 1 < data.length := by simp only [hps, h1]
+  have : data.get ⟨n, h1⟩ = data.get ⟨n - 1 + 1, hpl⟩ := by simp_all
+  rw [this]
+  exact List.eq_succ_of_tail_nth data hpl h2 h3
 
 /- see Mathlib/Data/List/Chain.lean -/
 theorem chain_split {a b : α} {l₁ l₂ : List α} :
@@ -86,7 +99,7 @@ theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, Chain R a l ↔
         exact R
       intro i w
       cases i
-      · simp [h0]
+      · apply h0
       · rename_i i
         exact h i (by simp only [length_cons] at w; omega)
     rintro ⟨h0, h⟩; constructor

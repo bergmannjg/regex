@@ -77,8 +77,8 @@ theorem last?_eq_getLast (a : Array α) (h1: Array.last? a = some last) (h2 : a.
     : List.getLast a.data h2 = last := by
   unfold Array.last? at h1
   split at h1 <;> simp_all
-  rw [← List.getLast_eq_get a.data h2] at h1
-  simp [h1]
+  rw [← h1]
+  simp [List.getLast_eq_get a.data h2]
 
 theorem lt_of_pop?_eq_last? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
     : 0 < arr.data.length := by
@@ -94,7 +94,7 @@ theorem get_last_of_pop? {arr : Array α} (h1 : Array.pop? arr = some (last, arr
 theorem concat_of_pop? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
     : arr.data = arr'.data ++ [last] := by
   have hlt : 0 < arr.data.length := by simp_all[Array.lt_of_pop?_eq_last? h]
-  have hlt : arr.data.length - 1 < arr.data.length := Nat.pred_lt' hlt
+  have hlt : arr.data.length - 1 < arr.data.length := Nat.pred_lt_of_lt hlt
   have hlast : List.get arr.data ⟨arr.data.length - 1, hlt⟩ = last :=
      Array.get_last_of_pop? h hlt
   unfold Array.pop? at h
@@ -108,4 +108,4 @@ theorem concat_of_pop? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
     rw [← hy] at hr
     rw [hr]
   simp [List.eq_of_dropLast_eq_last_eq hz hlt (by simp_all)
-          (by rw [List.get_last_of_concat _]; rw [hlast])]
+          (by rw [List.get_last_of_concat _]; rw [← hlast]; simp_all)]

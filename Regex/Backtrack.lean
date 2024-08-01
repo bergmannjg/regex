@@ -93,7 +93,7 @@ def next (cp : CharPos) : CharPos :=
   else
     match cp.curr? with
     | some c =>
-      let nextPos : String.Pos := ⟨cp.pos.byteIdx + (String.csize c)⟩
+      let nextPos : String.Pos := ⟨cp.pos.byteIdx + c.utf8Size⟩
       {cp with pos := nextPos, prev? := cp.curr?, curr? := get? cp.s nextPos}
     | none => cp
 
@@ -1067,9 +1067,9 @@ private def slotsWithUnanchoredPrefix (s : Substring) («at» : String.Pos) (nfa
     match (msgs, slots) with
     | (msgs, #[]) =>
       let c : Char := s.get «at»
-      let size := c.utf8Size.toNat
+      let size := c.utf8Size
       have : s.stopPos.byteIdx - (at.byteIdx + size) < s.stopPos.byteIdx - at.byteIdx := by
-        have  : 0 < c.utf8Size.toNat := Char.utf8Size_pos c
+        have  : 0 < c.utf8Size := Char.utf8Size_pos c
         have ha : at.byteIdx < s.stopPos.byteIdx := by omega
         have hb : at.byteIdx < at.byteIdx + size := by omega
         simp [Nat.sub_lt_sub_left ha hb]
