@@ -987,7 +987,7 @@ def ast (rep : Repetition) : Ast := match rep with | .mk _ _ _ _ ast => ast
 
 theorem sizeOfAstOfRepetition (rep : Repetition) : sizeOf rep.ast < sizeOf rep := by
   unfold Syntax.AstItems.Repetition.ast
-  split <;> simp_all; omega
+  split <;> simp_all
 
 end Repetition
 

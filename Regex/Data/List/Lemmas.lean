@@ -89,7 +89,7 @@ theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, Chain R a l ↔
     (∀ h : 0 < length l, R a (get l ⟨0, h⟩)) ∧
       ∀ (i : Nat) (h : i < l.length - 1),
         R (get l ⟨i, by omega⟩) (get l ⟨i+1, by omega⟩)
-  | a, [] => iff_of_true (by simp) ⟨fun h => by simp at h, fun _ h => by simp at h; omega⟩
+  | a, [] => iff_of_true (by simp) ⟨fun h => by simp at h, fun _ h => by simp at h⟩
   | a, b :: t => by
     rw [chain_cons, @chain_iff_get _ _ _ t]
     constructor

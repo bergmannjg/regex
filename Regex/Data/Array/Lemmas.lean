@@ -20,7 +20,6 @@ theorem sizeOf_head?_of_tail [SizeOf α] {as : Array α} (h : Array.head? as = s
   cases as with | _ as =>
   cases as' with | _ as' =>
   simp_all
-  apply Nat.add_lt_add_left _
   simp_arith
 
 theorem sizeOf_dropLast_cons [SizeOf α] (a : α) (as : List α)
@@ -40,7 +39,6 @@ theorem sizeOf_pop_non_empty [SizeOf α] (as : Array α) (h : 0 < as.data.length
   unfold Array.pop
   cases as with | _ as =>
   simp
-  apply Nat.add_lt_add_left _
   exact sizeOf_dropLast_non_empty _ h
 
 theorem sizeOf_pop? [SizeOf α] {as : Array α} (h : Array.pop? as = some (a, as'))
@@ -78,7 +76,7 @@ theorem last?_eq_getLast (a : Array α) (h1: Array.last? a = some last) (h2 : a.
   unfold Array.last? at h1
   split at h1 <;> simp_all
   rw [← h1]
-  simp [List.getLast_eq_get a.data h2]
+  simp [List.getLast_eq_getElem a.data h2]
 
 theorem lt_of_pop?_eq_last? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
     : 0 < arr.data.length := by

@@ -432,20 +432,20 @@ private def c (hir : Hir) : CompilerM ThompsonRef :=
   | .Class (.Unicode cls) => c_unicode_class cls
   | .Look look => c_look look
   | .Lookaround look =>
-    have : sizeOf look < sizeOf hir.kind := by simp [h]; omega
+    have : sizeOf look < sizeOf hir.kind := by simp [h]
     c_lookaround look
   | .BackRef f n => c_back_ref f n
   | .Repetition rep =>
-    have : sizeOf rep < sizeOf hir.kind := by simp [h]; omega
+    have : sizeOf rep < sizeOf hir.kind := by simp [h]
     c_repetition rep
   | .Capture cap =>
-    have : sizeOf cap < sizeOf hir.kind := by simp [h]; omega
+    have : sizeOf cap < sizeOf hir.kind := by simp [h]
     c_cap cap
   | .Concat items =>
-    have : sizeOf items < sizeOf hir.kind := by simp [h]; omega
+    have : sizeOf items < sizeOf hir.kind := by simp [h]
     c_concat items
   | .Alternation sub =>
-    have : sizeOf sub < sizeOf hir.kind := by simp [h]; omega
+    have : sizeOf sub < sizeOf hir.kind := by simp [h]
     c_alt_iter sub
 termination_by sizeOf hir
 
