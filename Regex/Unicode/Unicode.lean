@@ -1,5 +1,7 @@
 import Init.Data.Fin.Lemmas
 import UnicodeBasic
+import UnicodeData.Basic
+import UnicodeData.PropList
 import Regex.Interval
 import Regex.Unicode.Properties
 import Regex.Unicode.SentenceBreakProperty
