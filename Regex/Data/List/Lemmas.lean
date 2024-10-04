@@ -1,6 +1,6 @@
 import Batteries.Data.Nat.Lemmas
 import Batteries.Data.Fin.Lemmas
-import Batteries.Data.Int.Lemmas
+import Init.Data.Int.Lemmas
 import Batteries.Data.List.Basic
 import Batteries.Data.List.Lemmas
 

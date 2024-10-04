@@ -1,8 +1,8 @@
 import Init.Meta
-import Lean.Data.Parsec
+import Std.Internal.Parsec
 import Regex
 
-open Lean Lean.Parsec Lean.Syntax
+open Lean Std.Internal.Parsec Lean.Syntax
 
 namespace Test.Grammar
 
