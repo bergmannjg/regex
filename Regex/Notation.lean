@@ -149,7 +149,7 @@ private def mkTermIsEq (n : Nat) (list : Term) : Term :=
   mkTermOfEqTrue (mkTermEqTrans (mkTermCongrArg mkTermEq mkTermSizeToArray) mkTermEqSelf)
 
 private def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
-  let data : Term := Quote.quote nfa.states.data
+  let data : Term := Quote.quote nfa.states.toList
   let states : Term := Syntax.mkApp (mkCIdent `Array.mk) #[data]
   let flag : Term := Quote.quote nfa.unanchored_prefix_in_backtrack
   Syntax.mkApp (mkCIdent `NFA.Checked.NFA.mk)

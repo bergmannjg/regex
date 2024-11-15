@@ -79,6 +79,8 @@ protected def Bounds.decodeToml (v : Value) (s := Syntax.missing)
   | .table _ _ => pure <| #[]
   | _ => Except.error #[DecodeError.mk s s!"Regex.decodeToml: array or table expected {v}"]
 
+instance : Inhabited (Sum String (Array String)) := ⟨Sum.inr #[]⟩
+
 protected def RegexTest.decodeToml (t : Table)
     : Except (Array DecodeError) RegexTest := ensureDecode do
   let name ← t.tryDecodeD `name "."

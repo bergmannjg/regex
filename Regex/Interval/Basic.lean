@@ -98,7 +98,7 @@ namespace Intervals
 
 /-- remove duplicate -/
 def unique (intervals: Array (NonemptyInterval Char)) : Array (NonemptyInterval Char) :=
-  match intervals.data with
+  match intervals.toList with
   | [] => #[]
   | [r] => #[r]
   | head :: tail  =>
@@ -120,7 +120,7 @@ def dataIsNonOverlapping {α : Type} [LE α] [HSub α α Nat]
 /-- an array of intervals is non overlapping when `intervals.data` is non overlapping -/
 def nonOverlapping {α : Type} [LE α] [HSub α α Nat]
     (intervals: Array (NonemptyInterval α)) : Prop :=
-  dataIsNonOverlapping intervals.data
+  dataIsNonOverlapping intervals.toList
 
 end Intervals
 

@@ -1043,7 +1043,7 @@ decreasing_by
 private def dropLastWhile (arr : Array  α) (p :  α -> Bool) : Array α :=
   arr |> Array.foldr (init := #[]) fun a acc =>
     if acc.size = 0 && p a then acc
-    else ⟨a :: acc.data⟩
+    else ⟨a :: acc.toList⟩
 
 /-- Search for the first match of this regex in the haystack. -/
 private def slots' (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)

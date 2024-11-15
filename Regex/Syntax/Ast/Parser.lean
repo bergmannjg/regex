@@ -79,7 +79,7 @@ private def parsePosixCharacterClass (p : String) (x : Syntax) : ParserM ClassSe
   match x with
   | Syntax.node _ `posixCharacterClass #[Lean.Syntax.atom (.synthetic f t) name] =>
     let (negated, name) :=
-      match name.data with
+      match name.toList with
       | '^' :: tail => (true, String.mk tail)
       | _ => (false, name)
     match nameToClassSetItems |> List.find? (fun (n, _) => n = name) with
@@ -121,7 +121,7 @@ private def parseUnicodeCharacterProperty (p : String) (x : Syntax) : ParserM As
   match x with
   | Syntax.node (.synthetic f t) kind arr =>
       let negated := kind = `unicodeCharacterPropertyNegated
-      match arr.data with
+      match arr.toList with
       | [.atom _ ⟨[c]⟩] =>
         pure $ Ast.ClassUnicode ⟨⟨p, f, t⟩ , negated, ClassUnicodeKind.OneLetter c⟩
       | [.atom _ v] =>
@@ -135,7 +135,7 @@ private def parseBackReference (p : String) (x : Syntax) : ParserM Ast := do
   let state ← get
   match valuesOfLitSyntax x with
   | some (_, (.synthetic f t), v) =>
-      let (minus, v) := match v.data with | '-' :: tail => (true, String.mk tail) | _ => (false, v)
+      let (minus, v) := match v.toList with | '-' :: tail => (true, String.mk tail) | _ => (false, v)
       match v.toNat? with
       | some n =>
         if n > state.max_backreference then set {state with max_backreference := n}
@@ -233,7 +233,7 @@ private def parseGroupKind (p : String) (x : Syntax) : ParserM GroupKind := do
         set parser
         pure $ GroupKind.CaptureIndex capture_index (if name.length>0 then some name else none)
   | some (`nonCapturingGroup, (.synthetic f t), s) =>
-      pure $ GroupKind.NonCapturing ⟨⟨p, f, t⟩, ← toFlags s.data⟩
+      pure $ GroupKind.NonCapturing ⟨⟨p, f, t⟩, ← toFlags s.toList⟩
   | some (`lookaroundGroup, _, kind) =>
       match kind with
       | "?=" => pure $ GroupKind.Lookaround .PositiveLookahead
@@ -266,7 +266,7 @@ private def toRepetitionKind (p l r : String) : ParserM RepetitionKind := do
 private def toRepetition (p : String) (f t : String.Pos) (l r m : String) (ast : Ast)
     : ParserM Ast := do
   let (greedy, possessive) :=
-    match m.data with
+    match m.toList with
     | ['+'] => (true, true)
     | ['?'] => (false, false)
     | _ => (true, false)
@@ -284,7 +284,7 @@ private def toClassSetItem (ast : Ast) : ParserM ClassSetItem := do
 private def rangeToClassSetItem (p : String) (a b : Syntax) : ParserM ClassSetItem := do
   match valuesOfLitSyntax a , valuesOfLitSyntax b  with
   | some (`literal, (.synthetic fa ta), a), some (`literal, (.synthetic fb tb), b) =>
-    match a.data, b.data with
+    match a.toList, b.toList with
     | [a], [b] =>
       if h : a.val ≤ b.val
       then pure

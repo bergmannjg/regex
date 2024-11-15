@@ -39,7 +39,7 @@ private def getSequenceArr? (x : Syntax) : Option $ Array Syntax :=
   | _ => none
 
 private def sourceInfoOf (arr : Array Syntax) : SourceInfo :=
-  match arr.data.head?, arr.data.getLast? with
+  match arr.toList.head?, arr.toList.getLast? with
   | some (.node (.synthetic pos _) _ _), some (.node (.synthetic _ endPos) _ _)
       => SourceInfo.synthetic pos endPos
   | _, _ => SourceInfo.none
@@ -98,7 +98,7 @@ private def parseCharacterClassItems (arr : List Syntax) (acc : List Syntax := [
   | [] => acc
   | first :: second :: third :: tail =>
     if let some arr' := getSequenceArr? first then
-      parseCharacterClassItems (second :: third :: tail) ((List.reverse arr'.data) ++ acc)
+      parseCharacterClassItems (second :: third :: tail) ((List.reverse arr'.toList) ++ acc)
     else if let some op := isCharacterClassSetOperation first then
       let rest := parseCharacterClassItems (second :: third :: tail) []
       let intersection := Syntax.node .none `characterClassSetOperation #[
@@ -112,7 +112,7 @@ private def parseCharacterClassItems (arr : List Syntax) (acc : List Syntax := [
     else parseCharacterClassItems (second :: third :: tail) (first :: acc)
   | head :: tail =>
     if let some arr' := getSequenceArr? head then
-      parseCharacterClassItems tail ((List.reverse arr'.data) ++ acc)
+      parseCharacterClassItems tail ((List.reverse arr'.toList) ++ acc)
     else if let some op := isCharacterClassSetOperation head then
       let rest := parseCharacterClassItems tail []
       let intersection := Syntax.node .none `characterClassSetOperation #[
@@ -127,9 +127,9 @@ termination_by sizeOf arr
 private def parseCharacterClass (info : SourceInfo) (arr : Array Syntax)
     : Except String Syntax := do
   let items :=
-    if let some (neg, tail) := popNegation? arr.data
+    if let some (neg, tail) := popNegation? arr.toList
     then neg :: (parseCharacterClassItems tail |> List.reverse)
-    else parseCharacterClassItems arr.data |> List.reverse
+    else parseCharacterClassItems arr.toList |> List.reverse
   pure $ Syntax.node info `characterClass items.toArray
 
 private def folder (acc : Option Syntax × Array Syntax × Array Syntax) (x : Syntax)
