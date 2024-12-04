@@ -163,12 +163,12 @@ def checkMatches (arr : Array Regex.Captures) (t : RegexTest) : Bool :=
 
   if arr.size != t.matches.size then false
   else
-    let idx := Array.mapIdx arr (fun i v => (i, v))
+    let idx := Array.mapFinIdx arr (fun i v => (i, v))
     Array.all idx (fun (i, m) =>
       if h : i.val < t.matches.size
       then
         let t_matches := (t.matches[i.val]'h).groups
-        let idx := Array.mapIdx (m.matches) (fun i v => (i, v))
+        let idx := Array.mapFinIdx (m.matches) (fun i v => (i, v))
         Array.all idx (fun (i, v) =>
           match t_matches.get? i.val, v with
           | some (some span), some v =>

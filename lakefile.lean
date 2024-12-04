@@ -3,11 +3,11 @@ open Lake DSL
 
 meta if get_config? env = some "dev" then
 require «doc-gen4» from git "https://github.com/leanprover/doc-gen4"
-    @ "v4.13.0"
+    @ "v4.14.0"
 
-require UnicodeBasic from git "https://github.com/fgdorais/lean4-unicode-basic.git"  @ "v1.1.0"
+require UnicodeBasic from git "https://github.com/fgdorais/lean4-unicode-basic.git"  @ "v1.1.1"
 
-require batteries from git "https://github.com/leanprover-community/batteries" @ "v4.13.0"
+require batteries from git "https://github.com/leanprover-community/batteries" @ "v4.14.0"
 
 package «Regex» {
 }

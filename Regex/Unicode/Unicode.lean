@@ -205,4 +205,4 @@ theorem Uint32.sub_le_of_le {a b : UInt32} (h : a ≤ b) : b - a ≤ b := by
 def case_fold_range (r : NonemptyInterval Char) : Array (NonemptyInterval Char) :=
   loop r.fst 0 (r.snd.val - r.fst.val).val.val #[] (by simp)
     (Nat.lt_of_le_of_lt (Uint32.sub_le_of_le r.fst_le_snd) r.snd.val.val.isLt)
-  |> Array.concatMap (fun c => case_fold_char c)
+  |> Array.flatMap (fun c => case_fold_char c)

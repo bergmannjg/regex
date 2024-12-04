@@ -267,7 +267,7 @@ def toString (hir : Hir) (col : Nat): String :=
         have : sizeOf sub < sizeOf c := by simp [hc]; omega
         s!"Capture {index} {name}{pre}sub {toString sub col}"
   | .Concat items =>
-      let hirs := Array.mapIdx items.attach (fun i s => (i, s))
+      let hirs := Array.mapFinIdx items.attach (fun i s => (i, s))
       have : sizeOf items < sizeOf hir.kind := by simp [hk]
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
@@ -275,7 +275,7 @@ def toString (hir : Hir) (col : Nat): String :=
           pre ++ iv ++ ": " ++ (toString ast.val col)))
       s!"Concat {hirs}"
   | .Alternation items =>
-      let hirs := Array.mapIdx items.attach (fun i s => (i, s))
+      let hirs := Array.mapFinIdx items.attach (fun i s => (i, s))
       have : sizeOf items < sizeOf hir.kind := by simp [hk]
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)

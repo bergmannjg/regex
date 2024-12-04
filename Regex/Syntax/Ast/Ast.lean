@@ -905,7 +905,7 @@ def toStringClassSetUnion (r : ClassSetUnion) (col : Nat) : String :=
 
   let ⟨_, items⟩ := r
   let lines :=
-      let asts := Array.mapIdx items.attach (fun i s => (i, s))
+      let asts := Array.mapFinIdx items.attach (fun i s => (i, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
@@ -1027,7 +1027,7 @@ def toString (ast : Ast) (col : Nat) : String :=
   | .Alternation alt =>
     match alt with
     | .mk _ items =>
-      let asts := Array.mapIdx items.attach (fun i s => (i, s))
+      let asts := Array.mapFinIdx items.attach (fun i s => (i, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
@@ -1037,7 +1037,7 @@ def toString (ast : Ast) (col : Nat) : String :=
     match g with
     | .mk _ kind ast => s!"Group{pre}{kind}{pre}{toString ast col}"
   | .Concat concat =>
-      let asts := Array.mapIdx concat.asts.attach (fun i s => (i, s))
+      let asts := Array.mapFinIdx concat.asts.attach (fun i s => (i, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
           let iv := String.mk (Nat.toDigits 0 i.val)
           have : sizeOf ast.val < sizeOf concat :=

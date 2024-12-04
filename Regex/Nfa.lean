@@ -217,7 +217,7 @@ namespace NFA
 def toString (nfa : NFA) : String :=
   let states := Array.mapIdx nfa.states (fun i s => (i, s))
   let states := String.join (states.toList |> List.map (fun (i, s) =>
-      let iv := String.mk (Nat.toDigits 10 i.val)
+      let iv := String.mk (Nat.toDigits 10 i)
       "\n  " ++ iv ++ ": " ++ s.toString))
   s!"states {states}"
 
@@ -375,7 +375,7 @@ instance {nfa : NFA} : Coe (Fin nfa.n) (Fin (Array.size nfa.states)) where
 def toString (nfa : NFA) : String :=
   let states := Array.mapIdx nfa.states (fun i s => (i, s))
   let states := String.join (states.toList |> List.map (fun (i, s) =>
-      let iv := String.mk (Nat.toDigits 10 i.val)
+      let iv := String.mk (Nat.toDigits 10 i)
       "\n  " ++ iv ++ ": " ++ s.toString))
   s!"states {states}"
 
