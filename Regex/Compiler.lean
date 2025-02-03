@@ -43,38 +43,38 @@ private def patch («from» «to» : Unchecked.StateID) : CompilerM PUnit := do
   let states ← get
   if h : «from» < states.size
   then
-    match states.get ⟨«from», h⟩ with
-    | .Empty _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Empty «to»))
-    | .NextChar offset _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.NextChar offset «to»))
+    match states.get «from» h with
+    | .Empty _ =>  set (states.set «from» (Unchecked.State.Empty «to») h)
+    | .NextChar offset _ =>  set (states.set «from» (Unchecked.State.NextChar offset «to») h)
     | .Fail =>  Except.error s!"patch states .Fail unexpected"
     | .Eat (.Until s) n =>
-        if s = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.Eat (.Until «to») n))
-        else if n = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.Eat (.Until s) «to»))
+        if s = 0 then set (states.set «from» (Unchecked.State.Eat (.Until «to») n) h)
+        else if n = 0 then set (states.set «from» (Unchecked.State.Eat (.Until s) «to») h)
         else Except.error "patch states, .Eat s and n not null"
     | .Eat (.ToLast s) n =>
-        if s = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.Eat (.ToLast «to») n))
-        else if n = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.Eat (.ToLast s) «to»))
+        if s = 0 then set (states.set «from» (Unchecked.State.Eat (.ToLast «to») n) h)
+        else if n = 0 then set (states.set «from» (Unchecked.State.Eat (.ToLast s) «to») h)
         else Except.error "patch states, .Eat s and n not null"
     | .ChangeFrameStep f t =>
-        if f = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.ChangeFrameStep «to» t))
-        else if t = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.ChangeFrameStep f «to»))
+        if f = 0 then set (states.set «from» (Unchecked.State.ChangeFrameStep «to» t) h)
+        else if t = 0 then set (states.set «from» (Unchecked.State.ChangeFrameStep f «to»))
         else Except.error "patch states, .ChangeFrameStep from and to not null"
-    | .RemoveFrameStep _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.RemoveFrameStep «to»))
-    | .Look look _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.Look look «to»))
-    | .BackRef b f _ =>  set (states.set ⟨«from», h⟩ (Unchecked.State.BackRef b f «to»))
+    | .RemoveFrameStep _ =>  set (states.set «from» (Unchecked.State.RemoveFrameStep «to») h)
+    | .Look look _ =>  set (states.set «from» (Unchecked.State.Look look «to»))
+    | .BackRef b f _ =>  set (states.set «from» (Unchecked.State.BackRef b f «to»))
     | .ByteRange t =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.ByteRange {t with «next» := «to»}))
+        set (states.set «from» (Unchecked.State.ByteRange {t with «next» := «to»}) h)
     | .Capture role _ pattern_id group_index slot =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.Capture role «to» pattern_id group_index slot))
+        set (states.set «from» (Unchecked.State.Capture role «to» pattern_id group_index slot))
     | .BinaryUnion alt1 alt2 =>
-        if alt1 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion «to» alt2))
-        else if alt2 = 0 then set (states.set ⟨«from», h⟩ (Unchecked.State.BinaryUnion alt1 «to»))
+        if alt1 = 0 then set (states.set «from» (Unchecked.State.BinaryUnion «to» alt2) h)
+        else if alt2 = 0 then set (states.set «from» (Unchecked.State.BinaryUnion alt1 «to») h)
         else Except.error "patch states, .BinaryUnion alt1 and alt2 not null"
     | .SparseTransitions _ => set states -- todo
     | .Union alternates =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.Union (alternates.push «to»)))
+        set (states.set «from» (Unchecked.State.Union (alternates.push «to»)) h)
     | .UnionReverse alternates =>
-        set (states.set ⟨«from», h⟩ (Unchecked.State.UnionReverse (alternates.push «to»)))
+        set (states.set «from» (Unchecked.State.UnionReverse (alternates.push «to»)) h)
     | .Match _ => Except.error s!"patch states .Match unexpected"
   else  Except.error s!"patch not valid, {«from»} ge size {states.size}"
 

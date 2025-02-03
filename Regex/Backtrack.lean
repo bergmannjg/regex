@@ -45,7 +45,7 @@ def modifyRefValue {α β : Type} [Inhabited β] [DecidableEq β]
   let st := ST.Prim.Ref.modify ref (fun arr =>
     let arr := dbgTraceIfShared "array" arr
     if h : index < arr.size
-    then arr.set ⟨index, h⟩ value
+    then arr.set index value h
     else arr)
 
   match st default with | EStateM.Result.ok _ n => if n = default then ref else mkRef #[]
@@ -259,7 +259,7 @@ def checkVisited (state : SearchState n) : Bool × SearchState n :=
   let visited := Visited.getRefValue state.visited
   let index := Visited.index state.sid state.at
   if h : index < visited.size then
-    if visited.get ⟨index, h⟩ != 0 then (true, state)
+    if visited.get index h != 0 then (true, state)
     else
       (false, {state with visited := Visited.modifyRefValue state.visited index 1})
   else (true, state)
@@ -439,7 +439,7 @@ private def encodeChar? (c: Option Char) : String :=
     stackBeforeSid |> List.foldl (fun slots frame =>
         match frame with
         | .RestoreCapture _ slot v =>
-          if h : slot < slots.size then slots.set ⟨slot, h⟩ v else slots
+          if h : slot < slots.size then slots.set slot v h else slots
         | _ => slots) state.slots
 
   let stack := state.stack |> List.dropWhile cond
@@ -459,7 +459,7 @@ private def encodeChar? (c: Option Char) : String :=
     stackBeforeSid |> List.foldl (fun slots frame =>
         match frame with
         | .RestoreCapture _ slot v =>
-          if h : slot < slots.size then slots.set ⟨slot, h⟩ v else slots
+          if h : slot < slots.size then slots.set slot v h else slots
         | _ => slots) state.slots
 
   let stack := state.stack |> List.dropWhile cond
@@ -566,7 +566,7 @@ private def encodeChar? (c: Option Char) : String :=
         (fun _ => s!"PreviousMatch failed at pos {state.at.pos}") state)
   | .ClearMatches =>
     if h : 0 < state.slots.size then
-      let frame : Frame n := Frame.RestoreCapture Capture.Role.Start 0 (state.slots.get ⟨0, h⟩)
+      let frame : Frame n := Frame.RestoreCapture Capture.Role.Start 0 (state.slots.get 0 h)
       let stack := Stack.push state.stack frame
       let slots := state.slots |> Array.map (fun (s, g, _) =>
                     if s = 0 then (s, g, state.at.pos) else (s, g, none))
@@ -614,7 +614,7 @@ private def encodeChar? (c: Option Char) : String :=
 @[inline] private def step_backreference (b : Nat) (case_insensitive : Bool) (next : Fin n) (state : SearchState n)
     : SearchState n :=
   if h : b < state.recentCaptures.size then
-    match state.recentCaptures.get ⟨b, h⟩  with
+    match state.recentCaptures.get b h with
     | some (f, t) =>
         let s := state.input.extract f t |>.toString
         match step_backreference_loop s 0 case_insensitive state.at with
@@ -641,7 +641,7 @@ private def encodeChar? (c: Option Char) : String :=
         (fun _ =>
             s!"{state.sid}: SparseTransitions failed at stop") state)
   else
-    match Array.find? transitions
+    match transitions.find?
             (fun trans => state.at.curr?.any (Checked.Transition.matches trans)) with
     | some t =>
         let next := state.at.next
@@ -694,8 +694,8 @@ private def encodeChar? (c: Option Char) : String :=
      (state : SearchState n) : SearchState n :=
   if h : slot < state.slots.size
   then
-    let (s, g, _) := state.slots.get ⟨slot, h⟩
-    let slots := state.slots.set ⟨slot, h⟩ (s, g, some state.at.pos)
+    let (s, g, _) := state.slots.get slot h
+    let slots := state.slots.set slot (s, g, some state.at.pos) h
     (withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} slots {slots} -> {next}")
                 {state with sid := next, slots := slots })
   else
@@ -707,9 +707,9 @@ private def encodeChar? (c: Option Char) : String :=
   let (stack, slots, recentCaptures) :=
     if h : slot < state.slots.size
     then
-      let (s, g, _) := state.slots.get ⟨slot, h⟩
-      let frame := Frame.RestoreCapture role slot (state.slots.get ⟨slot, h⟩)
-      let slots := state.slots.set ⟨slot, h⟩ (s, g, state.at.pos)
+      let (s, g, _) := state.slots.get slot h
+      let frame := Frame.RestoreCapture role slot (state.slots.get slot h)
+      let slots := state.slots.set slot (s, g, state.at.pos) h
       let recentCaptures :=
         if role == Capture.Role.End then
 
@@ -719,7 +719,7 @@ private def encodeChar? (c: Option Char) : String :=
               | #[(_, _, some f), (_, _, some t)] => some (f, t)
               | _ => none
 
-          if h : g < state.recentCaptures.size then state.recentCaptures.set ⟨g, h⟩ recentCapture
+          if h : g < state.recentCaptures.size then state.recentCaptures.set g recentCapture h
           else state.recentCaptures
         else state.recentCaptures
 
@@ -772,7 +772,9 @@ theorem toNextStep'_eq {nfa : Checked.NFA} {state : Checked.State nfa.n} {s s1 :
     : Bool × SearchState nfa.n :=
   match Visited.checkVisited' state with
   | (false, state') =>
-      let state := nfa.states.get state'.sid
+      let state := nfa.states.get state'.sid.val (by
+                                    rw [← Checked.NFA.isEq nfa]
+                                    exact state'.sid.isLt)
       (true, toNextStep'
                 nfa
                 state
@@ -903,7 +905,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   (stack : Stack n) (state : SearchState n) : Bool × SearchState n :=
   if h : slot < state.slots.size
   then
-    let state := {state with slots := state.slots.set ⟨slot,h⟩ offset, stack := stack}
+    let state := {state with slots := state.slots.set slot offset h, stack := stack}
     let state := (withMsg (fun _ => s!"{state.sid}: Backtrack.RestoreCapture stack {stack} slots {state.slots}") state)
     (true, state)
   else (false, state)

@@ -35,7 +35,7 @@ private def createText (c1 c2 : Char) (n : Nat): String :=
   if c1.val < c2.val then
     let size :=  c2.val - c1.val |>.toNat
     let (content, _) : (List Char) × StdGen := n.fold (init := ([], mkStdGen n))
-          (fun _ (content, generator) =>
+          (fun _ _ (content, generator) =>
             let (n, generator) := randNat generator 0 size
             if h : UInt32.isValidChar (c1.val + n.toUInt32)
             then (⟨c1.val + n.toUInt32, h⟩ :: content, generator)
@@ -78,7 +78,7 @@ def main (args : List String): IO Unit := do
           let regex ← build re default default ⟨true, false⟩
 
           let count :=
-            m.fold (init := 0) (fun acc _ =>
+            m.fold (init := 0) (fun acc _ _ =>
                 let incr :=
                   match Regex.captures haystack.toSubstring regex with
                   | none => 0
@@ -107,7 +107,7 @@ def main (args : List String): IO Unit := do
         match n.toNat? with
         | some n =>
           let (ops, stack) : Nat × Stack 1 := n.fold
-              (fun _ (ops, acc) => let (n, stack) := stack_ops acc; (n+ops, stack)) default
+              (fun _ _ (ops, acc) => let (n, stack) := stack_ops acc; (n+ops, stack)) default
           IO.println s!"ops {ops}, stack {stack}"
         | none => IO.println "Nat expected"
     | ["randomfile", n, a, z, suffix] => -- create file with random content

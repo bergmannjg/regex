@@ -111,13 +111,13 @@ def negate (interval : IntervalSet Char) : IntervalSet Char :=
       |> Array.map (fun (i, y) =>
         if h : 0 < i.val
         then
-          let x := interval.intervals.get ⟨i - 1, Intervals.Fin.pred h⟩
-          let y : NonemptyInterval Char := interval.intervals.get i
+          let x := interval.intervals.get (i - 1) (Intervals.Fin.pred h)
+          let y : NonemptyInterval Char := interval.intervals.get i.val i.is_lt
           Interval.between x y
             (Intervals.nonOverlapping_of_pred interval.intervals
               i
-              (interval.intervals.get ⟨i - 1, Intervals.Fin.pred h⟩)
-              (interval.intervals.get i) h
+              (interval.intervals.get (i - 1) (Intervals.Fin.pred h))
+              (interval.intervals.get i.val i.isLt) h
               (by simp_all) (by simp_all) interval.isNonOverlapping)
         else
           if BoundedOrder.bot < y.fst
@@ -144,11 +144,11 @@ where
     if h₁ : a < ra.size then
       if h₂ : b < rb.size then
         let acc :=
-          match Interval.intersection (ra.get ⟨a, h₁⟩) (rb.get ⟨b, h₂⟩) with
+          match Interval.intersection (ra.get a h₁) (rb.get b h₂) with
           | some r => acc.push r
           | none => acc
 
-        if (ra.get ⟨a, h₁⟩).snd < (rb.get ⟨b, h₂⟩).snd
+        if (ra.get a h₁).snd < (rb.get b h₂).snd
         then loop (a+1) b ra rb acc
         else loop a (b+1) ra rb acc
       else acc

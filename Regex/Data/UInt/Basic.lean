@@ -27,14 +27,12 @@ theorem toNat_toUInt_eq (u : UInt32) : u.toNat.toUInt32 = u := by
   unfold UInt32.toNat
   unfold Nat.toUInt32
   unfold UInt32.ofNat
-  have h : (Fin.ofNat (u.val)) = u.val := Fin.toNat_ofNat_eq u.val
+  have h : (Fin.ofNat' UInt32.size (u.val)) = u.val := Fin.toNat_ofNat_eq u.val
   simp [h]
 
 theorem ofNat_eq (n : Nat) (h : n < UInt32.size) : (UInt32.ofNat n).val = ⟨n, h⟩ := by
   simp_all [UInt32.ofNat, BitVec.ofNat_eq_ofNat, Fin.instOfNat]
   rw [← Fin.ofNat_eq n h]
-  unfold Fin.ofNat Fin.ofNat'
-  simp
 
 @[simp] theorem toBitVecToNat_eq_val {u : UInt32} : u.toBitVec.toNat = u.val.val := rfl
 
@@ -48,13 +46,12 @@ theorem toBitVec_add_ofNat_eq {n m : Nat}
 
 theorem ofNat_add_ofNat (n m : Nat) (hnm : n + m < UInt32.size)
     : (UInt32.ofNat n) + (UInt32.ofNat m) = UInt32.ofNat (n + m) := by
-  simp [← UInt32.add_def', UInt32.add, toBitVec_add_ofNat_eq]
+  simp only [← UInt32.add_def', UInt32.add, toBitVec_add_ofNat_eq, UInt32.mk_ofNat]
 
   apply UInt32.eq_of_val_eq
   have hn : n < UInt32.size := by omega
   have hm : m < UInt32.size := by omega
-  rw [UInt32.ofNat_eq (n + m) hnm, UInt32.ofNat_eq n hn,  UInt32.ofNat_eq m hm]
-
+  rw [UInt32.ofNat_eq (n + m) hnm, UInt32.ofNat_eq n hn, UInt32.ofNat_eq m hm]
   have h : (⟨n, hn⟩ : Fin UInt32.size) + ⟨m, hm⟩ = ⟨n + m, hnm⟩ := by
     rw [Fin.add_def]
     simp [Nat.mod_eq_of_lt hnm]
@@ -107,14 +104,14 @@ theorem isValidChar_lt_0x110000 (u : UInt32) (h : UInt32.isValidChar u)
     simp_all [ h.right]
 
 theorem isValidChar_lt_uintSize (u : UInt32) : u.val.val < UInt32.size := by
-  simp [Nat.lt_trans _ _]
+  exact u.val.isLt
 
 theorem isValidChar_succ_lt_uintSize (u : UInt32) (h : UInt32.isValidChar u)
     : u.val.val + 1 < UInt32.size := by
   have hx : u.val.val < 0x110000 := UInt32.isValidChar_lt_0x110000 u h
   have hy : u.val.val + 1 < 0x110000 + 1 := Nat.add_lt_add_right hx 1
   have hz : 0x110000 + 1 < UInt32.size := by simp_arith
-  simp [Nat.lt_trans hy hz]
+  exact Nat.lt_trans hy hz
 
 theorem isValidChar_pred_lt_uintSize (u : UInt32) (h2 : UInt32.isValidChar u) (h3 : 1 ≤ u)
     : u.val - 1 < UInt32.size := by
@@ -125,7 +122,7 @@ theorem isValidChar_pred_lt_uintSize (u : UInt32) (h2 : UInt32.isValidChar u) (h
   have hx4 : u.val < UInt32.size := Nat.lt_trans hx2 hx3
 
   have h3 : u.val - 1 < UInt32.size := Nat.le_lt_sub_lt h3 hx4
-  simp [h3]
+  exact h3
 
 theorem lt_succ_le {c1 c2 : UInt32} (h : c1 < c2) (hsucc : c1.val + 1 < UInt32.size)
     : c1 + 1 ≤ c2 := by

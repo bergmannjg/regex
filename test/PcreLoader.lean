@@ -162,7 +162,7 @@ private def toRegexTest (i : Nat) (p : PcreTest) : Except String $ RegexTest := 
     }
 
 def toRegexTestArray (arr : Array PcreTest) : Except String $ Array RegexTest :=
-  Array.mapIdxM arr (fun i p => toRegexTest i p)
+  arr.mapIdxM (fun i p => toRegexTest i p)
 
 def load (path : FilePath) : IO (Array PcreTest) := do
   let contents ← IO.FS.readFile path

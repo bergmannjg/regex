@@ -151,7 +151,7 @@ private def isCharInIntervals (c : Char)
     (intervals : Except String (Array (NonemptyInterval Char))) : Bool :=
   match intervals with
   | Except.ok arr =>
-      match Array.find? arr (fun ⟨⟨c1, c2⟩, _⟩ => c1.val <= c.val && c.val <= c2.val) with
+      match arr.find? (fun ⟨⟨c1, c2⟩, _⟩ => c1.val <= c.val && c.val <= c2.val) with
       | some _ => true
       | none => false
   | Except.error _ => false
