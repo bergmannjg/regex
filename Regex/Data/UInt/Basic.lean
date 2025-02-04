@@ -113,16 +113,8 @@ theorem isValidChar_succ_lt_uintSize (u : UInt32) (h : UInt32.isValidChar u)
   have hz : 0x110000 + 1 < UInt32.size := by simp_arith
   exact Nat.lt_trans hy hz
 
-theorem isValidChar_pred_lt_uintSize (u : UInt32) (h2 : UInt32.isValidChar u) (h3 : 1 ≤ u)
-    : u.val - 1 < UInt32.size := by
-
-  have hx1 : u.val.val < 0x110000 := UInt32.isValidChar_lt_0x110000 u h2
-  have hx2 : u.val < 0x110000 := by exact BitVec.lt_def.mp hx1
-  have hx3 : 0x110000 < UInt32.size := by simp_arith
-  have hx4 : u.val < UInt32.size := Nat.lt_trans hx2 hx3
-
-  have h3 : u.val - 1 < UInt32.size := Nat.le_lt_sub_lt h3 hx4
-  exact h3
+theorem isValidChar_pred_lt_uintSize (u : UInt32) : u.val - 1 < UInt32.size := by
+  omega
 
 theorem lt_succ_le {c1 c2 : UInt32} (h : c1 < c2) (hsucc : c1.val + 1 < UInt32.size)
     : c1 + 1 ≤ c2 := by

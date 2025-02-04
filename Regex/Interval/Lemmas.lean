@@ -42,10 +42,7 @@ def singleton (r : NonemptyInterval Char) : IntervalSet Char :=
 theorem pred_lt' {n m : Nat} (h : m < n) : Nat.pred n < n :=
   Nat.pred_lt (Nat.not_eq_zero_of_lt h)
 
-theorem Fin.pred {i : Fin n} (h : 0 < i.val) : LT.lt (i.val-1) n := by
-  have h1 : i.val-1 < i.val := pred_lt' h
-  have h2 : i.val < n := i.isLt
-  simp [Nat.lt_trans h1 h2]
+theorem Fin.pred {i : Fin n} (h : 0 < i.val) : LT.lt (i.val-1) n := by omega
 
 theorem isNonOverlapping (l r : NonemptyInterval Char)
   (h1 : ¬(r.fst.toNat - l.snd.toNat) = 1) (h2 : ¬r.fst < l.snd) (h3 : ¬l.snd = r.fst)
@@ -72,13 +69,13 @@ theorem nonOverlappingWithLast_of_empty (ranges : Array $ NonemptyInterval Char)
     split at heq' <;> try simp_all
     rename_i h
     unfold List.length at h
-    split at h <;> try simp_all
+    simp_all
   · rename_i heq'
     unfold Array.last? at heq'
     split at heq' <;> try simp_all
     rename_i h
     unfold List.length at h
-    split at h <;> try simp_all
+    simp_all
 
 theorem nonOverlappingWithLast_with_none_eq_empty (acc : Acc) (h : acc.next.isNone)
     : acc.set.intervals.size = 0 := by
@@ -127,7 +124,6 @@ theorem nonOverlappingWithLast_of_singleton (l r : NonemptyInterval Char) (h : I
   unfold Array.last? at heq
   split at heq <;> simp_all
   unfold Interval.nonOverlapping  at h
-  rename_i last' _ _ _
   simp_all
 
 theorem nonOverlapping_of_push (acc : Acc) (next : NonemptyInterval Char)

@@ -53,7 +53,7 @@ def canonicalize (ranges : Array (NonemptyInterval Char)) : IntervalSet Char :=
             have hz : l.fst ≤ r.fst := by simp [Char.le_trans l.fst_le_snd hy]
             simp [Char.le_trans hz r.fst_le_snd]
         ⟩
-        Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp))
+        Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp +zetaDelta))
       else if h2 : l.fst = r.fst then -- [a-ca-d] => [a-d]
         if l.snd < r.snd
         then
@@ -61,7 +61,7 @@ def canonicalize (ranges : Array (NonemptyInterval Char)) : IntervalSet Char :=
             have hx : l.fst ≤ r.fst := by simp [Char.eq_le h2]
             simp [Char.le_trans hx r.fst_le_snd]
           ⟩
-          Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp))
+          Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp +zetaDelta))
         else acc -- r.fst = l.fst ∧ r.snd < l.snd
       else if h2 : r.fst < l.snd then -- [a-cb-d] => [a-d]
         if r.snd ≤ l.snd -- [a-eb-d] => [a-e]
@@ -72,7 +72,7 @@ def canonicalize (ranges : Array (NonemptyInterval Char)) : IntervalSet Char :=
             have hx : l.fst ≤ r.fst := by simp [Char.lt_le h]
             simp [Char.le_trans hx r.fst_le_snd]
           ⟩
-          Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp))
+          Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp +zetaDelta))
         else -- ¬l.fst = r.fst ∧ ¬l.fst < r.fst => r.fst < l.fst
           panic s!"internal error: array not sorted at {l} {r}"
       else if l.snd = r.fst && r.fst = r.snd then acc
@@ -82,7 +82,7 @@ def canonicalize (ranges : Array (NonemptyInterval Char)) : IntervalSet Char :=
           have hy : l.fst ≤ r.fst := by simp [Char.le_trans l.fst_le_snd hx]
           simp [Char.le_trans hy r.fst_le_snd]
         ⟩
-        Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp))
+        Acc.with_next acc next (Intervals.is_start_eq_of_val acc.next next hm (by simp +zetaDelta))
       else if r.fst < l.fst then panic s!"internal error: array not sorted at {l} {r}"
       else -- [a-eg-h] => [a-eg-h]
         have : Interval.nonOverlapping l r := Intervals.isNonOverlapping l r h1 h2 h3

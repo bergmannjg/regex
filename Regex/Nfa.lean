@@ -442,7 +442,7 @@ def toCkecked (nfa : Unchecked.NFA) : Except String $ Checked.NFA :=
   | some states =>
     if h : nfa.states.size = states.size -- todo: prove it
     then Except.ok ⟨n, states, false, by
-      have : n = nfa.states.size := by simp
+      have : n = nfa.states.size := by simp +zetaDelta
       simp_all⟩
     else Except.error "internal error: NFA.toCkecked failed"
   | none => Except.error "internal error: NFA.toCkecked failed"

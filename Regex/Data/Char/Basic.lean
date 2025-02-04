@@ -66,8 +66,7 @@ theorem succ_lt_succ_lt {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2)
   have hx : Char.toNat c1 + 1 < UInt32.size := UInt32.isValidChar_succ_lt_uintSize c1.val c1.valid
   have hy : c1.toNat + 1 = (c1.val + 1).toNat := UInt32.toNat_add_toNat c1.val 1 hx
   rw [hy] at h
-  have hz : c1.val + 1 < c2.val := h
-  simp [hz]
+  exact h
 
 theorem lt_pred_le {c1 c2 : Char} (h : c1 < c2) : c1.val ≤ c2.val - 1 := by
   have h : c1.val < c2.val := Char.lt_def.mp h
@@ -93,9 +92,9 @@ theorem incr_le_decr {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2)
   · split <;> try simp_all
     · rename_i hs hp
       let cs : Char := ⟨c1.val + 1, hs⟩
-      have hseq : cs = ⟨c1.val + 1, hs⟩ := by simp
+      have hseq : cs = ⟨c1.val + 1, hs⟩ := rfl
       let cp : Char := ⟨c2.val - 1, hp⟩
-      let hpeq : cp = ⟨c2.val - 1, hp⟩ := by simp
+      let hpeq : cp = ⟨c2.val - 1, hp⟩ := rfl
       rw [← hseq, ← hpeq]
       have h : cs.val ≤ cp.val := Char.succ_add_le__pred h hs
       apply h

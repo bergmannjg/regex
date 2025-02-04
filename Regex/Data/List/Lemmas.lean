@@ -14,7 +14,7 @@ theorem singleton_val_of (a : α) (arr : List α) (h1 : arr = [a]) (h2 : 0 < Lis
 
 theorem singleton_val (a : α) (h : 0 < List.length [a])
     : List.get [a] ⟨0, h⟩ = a  := by
-  simp [List.singleton_val_of a [a] (by simp) h]
+  rfl
 
 theorem get_of_fun_eq {l1 l2 : List α} {f : List α → List α} (h : f l1 = f l2)
   (n : Fin (f l1).length) : (f l1).get n = (f l2).get ⟨n, h ▸ n.2⟩ :=
@@ -27,10 +27,9 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
   have hn1 : 0 < l1.length := Nat.zero_lt_of_lt hl1
   have hn2 : 0 < l2.length := Nat.zero_lt_of_lt hl2
   have hl : l1.length = l2.length := by
-    have h1 : l1.dropLast.length = l1.length - 1 := List.length_dropLast l1
-    have h2 : l2.dropLast.length = l2.length - 1 := List.length_dropLast l2
-    rw [hdl, h2] at h1
-    simp [Nat.pred_inj hn1 hn2 h1.symm]
+    have : l1.dropLast.length = l1.length - 1 := List.length_dropLast l1
+    have : l2.dropLast.length = l2.length - 1 := List.length_dropLast l2
+    omega
   List.ext_get hl fun n h1 h2 =>
     if hx1 : n < l1.dropLast.length then by
       have hx2 : n < l2.dropLast.length := Nat.lt_of_lt_of_eq hx1 hdl
@@ -44,11 +43,7 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
       simp [Nat.le_of_not_gt] at hx1
       have hn1 : n = l1.length - 1 := by
         simp [Nat.eq_pred_of_le_of_lt_succ hn1 hx1 h1]
-      have hn2 : n = l2.length - 1 := by
-        have hx2 : List.length l2 - 1 ≤ n := by
-          rw [hl] at hx1
-          simp [hx1]
-        simp_all [Nat.eq_pred_of_le_of_lt_succ hn2 hx2 h2]
+      have hn2 : n = l2.length - 1 := by omega
       simp [← hn1, ← hn2] at heq
       simp [heq]
 
@@ -60,8 +55,7 @@ theorem eq_succ_of_tail_nth {head : α} {tail : List α} (data : List α) (h1 : 
   (h2 : data = head :: tail) (h3 : n < tail.length)
     : tail.get ⟨n, h3⟩ = data.get ⟨n+1, h1⟩ := by
   cases h2
-  have h : (head :: tail).get ⟨n+1, h1⟩ = tail.get ⟨n, h3⟩ := List.get_cons_succ
-  exact h.symm
+  rfl
 
 theorem eq_succ_of_tail_nth_pred {head : α} {tail : List α} (data : List α) (h0 : n ≠ 0)
   (h1 : n < data.length) (h2 : data = head :: tail) (h3 : n - 1 < tail.length)

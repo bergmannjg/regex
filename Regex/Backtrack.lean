@@ -155,7 +155,7 @@ namespace Stack
 theorem pop?_some_lt (s : Stack n) (h : pop? s = some (a, s1)) : s1.length < s.length := by
   have : s = a :: s1 := by unfold pop? at h; split at h <;> simp_all
   rw [this]
-  simp_all
+  exact Nat.lt_add_one (List.length s1)
 
 /-- append stacks -/
 @[inline] def append (stack1 stack2 : Stack n) : Stack n :=
@@ -791,8 +791,7 @@ theorem toNextStepChecked_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
       simp [toNextStep'_eq h]
   have hlt : s.countVisited < s2.countVisited := by
     simp [Visited.checkVisited'_false_lt s hcv]
-  rw [← heq] at hlt
-  simp [hlt]
+  exact Nat.lt_of_lt_of_eq hlt (id (Eq.symm heq))
 
 theorem toNextStepChecked_false_eq (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
   (h : toNextStepChecked nfa s = (false, s1))
@@ -822,8 +821,7 @@ where
         if h1 : visitedSize state = visitedSize state' then
           have : unvisited state' < unvisited state := by
             unfold unvisited
-            rw [← h1]
-            simp [Nat.sub_lt_sub_left h0 h2]
+            omega
           loop nfa state'
         else state
       else {state with msgs := state.msgs.push "overflow visited array"}
@@ -841,8 +839,7 @@ theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n) (h : steps.
     rename_i heq
     have : unvisited state < unvisited s := by
       unfold unvisited
-      rw [← heq]
-      simp [Nat.sub_lt_sub_left hlt h2]
+      omega
     have hx : state.countVisited ≤ s1.countVisited := steps_loop_le nfa state s1 h
     · simp [Nat.le_trans (Nat.le_of_lt h2) hx]
     · simp_all
@@ -862,8 +859,7 @@ theorem steps_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n) (h : st
   · rename_i state heq
     have h2 : s.countVisited < state.countVisited := toNextStepChecked_true_lt nfa s state heq
     have h3 : state.countVisited ≤ s1.countVisited := steps_loop_le nfa state s1 h
-    apply Or.inl
-    simp [Nat.lt_of_lt_of_le h2 h3]
+    omega
   · rename_i state heq
     have h2 : s.countVisited = s1.countVisited ∧ s.stack = s1.stack :=
       toNextStepChecked_false_eq nfa s s1 heq
@@ -889,17 +885,15 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   simp_all
   split at h <;> try simp_all
   let state' := BoundedBacktracker.steps nfa s
-  have heq : BoundedBacktracker.steps nfa s = state' := by simp_all
+  have heq : BoundedBacktracker.steps nfa s = state' := rfl
   have hx : s.countVisited < state'.countVisited
       ∨ s.countVisited = state'.countVisited ∧ s.stack.length = state'.stack.length :=
     steps_lt_or_eq_lt nfa s state' heq
   simp [SearchState.ext_iff] at h
   rw [heq] at h
-  have hv : state'.countVisited = s1.countVisited := by simp_all
-  have hs : state'.stack.length = s1.stack.length := by simp_all
-  rw [hv] at hx
-  rw [hs] at hx
-  simp_all
+  have : state'.countVisited = s1.countVisited := by simp_all
+  have : state'.stack.length = s1.stack.length := by simp_all
+  omega
 
 @[inline] private def toNextFrameRestoreCapture (slot : Nat) (offset : Nat × Nat × Option String.Pos)
   (stack : Stack n) (state : SearchState n) : Bool × SearchState n :=
@@ -956,23 +950,20 @@ theorem toNextFrame_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
     have h1 : state.countVisited < s1.countVisited ∨
           state.countVisited = s1.countVisited ∧ state.stack.length = s1.stack.length :=
         toNextFrameStep_true_lt_or_eq_lt nfa state s1 h
-    have hy : state.countVisited = s.countVisited := by simp_all
+    have hy : state.countVisited = s.countVisited := rfl
     rw [hy] at h1
     cases h1
-    · rename_i h1
-      simp [Or.inl h1]
+    · omega
     · rename_i heq h1
       have hs : stack.length < s.stack.length := Stack.pop?_some_lt s.stack heq
       rw [h1.right] at hs
-      apply Or.inr
-      simp [And.intro h1.left hs]
+      omega
   · rename_i stack _ _ slot offset heq
     have h1 : stack.length < s.stack.length := Stack.pop?_some_lt s.stack heq
     have h2 : s.countVisited = s1.countVisited ∧ stack = s1.stack :=
       toNextFrameRestoreCapture_true_lt_or_eq_lt slot offset stack s h
     rw [h2.right] at h1
-    apply Or.inr
-    simp [And.intro (And.left h2) h1]
+    omega
   · have hx : false = true := by simp_all [h]
     contradiction
 
@@ -985,16 +976,7 @@ theorem searchState_lexLt (nfa : Checked.NFA) (s s1 : SearchState nfa.n)
   have hx : s.countVisited < s1.countVisited
       ∨ s.countVisited = s1.countVisited ∧ s1.stack.length < s.stack.length :=
     toNextFrame_true_lt nfa s s1 h
-  cases hx
-  · apply Or.inl
-    rename_i hx
-    simp [Nat.sub_lt_sub_left h1 hx]
-  · apply Or.inr
-    rename_i hx
-    have hx1 : BoundedBacktracker.visitedSize s - s1.countVisited
-        = BoundedBacktracker.visitedSize s - s.countVisited := by
-      simp [hx.left]
-    simp [And.intro hx1 hx.right]
+  omega
 
 private def collect_info (state : SearchState n) : Array String :=
   let visited := Visited.getRefValue state.visited
@@ -1030,17 +1012,7 @@ where
 termination_by (unvisited state, state.stack.length)
 decreasing_by
     simp_wf
-    unfold Prod.lexLt at this
-    cases this
-    · rename_i h1
-      simp at h1
-      apply Prod.Lex.left
-      simp_all [h1]
-    · rename_i h1
-      simp at h1
-      apply Prod.Lex.right'
-      · simp [Nat.le_of_eq h1.left]
-      · simp_all [h1.right]
+    exact Prod.lex_def.mpr this
 
 private def dropLastWhile (arr : Array  α) (p :  α -> Bool) : Array α :=
   arr |> Array.foldr (init := #[]) fun a acc =>
@@ -1071,10 +1043,8 @@ private def slotsWithUnanchoredPrefix (s : Substring) («at» : String.Pos) (nfa
       let c : Char := s.get «at»
       let size := c.utf8Size
       have : s.stopPos.byteIdx - (at.byteIdx + size) < s.stopPos.byteIdx - at.byteIdx := by
-        have  : 0 < c.utf8Size := Char.utf8Size_pos c
-        have ha : at.byteIdx < s.stopPos.byteIdx := by omega
-        have hb : at.byteIdx < at.byteIdx + size := by omega
-        simp [Nat.sub_lt_sub_left ha hb]
+        have : 0 < c.utf8Size := Char.utf8Size_pos c
+        omega
       slotsWithUnanchoredPrefix s («at» + ⟨size⟩) nfa logEnabled (init ++ msgs)
     | _ => (init ++ msgs, slots)
 termination_by s.stopPos.byteIdx - «at».byteIdx
