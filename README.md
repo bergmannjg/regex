@@ -16,11 +16,12 @@ Main restrictions:
 
 ## Installation
 
-Add the following dependency to lakefile.lean:
+Add the following dependency to lakefile.toml:
 
-```lean
-require Regex from git
-  "https://github.com/bergmannjg/regex" @ "main"
+```toml
+[[require]]
+name = "Regex"
+git = "https://github.com/bergmannjg/regex"
 ```
 
 ## Documentation

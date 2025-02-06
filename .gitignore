@@ -1,4 +1,5 @@
 /.lake
+/docbuild/.lake
 /benchmark/report
 compile_flags.txt
 .vscode/launch.json

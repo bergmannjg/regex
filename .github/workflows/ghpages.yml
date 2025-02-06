@@ -30,18 +30,19 @@ jobs:
         name: Build and test
         uses: leanprover/lean-action@v1
         with:
-          lint-module: Regex
+          lint: true
           use-github-cache: false
       - name: Build Doc
         run: |
-          lake -R -Kenv=dev update doc-gen4
-          lake -R -Kenv=dev build Regex:docs
+          cd docbuild
+          lake update doc-gen4
+          lake build Regex:docs
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './.lake/build/doc'
+          path: './docbuild/.lake/build/doc'
 
   deploy:
     needs: build

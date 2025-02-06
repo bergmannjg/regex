@@ -21,7 +21,7 @@
    "inputRev": "v4.16.0",
    "inherited": false,
    "configFile": "lakefile.toml"},
-  {"url": "https://github.com/fgdorais/lean4-unicode-basic.git",
+  {"url": "https://github.com/fgdorais/lean4-unicode-basic",
    "type": "git",
    "subDir": null,
    "scope": "",
