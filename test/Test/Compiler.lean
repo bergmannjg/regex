@@ -147,28 +147,29 @@ example : toString (regex% "(a)").nfa = «nfaOf'(a)'».toString := by native_dec
 
 example : toString (regex% "[a]{0,2}").nfa = «nfaOf'[a]{0,2}'».toString := by native_decide
 
-private def caputesOf (c : Char) : Option Captures := some ⟨c.toString.toSubstring , #[]⟩
+private def capturesOf (s : String) (startPos stopPos : String.Pos) : Option (Captures s) :=
+  some ⟨⟨s, startPos, stopPos⟩  , #[], by simp, by simp⟩
 
-example : toString (Regex.captures "a" (regex% "a")) = toString (caputesOf 'a') := by native_decide
+example : toString (Regex.captures "a" (regex% "a")) = toString (capturesOf "a" ⟨0⟩ ⟨1⟩) := by native_decide
 
-example : toString (Regex.captures "ab" (regex% "a(?=b)")) = toString (caputesOf 'a') := by native_decide
+example : toString (Regex.captures "ab" (regex% "a(?=b)")) = toString (capturesOf "ab" ⟨0⟩ ⟨1⟩) := by native_decide
 
 example : regex% "a(?=b)" |> Regex.captures "ac" |>.isNone := by native_decide
 
-example : toString (Regex.captures "ac" (regex% "a(?!b)")) = toString (caputesOf 'a') := by native_decide
+example : toString (Regex.captures "ac" (regex% "a(?!b)")) = toString (capturesOf "ac" ⟨0⟩ ⟨1⟩) := by native_decide
 
 example : regex% "a(?!b)" |> Regex.captures "ab" |>.isNone := by native_decide
 
-private def fullMatch (captures : Option Captures) : String :=
+private def fullMatch (s : String) (captures : Option (Captures s)) : String :=
   match captures with | some captures => captures.fullMatch.toString | none => ""
 
-example : (fullMatch <| Regex.captures
+example : (fullMatch "∀ (n : Nat), 0 ≤ n" <| Regex.captures
             "∀ (n : Nat), 0 ≤ n"
             (regex% r"^\p{Math}\s*.(?<=\()([a-z])[^,]+,\s*(\p{Nd})\s*(\p{Math})\s*\1$"))
            = "∀ (n : Nat), 0 ≤ n" := by native_decide
 
 /- match a double-quoted string -/
-example : (fullMatch <| Regex.captures
+example : (fullMatch "\"αbc\"" <| Regex.captures
             "\"αbc\""
             (regex% "\"(?:[^\"\\\\]++|\\.)*+\""))
            = "\"αbc\"" := by native_decide

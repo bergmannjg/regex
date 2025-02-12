@@ -1049,10 +1049,26 @@ private def slotsWithUnanchoredPrefix (s : Substring) («at» : String.Pos) (nfa
     | _ => (init ++ msgs, slots)
 termination_by s.stopPos.byteIdx - «at».byteIdx
 
+private def toMatches (s : Substring) (slots : Array (Option (String.Pos × String.Pos)))
+    : Array (Option { m : Substring // m.str = s.str }) :=
+  slots
+  |> Array.map (fun pair =>
+      match pair with
+      | some (p0, p1) =>
+          if s.startPos ≤ p0
+          then
+            if p1 ≤ s.stopPos
+            then some ⟨⟨s.str, p0, p1⟩, by simp⟩
+            else none
+          else none
+      | none => none)
+
 /-- Search for the first match of this regex in the haystack given and return log msgs and
-    the slots of each capture group. -/
-def slots (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)
-    : (Array String) × (Array (Option (String.Pos × String.Pos))) :=
-  if nfa.unanchored_prefix_in_backtrack
-  then slotsWithUnanchoredPrefix s «at» nfa logEnabled #[]
-  else slots' s «at» nfa logEnabled
+    the matches of each capture group. -/
+def «matches» (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)
+    : (Array String) × (Array (Option { m : Substring // m.str = s.str })) :=
+  let (msgs, slots) :=
+    if nfa.unanchored_prefix_in_backtrack
+    then slotsWithUnanchoredPrefix s «at» nfa logEnabled #[]
+    else slots' s «at» nfa logEnabled
+(msgs, toMatches s slots)

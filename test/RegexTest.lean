@@ -72,7 +72,29 @@ structure RegexTest where
   «global» : Option Bool := none
   extended : Option Regex.Grammar.ExtendedKind := none
 
+def unescapeStr (s : String) : String :=
+  ⟨loop s.data⟩
+where
+  toChar (a b : Char) : Char :=
+    match Char.decodeHexDigit a, Char.decodeHexDigit b with
+    | some n, some m =>
+      let val := 16*n+m
+      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
+    | _, _ => ⟨0, by simp_arith⟩
+  loop (chars : List Char) : List Char :=
+    match chars with
+    | [] => []
+    | '\\' :: 'x' :: a :: b :: tail => (toChar a b) :: (loop tail)
+    | '\\' :: 'n' :: tail => '\n' :: (loop tail)
+    | '\\' :: 'r' :: tail => '\r' :: (loop tail)
+    | '\\' :: '\\' :: tail => '\\' :: (loop tail)
+    | '\\' :: 't' :: tail => '\t' :: (loop tail)
+    | head :: tail => head :: (loop tail)
+
 namespace RegexTest
+
+def haystackOf (t : RegexTest) : String :=
+  if t.unescape.getD false then unescapeStr t.haystack else t.haystack
 
 def isMatch (t : RegexTest) : Bool :=
   if h : 0 < t.matches.size
@@ -117,25 +139,6 @@ instance : ToString RegexTest where
 instance : ToString RegexTests where
   toString s := s!"{s.test}"
 
-def unescapeStr (s : String) : String :=
-  ⟨loop s.data⟩
-where
-  toChar (a b : Char) : Char :=
-    match Char.decodeHexDigit a, Char.decodeHexDigit b with
-    | some n, some m =>
-      let val := 16*n+m
-      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
-    | _, _ => ⟨0, by simp_arith⟩
-  loop (chars : List Char) : List Char :=
-    match chars with
-    | [] => []
-    | '\\' :: 'x' :: a :: b :: tail => (toChar a b) :: (loop tail)
-    | '\\' :: 'n' :: tail => '\n' :: (loop tail)
-    | '\\' :: 'r' :: tail => '\r' :: (loop tail)
-    | '\\' :: '\\' :: tail => '\\' :: (loop tail)
-    | '\\' :: 't' :: tail => '\t' :: (loop tail)
-    | head :: tail => head :: (loop tail)
-
 def checkCompiles (flavor : Syntax.Flavor) (t : RegexTest) : Bool :=
   let flags : Syntax.Flags := default
   let config : Compiler.Config := default
@@ -143,7 +146,8 @@ def checkCompiles (flavor : Syntax.Flavor) (t : RegexTest) : Bool :=
   | Except.ok _ => true
   | Except.error _ => false
 
-def captures (flavor : Syntax.Flavor) (t : RegexTest) : Except String (Array Regex.Captures) := do
+def captures (flavor : Syntax.Flavor) (t : RegexTest)
+    : Except String (Array (Regex.Captures t.haystackOf)) := do
   let flags : Syntax.Flags := default
   let config : Compiler.Config := default
 
@@ -157,7 +161,7 @@ def captures (flavor : Syntax.Flavor) (t : RegexTest) : Except String (Array Reg
   let re ← Regex.build (Sum.val t.regex) flavor flags config extended
   Except.ok (Regex.all_captures haystack.toSubstring re)
 
-def checkMatches (arr : Array Regex.Captures) (t : RegexTest) : Bool :=
+def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
   let match_limit := t.«match-limit».getD 1000
   let arr := arr |> Array.toList |> List.take match_limit |> List.toArray
 
@@ -183,7 +187,7 @@ def checkMatches (arr : Array Regex.Captures) (t : RegexTest) : Bool :=
           | _, _ => (Option.getD t.«only-full-match» false) && i.val > 0)
       else false)
 
-private def captureToString (r : Regex.Captures) : String :=
+private def captureToString (r : Regex.Captures s) : String :=
   r.matches |> Array.map (fun m =>
     match m with
     | some m => s!"({m.startPos}, {m.stopPos}), "
@@ -196,7 +200,7 @@ private def captureToString (r : Regex.Captures) : String :=
              else s
     "[" ++ s ++ "]"
 
-private def capturesToString (arr : Array Regex.Captures) : String :=
+private def capturesToString (arr : Array (Regex.Captures s)) : String :=
   arr
   |> Array.map (fun c => captureToString c ++ ", ")
   |> Array.toList
