@@ -325,32 +325,32 @@ instance : BEq (State n) where
 namespace State
 
 def toString : State n -> String
-  | .Empty next => s!"Checked.State.Empty => {next}"
-  | .NextChar offset next => s!"Checked.State.NextChar offset {offset} => {next}"
-  | .Fail => s!"Checked.State.Fail"
-  | .Eat s next => s!"Checked.State.Eat {s} => {next}"
-  | .ChangeFrameStep f t => s!"Checked.State.ChangeFrameStep from {f} to {t}"
-  | .RemoveFrameStep sid => s!"Checked.State.RemoveFrameStep {sid}"
+  | .Empty next => s!"State.Empty => {next}"
+  | .NextChar offset next => s!"State.NextChar offset {offset} => {next}"
+  | .Fail => s!"State.Fail"
+  | .Eat s next => s!"State.Eat {s} => {next}"
+  | .ChangeFrameStep f t => s!"State.ChangeFrameStep from {f} to {t}"
+  | .RemoveFrameStep sid => s!"State.RemoveFrameStep {sid}"
   | .BackRef b f sid =>
-      s!"Checked.State.BackRef {b} {if f then "case_insensitive" else ""} => {sid}"
+      s!"State.BackRef {b} {if f then "case_insensitive" else ""} => {sid}"
   | .ByteRange trans =>
-      s!"Checked.State.ByteRange {Nat.intAsString trans.start}-{Nat.intAsString trans.end} => {trans.next}"
+      s!"State.ByteRange {Nat.intAsString trans.start}-{Nat.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
       let lines := String.join (trans.toList |> List.map (fun t =>
             s!" {Nat.intAsString t.start}-{Nat.intAsString t.end} => {t.next}"))
-      s!"Checked.State.SparseTransitions [{lines} ]"
+      s!"State.SparseTransitions [{lines} ]"
   | .Look look next =>
-      s!"Checked.State.Look {look} => {next}"
+      s!"State.Look {look} => {next}"
   | .Union alts =>
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
-      s!"Checked.State.Union [{lines} ]"
+      s!"State.Union [{lines} ]"
   | .UnionReverse alts =>
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
-      s!"Checked.State.UnionReverse [{lines} ]"
-  | .BinaryUnion alt1 alt2 => s!"Checked.State.BinaryUnion ({alt1}, {alt2})"
+      s!"State.UnionReverse [{lines} ]"
+  | .BinaryUnion alt1 alt2 => s!"State.BinaryUnion ({alt1}, {alt2})"
   | .Capture role next pattern_id group slot =>
-      s!"Checked.State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
-  | .Match pattern_id => s!"Checked.State.Match ({pattern_id})"
+      s!"State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
+  | .Match pattern_id => s!"State.Match ({pattern_id})"
 
 end State
 
