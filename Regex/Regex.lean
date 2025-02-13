@@ -39,7 +39,7 @@ instance : ToString Match where
 structure Captures (s : String) where
   /-- the full match -/
   fullMatch : Match
-  /-- the capture groups -/
+  /-- the capture groups, empty groups can arise, for example, in alternatives -/
   groups: Array (Option Match)
   /-- `fullMatch` is a substring of `s`. -/
   isSubstringOf : fullMatch.str = s
@@ -108,18 +108,21 @@ private def all_captures_loop (s : Substring) («at» : String.Pos) (re : Regex)
   match Log.captures s re «at» logEnabled with
   | (msgs, some captures) =>
     let  ⟨_, start, «end»⟩ := captures.fullMatch
-    let cp := BoundedBacktracker.CharPos.create s «end»
-    match cp.curr? with
-    | some _ =>
-      let overlapping_empty_match := is_overlapping_empty_match start «end» acc.2
-      let next := if start = «end» then cp.next.pos else «end»
-      if h : «at» < next ∧ «at» < s.stopPos then
-        have : sizeOf (s.stopPos - next) < sizeOf (s.stopPos - «at») :=
-          String.Pos.sizeof_lt_of_lt (String.Pos.sub_lt_sub_left h.right h.left)
-        all_captures_loop s next re logEnabled
-          (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
-      else (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
-    | none => (acc.1.append msgs, acc.2.push captures)
+    if h : s.startPos ≤ «end» ∧ «end» ≤ s.stopPos
+    then
+      let cp := BoundedBacktracker.CharPos.create s «end» h
+      match cp.curr? with
+      | some _ =>
+        let overlapping_empty_match := is_overlapping_empty_match start «end» acc.2
+        let next := if start = «end» then cp.next.pos else «end»
+        if h : «at» < next ∧ «at» < s.stopPos then
+          have : sizeOf (s.stopPos - next) < sizeOf (s.stopPos - «at») :=
+            String.Pos.sizeof_lt_of_lt (String.Pos.sub_lt_sub_left h.right h.left)
+          all_captures_loop s next re logEnabled
+            (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
+        else (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
+      | none => (acc.1.append msgs, acc.2.push captures)
+    else (acc.1.append msgs, acc.2.push captures)
   | (msgs, none) => (acc.1.append msgs, acc.2)
 termination_by s.stopPos - «at»
 

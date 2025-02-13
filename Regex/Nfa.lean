@@ -174,32 +174,32 @@ inductive State where
 namespace State
 
 def toString : State -> String
-  | .Empty next => s!"Empty => {next}"
-  | .NextChar offset next => s!"NextChar offset  {offset} => {next}"
-  | .Fail => s!"Fail"
-  | .Eat s n => s!"Eat {s} => {n}"
-  | .ChangeFrameStep «from» to => s!"ChangeFrameStep from {«from»} to {to}"
-  | .RemoveFrameStep sid => s!"RemoveFrameStep {sid}"
+  | .Empty next => s!"State.Empty => {next}"
+  | .NextChar offset next => s!"State.NextChar offset  {offset} => {next}"
+  | .Fail => s!"State.Fail"
+  | .Eat s n => s!"State.Eat {s} => {n}"
+  | .ChangeFrameStep «from» to => s!"State.ChangeFrameStep from {«from»} to {to}"
+  | .RemoveFrameStep sid => s!"State.RemoveFrameStep {sid}"
   | .BackRef b f sid =>
-      s!"backreference {b} {if f then "case_insensitive" else ""} => {sid}"
+      s!"State.BackRef {b} {if f then "case_insensitive" else ""} => {sid}"
   | .ByteRange trans =>
-      s!"byte-range {UInt32.intAsString trans.start}-{UInt32.intAsString trans.end} => {trans.next}"
+      s!"State.ByteRange {UInt32.intAsString trans.start}-{UInt32.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
       let lines := String.join (trans.toList |> List.map (fun t =>
             s!" {UInt32.intAsString t.start}-{UInt32.intAsString t.end} => {t.next}"))
-      s!"SparseTransitions [{lines} ]"
+      s!"State.SparseTransitions [{lines} ]"
   | .Look look next =>
-      s!"Look {look} => {next}"
+      s!"State.Look {look} => {next}"
   | .Union alts =>
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
-      s!"Union [{lines} ]"
+      s!"State.Union [{lines} ]"
   | .UnionReverse alts =>
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
-      s!"UnionReverse [{lines} ]"
-  | .BinaryUnion alt1 alt2 => s!"binary-union({alt1}, {alt2})"
+      s!"State.UnionReverse [{lines} ]"
+  | .BinaryUnion alt1 alt2 => s!"State.BinaryUnion({alt1}, {alt2})"
   | .Capture role next pattern_id group slot =>
-      s!"capture{role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
-  | .Match pattern_id => s!"Match({pattern_id})"
+      s!"State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
+  | .Match pattern_id => s!"State.Match ({pattern_id})"
 
 end State
 
@@ -282,7 +282,7 @@ inductive State (n : Nat) where
   | ChangeFrameStep (fr to: Fin n) : State n
   /-- remove Frame.Step in stack and force backtrack -/
   | RemoveFrameStep (sid : Fin n) : State n
-  /--  A state with a single transition may only be followed if the currunt chars match the
+  /--  A state with a single transition may only be followed if the current chars match the
       backrefence to the capturung group. -/
   | BackRef (b : Nat) (case_insensitive : Bool) (sid : Fin n) : State n
   /-- A state with a single transition that can only be taken if the current
@@ -325,32 +325,32 @@ instance : BEq (State n) where
 namespace State
 
 def toString : State n -> String
-  | .Empty next => s!"Empty => {next}"
-  | .NextChar offset next => s!"NextChar offset {offset} => {next}"
-  | .Fail => s!"Fail"
-  | .Eat s next => s!"Eat {s} => {next}"
-  | .ChangeFrameStep f t => s!"ChangeFrameStep from {f} to {t}"
-  | .RemoveFrameStep sid => s!"RemoveFrameStep {sid}"
+  | .Empty next => s!"Checked.State.Empty => {next}"
+  | .NextChar offset next => s!"Checked.State.NextChar offset {offset} => {next}"
+  | .Fail => s!"Checked.State.Fail"
+  | .Eat s next => s!"Checked.State.Eat {s} => {next}"
+  | .ChangeFrameStep f t => s!"Checked.State.ChangeFrameStep from {f} to {t}"
+  | .RemoveFrameStep sid => s!"Checked.State.RemoveFrameStep {sid}"
   | .BackRef b f sid =>
-      s!"backreference {b} {if f then "case_insensitive" else ""} => {sid}"
+      s!"Checked.State.BackRef {b} {if f then "case_insensitive" else ""} => {sid}"
   | .ByteRange trans =>
-      s!"byte-range {Nat.intAsString trans.start}-{Nat.intAsString trans.end} => {trans.next}"
+      s!"Checked.State.ByteRange {Nat.intAsString trans.start}-{Nat.intAsString trans.end} => {trans.next}"
   | .SparseTransitions trans =>
       let lines := String.join (trans.toList |> List.map (fun t =>
             s!" {Nat.intAsString t.start}-{Nat.intAsString t.end} => {t.next}"))
-      s!"SparseTransitions [{lines} ]"
+      s!"Checked.State.SparseTransitions [{lines} ]"
   | .Look look next =>
-      s!"Look {look} => {next}"
+      s!"Checked.State.Look {look} => {next}"
   | .Union alts =>
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
-      s!"Union [{lines} ]"
+      s!"Checked.State.Union [{lines} ]"
   | .UnionReverse alts =>
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
-      s!"UnionReverse [{lines} ]"
-  | .BinaryUnion alt1 alt2 => s!"binary-union({alt1}, {alt2})"
+      s!"Checked.State.UnionReverse [{lines} ]"
+  | .BinaryUnion alt1 alt2 => s!"Checked.State.BinaryUnion ({alt1}, {alt2})"
   | .Capture role next pattern_id group slot =>
-      s!"capture{role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
-  | .Match pattern_id => s!"Match({pattern_id})"
+      s!"Checked.State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
+  | .Match pattern_id => s!"Checked.State.Match ({pattern_id})"
 
 end State
 

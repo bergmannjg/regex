@@ -163,35 +163,35 @@ The inspect tool command line options:
 - *captures* *re* *s : display the captures of the regex *re* in the string *s*.
 - *benchmark* *n* : display the captures of the regex * a?<sup>n</sup>a<sup>n</sup>* in the string *a<sup>n</sup>*.
 
-Output of *inspect ast 'a|b*
+Output of *inspect ast 'a|b'*
 
 ```
 Alternation
-  0: Literal (a|b,0,1) Verbatim 'a'
-  1: Literal (a|b,2,3) Verbatim 'b'
+  0: Syntax.AstItems.Literal (a|b,0,1) Verbatim 'a'
+  1: Syntax.AstItems.Literal (a|b,2,3) Verbatim 'b'
 ```
 
-Output of *inspect hir 'a|b*
+Output of *inspect hir 'a|b'*
 
 ```
 Alternation
-  0: Literal 'a'
-  1: Literal 'b'
+  0: Syntax.HirKind.Literal 'a'
+  1: Syntax.HirKind.Literal 'b'
 ```
 
-Output of *inspect compile 'a|b*
+Output of *inspect compile 'a|b'*
 
 ```
-0: UnionReverse [ 2 3 ]
-1: Empty => 0
-2: SparseTransitions [ 0x00-0xd7ff => 1 0xe000-0x10ffff => 1 ]
-3: capture(pid=0, group=0, slot=0) => 6
-4: byte-range a-a => 7
-5: byte-range b-b => 7
-6: Union [ 4 5 ]
-7: Empty => 8
-8: capture(pid=0, group=0, slot=1) => 9
-9: Match(0)
+0: NFA.Checked.State.UnionReverse [ 2 3 ]
+1: NFA.Checked.State.Empty => 0
+2: NFA.Checked.State.SparseTransitions [ 0x00-0xd7ff => 1 0xe000-0x10ffff => 1 ]
+3: NFA.Checked.State.Capture (pid=0, group=0, slot=0) => 6
+4: NFA.Checked.State.ByteRange a-a => 7
+5: NFA.Checked.State.ByteRange b-b => 7
+6: NFA.Checked.State.Union [ 4 5 ]
+7: NFA.Checked.State.Empty => 8
+8: NFA.Checked.State.Capture (pid=0, group=0, slot=1) => 9
+9: NFA.Checked.State.Match (0)
 ```
 
 Output of *inspect captures 'a|b' a*
