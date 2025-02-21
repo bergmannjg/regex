@@ -37,7 +37,7 @@ The following features are not yet implemented in the Pcre flavor:
 * [conditional patterns](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#TOC1),
 * [backtracking control](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC28),
 * [variable length look behind](https://pcre2project.github.io/pcre2/doc/html/pcre2syntax.html#SEC22),
-* capture groups with a backreference should have fixed width (a restriction of the backtrack algorithm).
+* capture groups with a backreference should have fixed width (a restriction of the backtrack algorithm),
 
 The following features are not implemented in the Rust flavor:
 

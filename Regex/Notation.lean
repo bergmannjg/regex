@@ -122,38 +122,20 @@ private def mkTermOfState (s : NFA.Checked.State n) : Term :=
 instance : Quote (NFA.Checked.State n) where
   quote := mkTermOfState
 
-/-- proof of `n` = `list.toArray.size`
+private def mkTermIsEq (n : Nat) : Term :=
+  Syntax.mkApp (mkCIdent ``Eq.refl) #[toNumLit n]
 
-  example : 1 = #[1].size :=
-    of_eq_true (Eq.trans (congrArg (Eq 1) (Array.size_toArray [1])) (eq_self 1))
--/
-private def mkTermIsEq (n : Nat) (list : Term) : Term :=
-  let mkTermEq :=
-        Syntax.mkApp (mkCIdent ``Eq) #[toNumLit n]
-
-  let mkTermEqSelf :=
-        Syntax.mkApp (mkCIdent ``eq_self) #[toNumLit n]
-
-  let mkTermSizeToArray :=
-      Syntax.mkApp (mkCIdent ``Array.size_toArray) #[list]
-
-  let mkTermCongrArg (f h : Term) :=
-        Syntax.mkApp (mkCIdent ``congrArg) #[f, h]
-
-  let mkTermEqTrans (h1 h2 : Term) :=
-        Syntax.mkApp (mkCIdent ``Eq.trans) #[h1, h2]
-
-  let mkTermOfEqTrue (h : Term) :=
-        Syntax.mkApp (mkCIdent ``of_eq_true) #[h]
-
-  mkTermOfEqTrue (mkTermEqTrans (mkTermCongrArg mkTermEq mkTermSizeToArray) mkTermEqSelf)
+private def mkTermSlotsValid (slots : Term) : Term :=
+  let slotsValid := Syntax.mkApp (mkCIdent ``NFA.Checked.Slots.Valid) #[slots]
+  Syntax.mkApp (mkCIdent ``Eq.refl) #[slotsValid]
 
 private def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
-  let data : Term := Quote.quote nfa.states.toList
-  let states : Term := Syntax.mkApp (mkCIdent `Array.mk) #[data]
+  let states : Term := Quote.quote nfa.states
+  let groups : Term := Quote.quote nfa.groups
+  let slots : Term := Quote.quote nfa.slots
   let flag : Term := Quote.quote nfa.unanchored_prefix_in_backtrack
-  Syntax.mkApp (mkCIdent `NFA.Checked.NFA.mk)
-      #[Lean.Syntax.mkNumLit (ToString.toString nfa.n), states, flag, mkTermIsEq nfa.n data]
+  Syntax.mkApp (mkCIdent `NFA.Checked.NFA.mk) #[toNumLit nfa.n, states, groups, slots, flag,
+    mkTermIsEq nfa.n, mkTermSlotsValid slots]
 
 private def mkTermOfRegex (re : Regex) : Term :=
   Syntax.mkApp (mkCIdent `Regex.mk) #[mkTermOfNfa re.nfa]

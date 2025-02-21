@@ -36,56 +36,56 @@ instance : Inhabited ThompsonRef := ⟨0, 0⟩
 instance : ToString ThompsonRef where
   toString s := s!"{s.start}, {s.end}"
 
-abbrev CompilerM := StateT (Array Unchecked.State) (Except String)
+abbrev CompilerM := StateT (Array Unchecked.State × Array Nat) (Except String)
 
 /-- Add a transition from one state to another. -/
 private def patch («from» «to» : Unchecked.StateID) : CompilerM PUnit := do
-  let states ← get
+  let (states, groups) ← get
   if h : «from» < states.size
   then
     match states.get «from» h with
-    | .Empty _ =>  set (states.set «from» (Unchecked.State.Empty «to») h)
-    | .NextChar offset _ =>  set (states.set «from» (Unchecked.State.NextChar offset «to») h)
+    | .Empty _ =>  set (states.set «from» (Unchecked.State.Empty «to») h, groups)
+    | .NextChar offset _ =>  set (states.set «from» (Unchecked.State.NextChar offset «to») h, groups)
     | .Fail =>  Except.error s!"patch states .Fail unexpected"
     | .Eat (.Until s) n =>
-        if s = 0 then set (states.set «from» (Unchecked.State.Eat (.Until «to») n) h)
-        else if n = 0 then set (states.set «from» (Unchecked.State.Eat (.Until s) «to») h)
+        if s = 0 then set (states.set «from» (Unchecked.State.Eat (.Until «to») n) h, groups)
+        else if n = 0 then set (states.set «from» (Unchecked.State.Eat (.Until s) «to») h, groups)
         else Except.error "patch states, .Eat s and n not null"
     | .Eat (.ToLast s) n =>
-        if s = 0 then set (states.set «from» (Unchecked.State.Eat (.ToLast «to») n) h)
-        else if n = 0 then set (states.set «from» (Unchecked.State.Eat (.ToLast s) «to») h)
+        if s = 0 then set (states.set «from» (Unchecked.State.Eat (.ToLast «to») n) h, groups)
+        else if n = 0 then set (states.set «from» (Unchecked.State.Eat (.ToLast s) «to») h, groups)
         else Except.error "patch states, .Eat s and n not null"
     | .ChangeFrameStep f t =>
-        if f = 0 then set (states.set «from» (Unchecked.State.ChangeFrameStep «to» t) h)
-        else if t = 0 then set (states.set «from» (Unchecked.State.ChangeFrameStep f «to»))
+        if f = 0 then set (states.set «from» (Unchecked.State.ChangeFrameStep «to» t) h, groups)
+        else if t = 0 then set (states.set «from» (Unchecked.State.ChangeFrameStep f «to»), groups)
         else Except.error "patch states, .ChangeFrameStep from and to not null"
-    | .RemoveFrameStep _ =>  set (states.set «from» (Unchecked.State.RemoveFrameStep «to») h)
-    | .Look look _ =>  set (states.set «from» (Unchecked.State.Look look «to»))
-    | .BackRef b f _ =>  set (states.set «from» (Unchecked.State.BackRef b f «to»))
+    | .RemoveFrameStep _ =>  set (states.set «from» (Unchecked.State.RemoveFrameStep «to») h, groups)
+    | .Look look _ =>  set (states.set «from» (Unchecked.State.Look look «to»), groups)
+    | .BackRef b f _ =>  set (states.set «from» (Unchecked.State.BackRef b f «to»), groups)
     | .ByteRange t =>
-        set (states.set «from» (Unchecked.State.ByteRange {t with «next» := «to»}) h)
+        set (states.set «from» (Unchecked.State.ByteRange {t with «next» := «to»}) h, groups)
     | .Capture role _ pattern_id group_index slot =>
-        set (states.set «from» (Unchecked.State.Capture role «to» pattern_id group_index slot))
+        set (states.set «from» (Unchecked.State.Capture role «to» pattern_id group_index slot), groups)
     | .BinaryUnion alt1 alt2 =>
-        if alt1 = 0 then set (states.set «from» (Unchecked.State.BinaryUnion «to» alt2) h)
-        else if alt2 = 0 then set (states.set «from» (Unchecked.State.BinaryUnion alt1 «to») h)
+        if alt1 = 0 then set (states.set «from» (Unchecked.State.BinaryUnion «to» alt2) h, groups)
+        else if alt2 = 0 then set (states.set «from» (Unchecked.State.BinaryUnion alt1 «to») h, groups)
         else Except.error "patch states, .BinaryUnion alt1 and alt2 not null"
-    | .SparseTransitions _ => set states -- todo
+    | .SparseTransitions _ => set (states, groups) -- todo
     | .Union alternates =>
-        set (states.set «from» (Unchecked.State.Union (alternates.push «to»)) h)
+        set (states.set «from» (Unchecked.State.Union (alternates.push «to»)) h, groups)
     | .UnionReverse alternates =>
-        set (states.set «from» (Unchecked.State.UnionReverse (alternates.push «to»)) h)
+        set (states.set «from» (Unchecked.State.UnionReverse (alternates.push «to»)) h, groups)
     | .Match _ => Except.error s!"patch states .Match unexpected"
   else  Except.error s!"patch not valid, {«from»} ge size {states.size}"
 
 private def push (s : Unchecked.State) : CompilerM Unchecked.StateID := do
-  let states ← get
-  set (states.push s)
+  let (states, groups) ← get
+  set (states.push s, groups)
   pure states.size
 
 private def push' (s : Unchecked.State) : CompilerM ThompsonRef := do
-  let states ← get
-  set (states.push s)
+  let (states, groups) ← get
+  set (states.push s, groups)
   pure ⟨states.size, states.size⟩
 
 private def add_match (pattern_id : PatternID) : CompilerM Unchecked.StateID :=
@@ -237,6 +237,30 @@ private def c_possessive (tref : ThompsonRef) : CompilerM ThompsonRef := do
   patch eat empty
   pure ⟨union, empty⟩
 
+private def is_possible_empty_repetition (hir : Hir) : Bool :=
+  match hir with
+  | ⟨.Repetition ⟨0, _, _, _, _⟩, _⟩ => true
+  | _ => false
+
+private def is_empty_concat (hir : Hir) : Bool :=
+  match hir with
+  | ⟨.Concat #[], _⟩ => true
+  | _ => false
+
+/-- collect group if `hir` is a capture group which may match with a empty string,
+    it is used to build a greedy search in the Pcre flavor -/
+private def get_possible_empty_capture_group (hir : Hir) : Option Nat :=
+  let ⟨kind, _⟩ := hir
+  match kind with
+  | .Capture ⟨g, _, ⟨kind, _⟩⟩ =>
+    match kind with
+    | .Repetition ⟨0, _, _, _, _⟩ => some g
+    | .Concat hirs => if hirs.all is_possible_empty_repetition then some g else none
+    | .Alternation hirs => if (hirs.any is_empty_concat) || (hirs.any is_possible_empty_repetition)
+                           then some g else none
+    | _ => none
+  | _ => none
+
 /-- Compile the given expression such that it may be matched `n` or more times -/
 private def c_at_least (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool) : CompilerM ThompsonRef := do
   if n = 0 then
@@ -247,6 +271,12 @@ private def c_at_least (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool)
 
     patch compiled.end plus
     patch plus compiled.start
+
+    let (states, groups) ← get
+    let groups := match (if greedy then get_possible_empty_capture_group hir else none) with
+              | some g => groups.push g
+              | none => groups
+    set (states, groups)
 
     let question ← (if greedy then add_union else add_union_reverse)
     let empty ← add_empty
@@ -261,6 +291,12 @@ private def c_at_least (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool)
   else if n = 1 then
     let compiled ← c hir
     let union ← (if greedy then add_union else add_union_reverse)
+
+    let (states, groups) ← get
+    let groups := match (if greedy then get_possible_empty_capture_group hir else none) with
+              | some g => groups.push g
+              | none => groups
+    set (states, groups)
 
     patch compiled.end union
     patch union compiled.start
@@ -481,11 +517,13 @@ private def compile' (anchored : Bool) (expr : Hir) : CompilerM PUnit := do
   patch unanchored_prefix.end one.start
 
 /-- Compile the HIR expression given. -/
-def compile (config : Config := default) (expr : Hir) : Except String Checked.NFA := do
+def compile (config : Config := default) (flavor : Syntax.Flavor) (expr : Hir)
+    : Except String Checked.NFA := do
   let unanchored_prefix_simulation := expr.containsLookaround || config.unanchored_prefix_simulation
   let anchored := !config.unanchored_prefix || startsWithStart expr || unanchored_prefix_simulation
-  let (_, states) ← compile' anchored expr #[]
-  let nfa ← NFA.toCkecked ⟨states, 0, 0⟩
+  let (_, (states, groups)) ← compile' anchored expr (#[], #[])
+  let nfa ← NFA.toCkecked ⟨states, Unchecked.toSlots states, 0, 0⟩
+              (match flavor with | Syntax.Flavor.Pcre => groups | _ => #[])
   Except.ok {nfa with unanchored_prefix_in_backtrack :=
                   !startsWithStart expr && unanchored_prefix_simulation
             }

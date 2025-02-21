@@ -14,7 +14,8 @@ open Lean System
 
 open Regex
 
-def testToml (path : FilePath) (filename : String) (flavor : Syntax.Flavor) (tests : Array RegexTest) : IO (Nat × Nat × Nat) := do
+def testToml (path : FilePath) (filename : String) (flavor : Syntax.Flavor) (tests : Array RegexTest)
+    : IO (Nat × Nat × Nat) := do
   let (succeeds, failures, ignored) ← RegexTest.testItems flavor filename tests
   IO.println s!"succeeds {succeeds} failures {failures} ignored {ignored} in file {path}"
   pure (succeeds, failures, ignored)

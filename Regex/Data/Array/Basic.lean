@@ -60,3 +60,7 @@ def map_option_subtype {p : α → Prop} [DecidablePred p] (arr : Array (Option 
             have h := ih x hx.left
             rw [hx.right] at h
             simp_all⟩
+
+/-- `as.contains bs` is true if `as` contains all elems of `bs`.  -/
+def all_contains [BEq α] (as bs : Array α) : Bool :=
+  bs.all (fun b => as.contains b)

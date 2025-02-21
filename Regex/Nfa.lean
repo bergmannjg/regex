@@ -1,5 +1,6 @@
 import Batteries.Data.Fin.Basic
 import Regex.Utils
+import Regex.Data.Array.Basic
 
 namespace NFA
 
@@ -206,9 +207,17 @@ end State
 instance : ToString State where
   toString := State.toString
 
+/-- Array of (slot, group) pairs of captures. -/
+def toSlots (states : Array State) : Array (Nat × Nat) :=
+  let slots := states.filterMap (fun s => match s with | .Capture _ _ _ _ s => some s | _ => none)
+  match slots.max? with
+  | some n => ((List.range (n + 1)).map (fun i => (i, i.div 2))).toArray
+  | none => #[]
+
 /-- A char oriented Thompson non-deterministic finite automaton (NFA). -/
 structure NFA where
   states : Array State
+  slots : Array (Nat × Nat)
   start_anchored: StateID
   start_unanchored: StateID
 
@@ -219,7 +228,7 @@ def toString (nfa : NFA) : String :=
   let states := String.join (states.toList |> List.map (fun (i, s) =>
       let iv := String.mk (Nat.toDigits 10 i)
       "\n  " ++ iv ++ ": " ++ s.toString))
-  s!"states {states}"
+  s!"states {states}\nslots {nfa.slots}"
 
 end NFA
 
@@ -356,18 +365,29 @@ end State
 
 instance : ToString $ State n where toString s := Checked.State.toString s
 
+/-- Valid slot arrays have even size and consist of groups with two slots
+    at consecutive positions. -/
+def Slots.Valid (slots : Array (Nat × Nat)) : Bool :=
+  slots.size % 2 = 0 && (List.range slots.size).map (fun i => (i, i.div 2)) = slots.toList
+
 /-- A char oriented Thompson non-deterministic finite automaton (NFA) with n states -/
 structure NFA where
   /-- number of states -/
   n : Nat
   /-- states of the NFA -/
   states : Array (State n)
+  /-- capture groups which may match with a empty string -/
+  groups : Array Nat
+  /-- Array of (slot, group) pairs of captures -/
+  slots : Array (Nat × Nat)
   /-- simulate a unanchored prefix by the backtracker -/
   unanchored_prefix_in_backtrack : Bool
   /-- assertion that n equals size of states -/
   isEq : n = states.size
+  /-- slots are valid -/
+  slotsValid : Slots.Valid slots
 
-instance : Inhabited NFA where default := ⟨0, #[], false, by simp_arith⟩
+instance : Inhabited NFA where default := ⟨0, #[], #[], #[], false, by simp_arith, by simp_arith⟩
 
 instance {nfa : NFA} : Coe (Fin nfa.n) (Fin (Array.size nfa.states)) where
   coe n := Fin.castLE (by simp[nfa.isEq]) n
@@ -377,7 +397,7 @@ def toString (nfa : NFA) : String :=
   let states := String.join (states.toList |> List.map (fun (i, s) =>
       let iv := String.mk (Nat.toDigits 10 i)
       "\n  " ++ iv ++ ": " ++ s.toString))
-  s!"states {states}"
+  s!"states {states}\nslots {nfa.slots}"
 
 instance : ToString NFA where
   toString := Checked.toString
@@ -435,14 +455,26 @@ private def toCkeckedState? (s : Unchecked.State) (n : Nat) : Option $ Checked.S
         (toFin? next n) |> Option.map (Checked.State.Capture role · pattern_id group slot)
   | .Match pattern_id => some (Checked.State.Match pattern_id)
 
+/-- Array of (slot, group) pairs of captures. -/
+private def slotsOfCaptures (states : Array (Checked.State n)) : Array (Nat × Nat) :=
+  let captures := states.filterMap (fun s =>
+    match s with | .Capture _ _ _ g s => some (s, g) | _ => none)
+
+  Array.qsort captures (fun (s1, g1) (s2, g2) => Prod.lexLt (g1, s1) (g2, s2))
+  |> Array.unique
+
 /-- transform Unchecked.NFA to Checked.NFA -/
-def toCkecked (nfa : Unchecked.NFA) : Except String $ Checked.NFA :=
+def toCkecked (nfa : Unchecked.NFA) (groups : Array Nat) : Except String $ Checked.NFA :=
   let n := nfa.states.size
   match nfa.states |> Array.mapM (toCkeckedState? · n) with
-  | some states =>
-    if h : nfa.states.size = states.size -- todo: prove it
-    then Except.ok ⟨n, states, false, by
-      have : n = nfa.states.size := by simp +zetaDelta
-      simp_all⟩
-    else Except.error "internal error: NFA.toCkecked failed"
+  | some states => do
+    if h1 : nfa.states.size = states.size -- todo: prove it
+    then
+      /- (slotsOfCaptures states) is a subset of nfa.slots,
+         see '(a){0}(a)' where (slotsOfCaptures states) is not equal to nfa.slots -/
+      if h2 : Checked.Slots.Valid nfa.slots
+              ∧ nfa.slots.all_contains (slotsOfCaptures states) -- todo: prove it
+      then pure ⟨n, states, groups, nfa.slots, false, by simp_all +zetaDelta, h2.left⟩
+      else Except.error s!"internal error: Slots.Valid failed, nfa {nfa}"
+    else Except.error s!"internal error: states unchecked {nfa.states.size} != checked {states.size}"
   | none => Except.error "internal error: NFA.toCkecked failed"

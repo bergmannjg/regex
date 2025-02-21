@@ -100,23 +100,29 @@ private structure PcreTest where
   noMatch : Option Bool
   deriving Lean.FromJson
 
+private def toSpan (_haystack _match : String ) : Except String $ Option RegexTest.Span := do
+  if _haystack.length < _match.length then
+    Except.error s!"haystack.length < match.length, haystack '{_haystack}' match '{_match}'" else
+  if _match.length = 0 then pure <| some ⟨0, 0, some _match⟩ else
+  match _haystack.splitOn _match with
+  | f :: _ =>
+    if false && f.utf8ByteSize = _haystack.length  then
+      Except.error s!"match not found in haystack, haystack '{_haystack.quote}', _match '{_match.quote}'" else
+    pure <| some ⟨f.utf8ByteSize, f.utf8ByteSize + _match.utf8ByteSize, some _match⟩
+  | _ => pure none
+
 private def toCaptures (p : PcreTest) : Except String $ (Array RegexTest.Captures) := do
   match p.match with
   | some arr =>
-      let groups : Array $ Option RegexTest.Span ←
-        arr |> Array.mapM (fun m =>
+      let captures : Array $ RegexTest.Captures ←
+        arr |> Array.mapM (fun m => do
           let _haystack := unescapeStr p.haystack true
           let _match := unescapeStr m.«match»
-          if _haystack.length < _match.length then
-            Except.error s!"haystack.length < match.length, haystack '{_haystack}' match '{_match}'" else
-          if _match.length = 0 then pure <| some ⟨0, 0, some _match⟩ else
-          match _haystack.splitOn _match with
-          | f :: _ =>
-            if false && f.utf8ByteSize = _haystack.length  then
-              Except.error s!"match not found in haystack, haystack '{_haystack.quote}', _match '{_match.quote}'" else
-            pure <| some ⟨f.utf8ByteSize, f.utf8ByteSize + _match.utf8ByteSize, some _match⟩
-          | _ => pure none)
-      pure #[⟨groups⟩]
+          let span ← toSpan _haystack _match
+          let spans ← #[m.group1, m.group2, m.group3, m.group4, m.group5, m.group6]
+                |> Array.mapM (Option.bindM (toSpan _haystack <| unescapeStr ·) ·)
+          pure ⟨Array.append #[span] spans⟩)
+      pure captures
   | none => pure #[]
 
 private def setOption (c : Char) (t : RegexTest) : RegexTest :=
@@ -155,8 +161,8 @@ private def toRegexTest (i : Nat) (p : PcreTest) : Except String $ RegexTest := 
       name := s!"t{i}"
       regex := Sum.inl ""
       haystack := unescapeStr p.haystack true
-      «matches» := ← toCaptures p
-      «match-limit» := some 1
+      «matches» := (← toCaptures p).take p.matchExpected
+      «match-limit» := some p.matchExpected
       unescape := some true
       «only-full-match» := some true
     }
@@ -164,7 +170,9 @@ private def toRegexTest (i : Nat) (p : PcreTest) : Except String $ RegexTest := 
 def toRegexTestArray (arr : Array PcreTest) : Except String $ Array RegexTest :=
   arr.mapIdxM (fun i p => toRegexTest i p)
 
-def load (path : FilePath) : IO (Array PcreTest) := do
-  let contents ← IO.FS.readFile path
+def loadFromString (contents : String) : IO (Array PcreTest) := do
   let json ← IO.ofExcept <| Json.parse contents
   IO.ofExcept <| fromJson? (α := Array PcreTest) json
+
+def load (path : FilePath) : IO (Array PcreTest) := do
+  loadFromString (← IO.FS.readFile path)

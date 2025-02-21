@@ -18,8 +18,11 @@ private def nfaOf'a'Checked : Checked.NFA :=
       .Capture NFA.Capture.Role.End ⟨6, by simp⟩ 0 0 1,
       .Match 0
     ]
+    #[]
+    #[(0, 0), (1, 0)]
     false
-    (by simp only [Array.size_toArray, List.length_cons, List.length_nil])
+    rfl
+    rfl
 
 private def nfaOf'a' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -29,7 +32,9 @@ private def nfaOf'a' : Unchecked.NFA :=
     .ByteRange ⟨'a'.val, 'a'.val, 5⟩,
     .Capture NFA.Capture.Role.End 6 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0)], 2, 0⟩
+
+example : Unchecked.toSlots (nfaOf'a'.states) = #[(0, 0), (1, 0)] := by native_decide
 
 private def nfaOf'ab' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -40,7 +45,7 @@ private def nfaOf'ab' : Unchecked.NFA :=
     .ByteRange ⟨'b'.val, 'b'.val, 6⟩,
     .Capture NFA.Capture.Role.End 7 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0)], 2, 0⟩
 
 private def «nfaOf'a?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -52,7 +57,7 @@ private def «nfaOf'a?'» : Unchecked.NFA :=
     .Empty 7,
     .Capture NFA.Capture.Role.End 8 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0)], 2, 0⟩
 
 private def «nfaOf'ab?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -65,7 +70,7 @@ private def «nfaOf'ab?'» : Unchecked.NFA :=
     .Empty 8,
     .Capture NFA.Capture.Role.End 9 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0)], 2, 0⟩
 
 private def «nfaOf'[a-b]'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -76,7 +81,7 @@ private def «nfaOf'[a-b]'» : Unchecked.NFA :=
     .SparseTransitions #[⟨'a'.val, 'b'.val, 4⟩],
     .Capture NFA.Capture.Role.End 7 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0)], 2, 0⟩
 
 private def «nfaOf'a|b'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -89,7 +94,7 @@ private def «nfaOf'a|b'» : Unchecked.NFA :=
     .Empty 8,
     .Capture NFA.Capture.Role.End 9 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0)], 2, 0⟩
 
 private def «nfaOf'(a)'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -101,7 +106,7 @@ private def «nfaOf'(a)'» : Unchecked.NFA :=
     .Capture NFA.Capture.Role.End 7 0 1 3,
     .Capture NFA.Capture.Role.End 8 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0), (2, 1), (3, 1)], 2, 0⟩
 
 private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
@@ -118,7 +123,7 @@ private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
     .Union #[10, 5],
     .Capture NFA.Capture.Role.End 13 0 0 1,
     .Match 0
-    ], 2, 0⟩
+    ], #[(0, 0), (1, 0)], 2, 0⟩
 
 open Regex.Notation
 

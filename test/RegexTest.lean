@@ -176,15 +176,11 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
         Array.all idx (fun (i, v) =>
           match t_matches.get? i.val, v with
           | some (some span), some v =>
-              -- ignore maybe wrong string pos caused by pcreloader
-              ((Substring.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩)
-               == (Substring.extract t.haystack.toSubstring v.startPos v.stopPos)
-               &&
-               span.end-span.start = v.stopPos.byteIdx-v.startPos.byteIdx)
-              ||
               span.start = v.startPos.byteIdx && span.end = v.stopPos.byteIdx
+              || -- ignore maybe wrong string pos caused by pcreloader
+              (Substring.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v
           | some none, none => true
-          | _, _ => (Option.getD t.«only-full-match» false) && i.val > 0)
+          | _, _ => (Option.getD t.«only-full-match» false) && 0 < i.val)
       else false)
 
 private def captureToString (r : Regex.Captures s) : String :=

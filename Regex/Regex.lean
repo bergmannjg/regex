@@ -65,7 +65,7 @@ def build (s : String) (flavor : Syntax.Flavor := default)
     (extended : Regex.Grammar.ExtendedKind := .None)
     : Except String Regex := do
   let nfa ← Syntax.AstItems.parse s flavor extended
-              >>= Syntax.translate flags >>= Compiler.compile config
+              >>= Syntax.translate flags >>= Compiler.compile config flavor
   Except.ok ⟨nfa⟩
 
 namespace Log
