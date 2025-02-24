@@ -1,3 +1,6 @@
+import Batteries.Data.String
+
+import Regex.Basic
 import Regex.Syntax.Flavor
 import Regex.Unicode
 import Regex.Nfa
@@ -6,15 +9,7 @@ import Regex.Utils
 import Regex.Syntax.Ast.Parser
 import Regex.Syntax.Translate
 import Regex.Data.Array.Basic
-
-open NFA
-
-/-- A compiled regular expression for searching Unicode haystacks. -/
-structure Regex where
-  nfa : Checked.NFA
-
-instance : ToString Regex where
-  toString m := s!"{m.nfa}"
+import Regex.Data.String.Lemmas
 
 namespace Regex
 
@@ -28,30 +23,12 @@ Main api for Regex
 - `Regex.all_captures`: searches all successive non-overlapping matches of the regex
 -/
 
-/-- Represents a single match of a regex in a haystack. -/
-abbrev Match := Substring
-
-instance : ToString Match where
-  toString s :=
-    s!"'{s}', {s.startPos}, {s.stopPos}"
-
-/-- Represents the full match and capture groups for a single match in `s`. -/
-structure Captures (s : String) where
-  /-- the full match -/
-  fullMatch : Match
-  /-- the capture groups, empty groups can arise, for example, in alternatives -/
-  groups: Array (Option Match)
-  /-- `fullMatch` is a substring of `s`. -/
-  isSubstringOf : fullMatch.str = s
-  /-- all matches in `groups` are substrings of `s`. -/
-  areSubstringsOf : groups.all (Option.all (·.str = s) ·)
-
 namespace Captures
 
 def end? (c : Captures s) : Option String.Pos :=
-  c.fullMatch.stopPos
+  c.fullMatch.val.stopPos
 
-def «matches» (c : Captures s) :Array (Option Match) :=
+def «matches» (c : Captures s) : Array (Option Match) :=
   #[(some c.fullMatch)] ++ c.groups
 
 end Captures
@@ -72,8 +49,8 @@ namespace Log
 
 /-- This routine searches for the first match of this regex in the haystack given,
     returns an array of log msgs, the overall match and the matches of each capture group -/
-def captures (s : Substring) (re : Regex) («at» : String.Pos) (logEnabled : Bool)
-    : Array String × Option (Captures s.str) :=
+def captures (s : ValidSubstring) (re : Regex) («at» : ValidPos s.val.str) (logEnabled : Bool)
+    : Array String × Option (Captures s.val.str) :=
   let (msgs, «matches») := BoundedBacktracker.«matches» s «at» re.nfa logEnabled
   match «matches».head? with
   | some (some head, tail) =>
@@ -89,58 +66,49 @@ private def is_overlapping_empty_match (f t : String.Pos) (acc : Array (Captures
       | none => false
   | none => false
 
-theorem String.Pos.lt_def {a b : String.Pos} : a < b  ↔ a.byteIdx < b.byteIdx := Iff.rfl
-
-theorem String.Pos.sub_lt_sub_left {k m n : String.Pos} (h1 : k < m) (h2 : k < n)
-    : m - n < m - k := by
-  have : m.byteIdx - n.byteIdx < m.byteIdx - k.byteIdx := Nat.sub_lt_sub_left h1 h2
-  exact (String.Pos.lt_def.mpr this)
-
-theorem String.Pos.sizeof_lt_of_lt {a b : String.Pos} (h : a < b) : sizeOf a < sizeOf b := by
-  have sizeOf_string_pos {s : String.Pos} : sizeOf (s) = 1 + sizeOf s.byteIdx := rfl
-  simp [String.Pos.lt_def.mp] at h
-  rw [sizeOf_string_pos, sizeOf_string_pos, sizeOf_nat, sizeOf_nat]
-  omega
-
-private def all_captures_loop (s : Substring) («at» : String.Pos) (re : Regex)
-  (logEnabled : Bool) (acc : Array String × Array (Captures s.str))
-    : Array String × Array (Captures s.str) :=
-  match Log.captures s re «at» logEnabled with
+private def all_captures_loop (s : ValidSubstring) («at» : ValidPos s.val.str) (re : Regex)
+  (logEnabled : Bool) (acc : Array String × Array (Captures s.val.str))
+    : Array String × Array (Captures s.val.str) :=
+  match captures s re «at» logEnabled with
   | (msgs, some captures) =>
-    let  ⟨_, start, «end»⟩ := captures.fullMatch
-    if h : s.startPos ≤ «end» ∧ «end» ≤ s.stopPos
+    let startPos := captures.fullMatch.val.startPos
+    let stopPos := captures.fullMatch.val.stopPos
+    if h : s.val.startPos ≤ stopPos ∧ stopPos ≤ s.val.stopPos
     then
-      let cp := BoundedBacktracker.CharPos.create s «end» h
-      match cp.curr? with
-      | some _ =>
-        let overlapping_empty_match := is_overlapping_empty_match start «end» acc.2
-        let next := if start = «end» then cp.next.pos else «end»
-        if h : «at» < next ∧ «at» < s.stopPos then
-          have : sizeOf (s.stopPos - next) < sizeOf (s.stopPos - «at») :=
+      let cp := BoundedBacktracker.CharPos.create s ⟨stopPos, stop_pos_valid_of captures⟩ h
+      if cp.curr?.isSome then
+        let overlapping_empty_match := is_overlapping_empty_match startPos stopPos acc.2
+        let next := if startPos = stopPos then cp.next.pos else stopPos
+        if h : «at» < next ∧ «at» < s.val.stopPos then
+          have hNextValid : String.Pos.Valid s.val.str next := by
+            unfold next
+            split
+            · exact cp.next.isValidPos
+            · exact stop_pos_valid_of captures
+          have : sizeOf (s.val.stopPos - next) < sizeOf (s.val.stopPos - «at») :=
             String.Pos.sizeof_lt_of_lt (String.Pos.sub_lt_sub_left h.right h.left)
-          all_captures_loop s next re logEnabled
+          all_captures_loop s ⟨next, hNextValid⟩ re logEnabled
             (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
         else (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
-      | none => (acc.1.append msgs, acc.2.push captures)
+      else (acc.1.append msgs, acc.2.push captures)
     else (acc.1.append msgs, acc.2.push captures)
   | (msgs, none) => (acc.1.append msgs, acc.2)
-termination_by s.stopPos - «at»
+termination_by s.val.stopPos - «at»
 
 /-- Returns an array of log msgs and all successive non-overlapping matches in the given haystack. -/
-def all_captures (s : Substring) (re : Regex) (logEnabled : Bool)
-    : Array String × Array (Captures s.str) :=
-  all_captures_loop s ⟨0⟩ re logEnabled (#[], #[])
+def all_captures (s : ValidSubstring) (re : Regex) (logEnabled : Bool)
+    : Array String × Array (Captures s.val.str) :=
+  all_captures_loop s default re logEnabled (#[], #[])
 
 end Log
 
 /-- This routine searches for the first match of this regex in the haystack given, and if found,
     returns not only the overall match but also the matches of each capture group in the regex.
     If no match is found, then None is returned. -/
-def captures (s : Substring) (re : Regex) («at» : String.Pos := ⟨0⟩) : Option (Captures s.str) :=
-  let (_, captures) := Log.captures s re «at» false
-  captures
+def captures (s : ValidSubstring) (re : Regex) («at» : ValidPos s.val.str := default)
+    : Option (Captures s.val.str) :=
+  Log.captures s re «at» false |> (·.2)
 
 /-- Returns all successive non-overlapping matches in the given haystack. -/
-def all_captures (s : Substring) (re : Regex) : Array (Captures s.str) :=
-  let (_, captures) := Log.all_captures s re false
-  captures
+def all_captures (s : ValidSubstring) (re : Regex) : Array (Captures s.val.str) :=
+  Log.all_captures s re false |> (·.2)

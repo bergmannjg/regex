@@ -14,7 +14,8 @@ instance : MonadLift (Except String) IO where
     | Except.error e => throw $ .userError e
 
 private def stack_ops (stack : Stack 1 "") : Nat × Stack 1 "" :=
-  let frameStep : Frame 1 "" := Frame.Step default (CharPos.create "" ⟨0⟩ (by decide))
+  let frameStep : Frame 1 "" := Frame.Step default
+                                  (CharPos.create "" (instSubstringValid "").default (by decide))
   let frameRestoreCapture : Frame 1 "" := Frame.RestoreCapture Capture.Role.Start default default
   let stack := Stack.push stack frameStep
   let stack := Stack.push stack frameRestoreCapture
@@ -57,7 +58,7 @@ def main (args : List String): IO Unit := do
           let nl := "\n"
 
           let regex ← build re default default ⟨true, false⟩
-          match Regex.Log.captures haystack.toSubstring regex default (logEnabled := false) with
+          match Regex.Log.captures haystack regex (instSubstringValid haystack).default (logEnabled := false) with
           | (msgs, none) =>
             if msgs.size > 0 then IO.println s!"msgs {msgs |> Array.map (· ++ nl)}"
             IO.println s!"captures: none"
@@ -76,11 +77,10 @@ def main (args : List String): IO Unit := do
           IO.println s!"re {re} haystack {haystack}"
 
           let regex ← build re default default ⟨true, false⟩
-
           let count :=
             m.fold (init := 0) (fun acc _ _ =>
                 let incr :=
-                  match Regex.captures haystack.toSubstring regex with
+                  match Regex.captures haystack regex with
                   | none => 0
                   | some _ => 1
                 acc + incr)

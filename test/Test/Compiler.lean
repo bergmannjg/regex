@@ -1,3 +1,4 @@
+import Batteries.Data.String
 import Regex
 
 open Syntax
@@ -152,21 +153,32 @@ example : toString (regex% "(a)").nfa = «nfaOf'(a)'».toString := by native_dec
 
 example : toString (regex% "[a]{0,2}").nfa = «nfaOf'[a]{0,2}'».toString := by native_decide
 
-private def capturesOf (s : String) (startPos stopPos : String.Pos) : Option (Captures s) :=
-  some ⟨⟨s, startPos, stopPos⟩  , #[], by simp, by simp⟩
+private def capturesOf (s : String) (startPos stopPos : ValidPos s) (h : startPos.val ≤ stopPos.val)
+    : Option (Captures s) :=
+  some ⟨⟨⟨s, startPos.val, stopPos.val⟩,
+        by exact ⟨startPos.property, stopPos.property, h⟩⟩, #[], by simp, by simp⟩
 
-example : toString (Regex.captures "a" (regex% "a")) = toString (capturesOf "a" ⟨0⟩ ⟨1⟩) := by native_decide
+example : toString (Regex.captures "a" (regex% "a"))
+          = toString (capturesOf "a"
+                ⟨⟨0⟩, by simp⟩
+                ⟨⟨1⟩, by exact ⟨['a'], ⟨[], by simp_all; rfl⟩⟩⟩ (by decide)) := by native_decide
 
-example : toString (Regex.captures "ab" (regex% "a(?=b)")) = toString (capturesOf "ab" ⟨0⟩ ⟨1⟩) := by native_decide
+example : toString (Regex.captures "ab" (regex% "a(?=b)"))
+          = toString (capturesOf "ab"
+                ⟨⟨0⟩, by simp⟩
+                ⟨⟨1⟩, by exact ⟨['a'], ⟨['b'], by simp_all; rfl⟩⟩⟩ (by decide)) := by native_decide
 
 example : regex% "a(?=b)" |> Regex.captures "ac" |>.isNone := by native_decide
 
-example : toString (Regex.captures "ac" (regex% "a(?!b)")) = toString (capturesOf "ac" ⟨0⟩ ⟨1⟩) := by native_decide
+example : toString (Regex.captures "ac" (regex% "a(?!b)"))
+          = toString (capturesOf "ac"
+                ⟨⟨0⟩, by simp⟩
+                ⟨⟨1⟩, by exact ⟨['a'], ⟨['c'], by simp_all;rfl⟩⟩⟩ (by decide)) := by native_decide
 
 example : regex% "a(?!b)" |> Regex.captures "ab" |>.isNone := by native_decide
 
 private def fullMatch (s : String) (captures : Option (Captures s)) : String :=
-  match captures with | some captures => captures.fullMatch.toString | none => ""
+  match captures with | some captures => captures.fullMatch.val.toString | none => ""
 
 example : (fullMatch "∀ (n : Nat), 0 ≤ n" <| Regex.captures
             "∀ (n : Nat), 0 ≤ n"

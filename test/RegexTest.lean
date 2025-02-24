@@ -159,7 +159,7 @@ def captures (flavor : Syntax.Flavor) (t : RegexTest)
 
   let haystack := if t.unescape.getD false then unescapeStr t.haystack else t.haystack
   let re ← Regex.build (Sum.val t.regex) flavor flags config extended
-  Except.ok (Regex.all_captures haystack.toSubstring re)
+  Except.ok (Regex.all_captures haystack re)
 
 def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
   let match_limit := t.«match-limit».getD 1000
@@ -176,7 +176,7 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
         Array.all idx (fun (i, v) =>
           match t_matches.get? i.val, v with
           | some (some span), some v =>
-              span.start = v.startPos.byteIdx && span.end = v.stopPos.byteIdx
+              span.start = v.val.startPos.byteIdx && span.end = v.val.stopPos.byteIdx
               || -- ignore maybe wrong string pos caused by pcreloader
               (Substring.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v
           | some none, none => true
@@ -186,7 +186,7 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
 private def captureToString (r : Regex.Captures s) : String :=
   r.matches |> Array.map (fun m =>
     match m with
-    | some m => s!"({m.startPos}, {m.stopPos}), "
+    | some m => s!"({m.val.startPos}, {m.val.stopPos}), "
     | none => "none")
   |> Array.toList
   |> String.join

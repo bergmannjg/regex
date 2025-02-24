@@ -2,6 +2,8 @@ import Init.System.IO
 import Lake.Util.Cli
 import Lake.Util.MainM
 import Lake.CLI.Error
+import Batteries.Data.String
+
 import Regex
 import Regex.Backtrack
 
@@ -208,7 +210,7 @@ def captures : CliM PUnit := do
 
   if opts.all
   then
-    let (msgs, arr) := Regex.Log.all_captures haystack.toSubstring regex (isVerbose)
+    let (msgs, arr) := Regex.Log.all_captures haystack regex (isVerbose)
     if msgs.size > 0 then IO.println s!"msgs {msgs |> Array.map (· ++ nl)}"
     match arr.size with
     | 0 => IO.println s!"captures: none"
@@ -216,7 +218,7 @@ def captures : CliM PUnit := do
       IO.println s!"captures found: {arr.size}"
       arr |> Array.forM (fun captures => IO.println s!"{captures}")
   else
-    match Regex.Log.captures haystack.toSubstring regex ⟨0⟩ (isVerbose) with
+    match Regex.Log.captures haystack regex (instSubstringValid haystack).default (isVerbose) with
     | (msgs, none) =>
       if msgs.size > 0 then IO.println s!"msgs {msgs |> Array.map (· ++ nl)}"
       IO.println s!"captures: none"
@@ -225,7 +227,7 @@ def captures : CliM PUnit := do
       IO.println s!"{captures}"
 
       if isVerbose then
-        IO.println s!"fullMatch chars {captures.fullMatch.toString.asHex} utf8ByteSize {captures.fullMatch.toString.utf8ByteSize}"
+        IO.println s!"fullMatch chars {captures.fullMatch.val.toString.asHex} utf8ByteSize {captures.fullMatch.val.toString.utf8ByteSize}"
 
 end regex
 

@@ -50,10 +50,8 @@ theorem sizeOf_pop? [SizeOf α] {as : Array α} (h : Array.pop? as = some (a, as
 
 theorem size_one (a : α) : (#[a] : Array α).size = 1 := rfl
 
-theorem default_size_zero (arr : Array α) (h : arr = default) : arr.size = 0 := by
-  unfold Array.size List.length
-  split <;> try simp_all
-  contradiction
+theorem default_size_zero (arr : Array α) (h : arr = default) : arr.size = 0 :=
+  size_eq_zero.mpr h
 
 theorem non_empty_of_last? (arr : Array α) (h: Array.last? arr = some last) : 0 < arr.size := by
   unfold Array.last? at h
@@ -90,19 +88,23 @@ theorem get_last_of_pop? {arr : Array α} (h1 : Array.pop? arr = some (last, arr
 
 theorem concat_of_pop? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
     : arr.toList = arr'.toList ++ [last] := by
-  have hlt : 0 < arr.toList.length := by simp_all[Array.lt_of_pop?_eq_last? h]
+  have hlt : 0 < arr.toList.length := lt_of_pop?_eq_last? h
   have hlt : arr.toList.length - 1 < arr.toList.length := Nat.pred_lt_of_lt hlt
   have hlast : List.get arr.toList ⟨arr.toList.length - 1, hlt⟩ = last :=
      Array.get_last_of_pop? h hlt
   unfold Array.pop? at h
   split at h <;> simp_all
   have hr : Array.pop arr = arr' := h
-  have hr : (Array.pop arr).toList = arr'.toList := by simp_all
+  have hr : (Array.pop arr).toList = arr'.toList := congrArg toList h
   have hx : (Array.pop arr).toList = List.dropLast arr.toList := Array.pop_toList arr
   rw [hx] at hr
-  have hy : List.dropLast (arr'.toList ++ [last]) = arr'.toList := by apply List.dropLast_concat
+  have hy : List.dropLast (arr'.toList ++ [last]) = arr'.toList := List.dropLast_concat
   have hz : List.dropLast arr.toList = List.dropLast (arr'.toList ++ [last]) := by
     rw [← hy] at hr
-    rw [hr]
+    exact hr
   simp [List.eq_of_dropLast_eq_last_eq hz hlt (by simp_all)
-          (by rw [List.get_last_of_concat _]; rw [← hlast]; simp_all)]
+          (by rw [List.get_last_of_concat _]; exact hlast)]
+
+theorem get_eq_get?_some {as : Array α} (hlt : i < as.size) (h : a = as.get i hlt)
+    : as.get? i = some a := by
+  simp_all [Array.get?]

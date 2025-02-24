@@ -1,12 +1,17 @@
+import Lean.Util
+
+import Batteries.Data.Nat.Lemmas
+import Batteries.Tactic.Exact
+import Batteries.Data.String
+
+import Regex.Basic
 import Regex.Syntax.Hir
 import Regex.Nfa
 import Regex.Compiler
 import Regex.Utils
 import Regex.Data.Array.Basic
-import Lean.Util
-import Init.Core
-import Batteries.Data.Nat.Lemmas
-import Batteries.Tactic.Exact
+import Regex.Data.Array.Lemmas
+import Regex.Data.String.Lemmas
 
 /-!
 ## BoundedBacktracker
@@ -61,17 +66,26 @@ end Array.Ref
 /-- Char position in a substring-/
 structure CharPos (s : Substring) where
   /-- current position -/
-  pos : String.Pos := ⟨0⟩
+  pos : String.Pos := s.startPos
   /-- char at current position -/
   curr? : Option Char := none
   /-- char at previous position -/
   prev? : Option Char := none
   /-- `pos` is in range of substring `s` -/
   isPosInRange : CharPos.posInRange s pos
+  /-- `pos` is valid string position in `s.str` -/
+  isValidPos : String.Pos.Valid s.str pos
+  /-- `s` is a valid substring -/
+  isValidSubstring : Substring.Valid s
 
-abbrev CharPos.PosInRange s := { pos : String.Pos // CharPos.posInRange s pos }
+abbrev CharPos.PosInRange s :=
+  { pos : String.Pos // CharPos.posInRange s pos ∧ String.Pos.Valid s.str pos}
 
-instance : Inhabited (CharPos default) := ⟨default, none, none, by simp; decide⟩
+abbrev CharPos.Pair s := { p : (CharPos.PosInRange s) × (CharPos.PosInRange s)
+                           // p.1.val ≤ p.2.val }
+
+instance : Inhabited (CharPos default) :=
+  ⟨default, none, none, by simp; decide, String.Pos.valid_zero, Substring.Valid_default⟩
 
 instance : ToString (CharPos s) where
   toString s := s!"{s.pos} {s.curr?} {s.prev?}"
@@ -79,35 +93,54 @@ instance : ToString (CharPos s) where
 namespace CharPos
 
 def toSlotEntry («at»: CharPos input) : CharPos.PosInRange input :=
-  ⟨«at».pos, «at».isPosInRange⟩
+  ⟨«at».pos, And.intro «at».isPosInRange «at».isValidPos⟩
 
 def get? (s : Substring) («at» : String.Pos) : Option Char :=
   if «at» < s.stopPos then s.get «at» else none
 
 /-- create a CharPos from `s` and position `«at»` -/
-def create (s : Substring) («at» : String.Pos) (h : s.startPos ≤ «at» ∧ «at» ≤ s.stopPos )
+def create (s : Regex.ValidSubstring)
+  («at» : Regex.ValidPos s.val.str) (h : s.val.startPos ≤ «at» ∧ «at» ≤ s.val.stopPos )
     : CharPos s :=
-  let prev? := if «at» = 0 then none else get? s (s.prev «at»)
-  ⟨«at», get? s «at», prev?, h⟩
+  let prev? := if «at».val = 0 then none else get? s (s.val.prev «at»)
+  ⟨«at», get? s «at», prev?, h, «at».property, s.property⟩
 
-def prevOf (offset : Nat) (cp : CharPos s) : Option (CharPos s) :=
-  if offset ≤ cp.pos.byteIdx then
-    let pos := s.prevn offset cp.pos
+theorem valid_prev (cp : CharPos s) : String.Pos.Valid s.str (s.str.prev cp.pos) := by
+  exact String.valid_prev cp.isValidPos
+
+/-- to prev position of `cp` -/
+def prev (cp : CharPos s) : Option (CharPos s) :=
+  if 0 < cp.pos.byteIdx then
+    let pos := s.str.prev cp.pos
     if h : s.startPos ≤ pos ∧ pos ≤ s.stopPos
-    then some (create s pos h)
+    then some (create ⟨s, cp.isValidSubstring⟩ ⟨pos, valid_prev cp⟩  h)
     else none
   else none
 
-/-- to next position CharPos of `cp` -/
+def prevn (offset : Nat) (cp : CharPos s) : Option (CharPos s) :=
+  if offset ≤ cp.pos.byteIdx then loop offset cp else none
+  where loop (offset : Nat) (cp : Option (CharPos s)) : Option (CharPos s) :=
+    if 0 < offset
+    then Option.bind cp (fun cp => Option.bind (prev cp) (loop (offset - 1) ·))
+    else cp
+
+theorem valid_next (cp : CharPos s) (h : cp.pos < s.stopPos)
+    : String.Pos.Valid s.str (s.str.next cp.pos) := by
+  simp_all [String.valid_next cp.isValidPos (by
+          have := String.Pos.Valid.le_endPos cp.isValidSubstring.stopValid
+          exact Nat.lt_of_lt_of_le h this)]
+
+/-- to next position of `cp` -/
 def next (cp : CharPos s) : CharPos s :=
-  if cp.pos >= s.stopPos then cp
+  if h : cp.pos >= s.stopPos then cp
   else
     match cp.curr? with
-    | some c =>
-      let nextPos : String.Pos := ⟨cp.pos.byteIdx + c.utf8Size⟩
-      if h : s.startPos ≤ nextPos ∧ nextPos ≤ s.stopPos
+    | some _ =>
+      let nextPos := s.str.next cp.pos
+      if hInRange : s.startPos ≤ nextPos ∧ nextPos ≤ s.stopPos
       then {cp with pos := nextPos, prev? := cp.curr?, curr? := get? s nextPos,
-                    isPosInRange := h}
+                    isPosInRange := hInRange
+                    isValidPos := valid_next cp (Nat.lt_of_not_ge h)}
       else cp
     | none => cp
 
@@ -229,23 +262,18 @@ abbrev SlotsValid s := {slots : Array (SlotEntry s) // SearchState.Slots.Valid s
 namespace SearchState
 
 /-- create the SearchState from an NFA -/
-def fromNfa (nfa : Checked.NFA) (input : Substring) («at» : String.Pos) (logEnabled : Bool)
-  (h : 0 < nfa.n ∧ input.startPos ≤ «at» ∧ «at» ≤ input.stopPos )
+def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
+  («at» :  Regex.ValidPos input.val.str) (logEnabled : Bool)
+  (h : 0 < nfa.n ∧ input.val.startPos ≤ «at» ∧ «at» ≤ input.val.stopPos)
     : SearchState nfa.n input :=
   let f : Nat × Nat → SlotEntry input := (fun (s, g) => (s, g, none))
   let slots := nfa.slots |> Array.map f
 
-  have hSize : nfa.slots.size = slots.size := by
-    have := Array.size_map f nfa.slots
-    have : Array.map f nfa.slots = slots := by simp +zetaDelta
-    simp_all
-
   have hSlotsValid : Slots.Valid slots := by
     simp
-    rw [← hSize]
+    rw [← Eq.symm (Array.size_map f nfa.slots)]
     have h := nfa.slotsValid
-    unfold Checked.Slots.Valid at h
-    simp [] at h
+    simp [Checked.Slots.Valid] at h
     simp [h.left]
     rw [h.right]
     let g := fun (x : SlotEntry input) => (x.fst, x.snd.fst)
@@ -254,7 +282,7 @@ def fromNfa (nfa : Checked.NFA) (input : Substring) («at» : String.Pos) (logEn
       have : g ∘ f = id := rfl
       simp_all +zetaDelta
     rw [this]
-    simp +zetaDelta
+    exact Array.toList_map g slots
 
   let recentCaptures : Array $ Option (String.Pos × String.Pos) :=
     slots |> Array.map (fun (_, g, _) => g) |> Array.unique |> Array.map (fun _ => none)
@@ -262,7 +290,8 @@ def fromNfa (nfa : Checked.NFA) (input : Substring) («at» : String.Pos) (logEn
   {
     stack := default
     visited := Array.Ref.mkRef <|
-      Array.mkArray ((nfa.states.size + 1) * (input.stopPos.byteIdx - input.startPos.byteIdx +1)) 0
+      Array.mkArray ((nfa.states.size + 1)
+                      * (input.val.stopPos.byteIdx - input.val.startPos.byteIdx + 1)) 0
     countVisited := 0
     sid := ⟨0, h.left⟩
     «at» := CharPos.create input «at» h.right
@@ -345,7 +374,6 @@ theorem slots_of_modify_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slo
       exact List.getElem?_eq_none hlt
   rw [← this]
   rw [List.map_map]
-  have : (fun x => (x.fst, x.snd.fst)) ∘ mf = (fun x => (x.fst, x.snd.fst)) := rfl
   rfl
 
 theorem slots_of_map_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slots)
@@ -388,8 +416,8 @@ theorem eq_of_linear_eq {a1 b1 a2 b2 x : Nat} (hb1 : b1 < x) (hb2 : b2 < x)
       exact h
     have : b1 = k * x + b2 := by omega
     have : ¬ b1 < x := by
-      have : k * x ≤ b1 := by omega
-      have : x ≤ k * x := by exact Nat.le_mul_of_pos_left x hk.left
+      have : k * x ≤ b1 := Nat.le.intro (id (Eq.symm this))
+      have : x ≤ k * x := Nat.le_mul_of_pos_left x hk.left
       omega
     contradiction
   else if ha : a2 < a1
@@ -406,8 +434,8 @@ theorem eq_of_linear_eq {a1 b1 a2 b2 x : Nat} (hb1 : b1 < x) (hb2 : b2 < x)
       exact h
     have : k * x + b1 = b2 := by omega
     have : ¬ b2 < x := by
-      have : k * x ≤ b2 := by omega
-      have : x ≤ k * x := by exact Nat.le_mul_of_pos_left x hk.left
+      have : k * x ≤ b2 := Nat.le.intro this
+      have : x ≤ k * x := Nat.le_mul_of_pos_left x hk.left
       omega
     contradiction
   else
@@ -432,13 +460,13 @@ theorem index_injective (sid1 sid2 : Fin n) (cp1 cp2 : CharPos s)
     simp [← hx]
     suffices cp1.pos.byteIdx - s.startPos.byteIdx
              ≤ s.stopPos.byteIdx - s.startPos.byteIdx by
-      simp [Nat.lt_add_one_of_le this]
+      exact Nat.lt_add_one_of_le this
     exact Nat.sub_le_sub_right hp1.right s.startPos.byteIdx
   have hlt2 : cp2.pos.byteIdx - s.startPos.byteIdx < x := by
     simp [← hx]
     suffices cp2.pos.byteIdx - s.startPos.byteIdx
              ≤ s.stopPos.byteIdx - s.startPos.byteIdx by
-      simp [Nat.lt_add_one_of_le this]
+      exact Nat.lt_add_one_of_le this
     exact Nat.sub_le_sub_right hp2.right s.startPos.byteIdx
   have h : sid1.val * x + (cp1.pos.byteIdx - s.startPos.byteIdx)
            = sid2.val * x + (cp2.pos.byteIdx - s.startPos.byteIdx) := by omega
@@ -480,7 +508,7 @@ theorem checkVisited'_false_lt (s : SearchState n input) (h : checkVisited' s = 
   have hx : s.countVisited + 1 ≤ s1.countVisited := by
     simp [SearchState.ext_iff] at h
     simp_all
-  simp [Nat.lt_of_succ_le hx]
+  exact hx
 
 theorem checkVisited'_true_eq (s : SearchState n input) (h : checkVisited' s = (true, s1))
     : s.countVisited = s1.countVisited ∧ s.stack.length = s1.stack.length := by
@@ -507,8 +535,7 @@ theorem capture_groups_eq_of_consecutive_slots (slots : Array (SlotEntry s))
 
 /-- build pairs of consecutive slots which correspond to same capture groups via `slotsValid`. -/
 private def toPairs (slots : Array (SlotEntry s)) (groups : Array Nat)
-  (slotsValid : SearchState.Slots.Valid slots)
-    : Array (Option ((CharPos.PosInRange s) × (CharPos.PosInRange s))) :=
+  (slotsValid : SearchState.Slots.Valid slots) : Array (Option (CharPos.Pair s)) :=
   have : slots.size % 2 = 0 := by simp_all [slotsValid]
   slots.foldl (init := #[])
     fun acc (i, v) =>
@@ -516,11 +543,13 @@ private def toPairs (slots : Array (SlotEntry s)) (groups : Array Nat)
       else
         match h0 : slots.get? (i - 1), h1 : slots.get? (i) with
         | some (_, g0, some v0), some (_, g1, some v1) =>
-            have : g0 = g1 := capture_groups_eq_of_consecutive_slots slots slotsValid h h0 h1
-            /- simulate greedy search in possible empty capture group `g0`
-                see `Compiler.get_possible_empty_capture_group` -/
-            let v0 := if groups.contains g0 then v1 else v0
-            acc.push (some (v0, v1))
+          have : g0 = g1 := capture_groups_eq_of_consecutive_slots slots slotsValid h h0 h1
+          /- simulate greedy search in possible empty capture group `g0`
+              see `Compiler.get_possible_empty_capture_group` -/
+          let v0 := if groups.contains g0 then v1 else v0
+          if hle : v0.val ≤ v1.val -- todo: prove it
+          then acc.push (some ⟨(v0, v1), hle⟩)
+          else acc.push none
         | some (_, _, none), some (_, _, none) => acc.push none
         | _, _ => acc
 
@@ -605,7 +634,7 @@ private def encodeChar? (c: Option Char) : String :=
 
 @[inline] private def step_next_char (offset : Nat) (next : Fin n) (state : SearchState n s)
     : SearchState n s :=
-  match state.at.prevOf offset with
+  match state.at.prevn offset with
   | some pos =>
     withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} to charpos {pos} -> {next}")
                       {state with sid := next, «at» := pos}
@@ -946,7 +975,7 @@ private def encodeChar? (c: Option Char) : String :=
     (withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} invalid")
                 state)
 
-@[inline] private def step_capture (role : Capture.Role)(next : Fin n) (group slot : Nat)
+@[inline] private def step_capture (role : Capture.Role) (next : Fin n) (group slot : Nat)
      (state : SearchState n s) : SearchState n s :=
   let (stack, slots, recentCaptures) :=
     if h : slot < state.slots.size
@@ -954,20 +983,26 @@ private def encodeChar? (c: Option Char) : String :=
       let frame := Frame.RestoreCapture role slot (state.slots.get slot h).2.2
       let f := fun _ => some $ CharPos.toSlotEntry state.at
       let slots := state.slots.modify slot ((Prod.map id (Prod.map id f)))
-      let recentCaptures :=
-        let (_, g, _) := state.slots.get slot h
-        if role == Capture.Role.End then
-          let recentCapture :=
-              let slotsOfGroup := slots.filter (fun (_, g', _) => g = g')
-              match slotsOfGroup with
-              | #[(_, _, some f), (_, _, some t)] => some (f, t)
-              | _ => none
-
-          if h : g < state.recentCaptures.size then state.recentCaptures.set g recentCapture h
-          else state.recentCaptures
-        else state.recentCaptures
+      have hLength := Array.size_modify state.slots slot (Prod.map id (Prod.map id f))
       let slots : SlotsValid s := ⟨slots, SearchState.slots_of_modify_valid state.slots
                                             state.slotsValid slot f⟩
+      let recentCaptures :=
+        if hne : ¬slot % 2 = 0 then
+          have hlt := Nat.lt_of_lt_of_eq h (Eq.symm hLength)
+          match hm : slots.val.get slot hlt with
+          | (s1, g1, v1) =>
+            have h1 : slots.val.get? slot = some (s1, g1, v1) := Array.get_eq_get?_some hlt hm.symm
+            let recentCapture :=
+                match h0 : slots.val.get? (slot - 1), v1 with
+                | some (_, g0, some v0), some v1 =>
+                  have : g0 = g1 := capture_groups_eq_of_consecutive_slots slots.val slots.property
+                                      hne h0 h1
+                  some (v0, v1)
+                | _, _ => none
+
+            if h : g1 < state.recentCaptures.size then state.recentCaptures.set g1 recentCapture h
+            else state.recentCaptures
+        else state.recentCaptures
       (Stack.push state.stack frame, slots, recentCaptures)
     else (state.stack, ⟨state.slots, state.slotsValid⟩, state.recentCaptures)
   (withMsg (fun _ => s!"{state.sid}: Capture{role} group {group} stack {stack} slots {slots} "
@@ -975,8 +1010,7 @@ private def encodeChar? (c: Option Char) : String :=
                 {state with sid := next, slots := slots, stack := stack,
                             recentCaptures := recentCaptures, slotsValid := by
                               have := state.slotsValid
-                              have := slots.property
-                              simp_all})
+                              exact slots.property})
 
 @[inline] private def step_match (pattern_id : PatternID)
      (state : SearchState n s) : SearchState n s :=
@@ -1133,8 +1167,7 @@ theorem toNextStepChecked_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n 
   rename_i s2 hcv
   have heq : s1.countVisited = s2.countVisited := by
       simp [toNextStep_eq h]
-  have hlt : s.countVisited < s2.countVisited := by
-    simp [Visited.checkVisited'_false_lt s hcv]
+  have hlt := Visited.checkVisited'_false_lt s hcv
   exact Nat.lt_of_lt_of_eq hlt (id (Eq.symm heq))
 
 theorem toNextStepChecked_false_eq (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
@@ -1142,7 +1175,7 @@ theorem toNextStepChecked_false_eq (nfa : Checked.NFA) (s s1 : SearchState nfa.n
     : s.countVisited = s1.countVisited ∧ s.stack = s1.stack := by
   unfold toNextStepChecked at h
   split at h <;> try simp_all
-  simp [withMsg_eq h]
+  exact withMsg_eq h
 
 @[inline] private def visitedSize (state : SearchState n s) : Nat :=
    (Visited.getRefValue state.visited).size
@@ -1185,7 +1218,7 @@ theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n input) (h : 
       omega
     have hx := steps_loop_le nfa state s1 h
     · simp [Nat.le_trans (Nat.le_of_lt h2) hx]
-    · simp_all
+    · exact Nat.le_of_eq (congrArg SearchState.countVisited h)
   · simp [SearchState.ext_iff] at h
     simp_all
   · rename_i heq
@@ -1361,9 +1394,10 @@ private def dropLastWhile (arr : Array  α) (p :  α -> Bool) : Array α :=
     else ⟨a :: acc.toList⟩
 
 /-- Search for the first match of this regex in the haystack. -/
-private def toSlots (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)
-    : (Array String) × (Array (Option (CharPos.PosInRange s × CharPos.PosInRange s))) :=
-  if h : 0 < nfa.n ∧ s.startPos ≤ «at» ∧ «at» ≤ s.stopPos then
+private def toSlots (s : Regex.ValidSubstring) («at» : Regex.ValidPos s.val.str)
+  (nfa : Checked.NFA) (logEnabled : Bool)
+    : (Array String) × (Array (Option (CharPos.Pair s))) :=
+  if h : 0 < nfa.n ∧ s.val.startPos ≤ «at» ∧ «at» ≤ s.val.stopPos then
     let state := backtrack nfa (SearchState.fromNfa nfa s «at» logEnabled h)
     let pairs := toPairs state.slots nfa.groups state.slotsValid
     (state.msgs, dropLastWhile pairs (·.isNone))
@@ -1371,41 +1405,44 @@ private def toSlots (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (l
 
 /-- Search for the first match of this regex in the haystack and
     simulate the unanchored prefix with looping. -/
-private def slotsWithUnanchoredPrefix (s : Substring) («at» : String.Pos) (nfa : Checked.NFA)
-  (logEnabled : Bool) (init : Array String)
-    : (Array String) × (Array (Option (CharPos.PosInRange s × CharPos.PosInRange s))) :=
-  if h: s.stopPos.byteIdx <= «at».byteIdx then
+private def slotsWithUnanchoredPrefix (s : Regex.ValidSubstring)
+  («at» : Regex.ValidPos s.val.str) (nfa : Checked.NFA) (logEnabled : Bool) (init : Array String)
+    : (Array String) × (Array (Option (CharPos.Pair s))) :=
+  if h : s.val.stopPos.byteIdx <= «at».val.byteIdx then
     let (msgs, slots) := toSlots s «at» nfa logEnabled
     (init ++ msgs, slots)
   else
     let (msgs, slots) := toSlots s «at» nfa logEnabled
     match (msgs, slots) with
     | (msgs, #[]) =>
-      let c : Char := s.get «at»
-      let size := c.utf8Size
-      have : s.stopPos.byteIdx - (at.byteIdx + size) < s.stopPos.byteIdx - at.byteIdx := by
-        have : 0 < c.utf8Size := Char.utf8Size_pos c
+      let nextPos := ⟨s.val.str.next «at», by
+        apply String.valid_next «at».property
+        have := String.Pos.Valid.le_endPos s.property.stopValid
+        exact Nat.lt_of_lt_of_le (Nat.lt_of_not_ge h) this⟩
+      have : s.val.stopPos.byteIdx - (s.val.str.next «at»).byteIdx
+             < s.val.stopPos.byteIdx - at.val.byteIdx := by
+        have := String.lt_next s.val.str «at»
         omega
-      slotsWithUnanchoredPrefix s («at» + ⟨size⟩) nfa logEnabled (init ++ msgs)
+      slotsWithUnanchoredPrefix s nextPos nfa logEnabled (init ++ msgs)
     | _ => (init ++ msgs, slots)
-termination_by s.stopPos.byteIdx - «at».byteIdx
+termination_by s.val.stopPos.byteIdx - «at».val.byteIdx
 
-private def toMatches (s : Substring) (slots : Array (Option (
-                     CharPos.PosInRange s × CharPos.PosInRange s)))
-    : Array (Option { m : Substring // m.str = s.str }) :=
+private def toMatches (s : Regex.ValidSubstring) (slots : Array (Option (CharPos.Pair s)))
+    : Array (Option { m : Regex.ValidSubstring // m.val.str = s.val.str }) :=
   slots
   |> Array.map (fun pair =>
       match pair with
-      | some (p0, p1) =>
-          have : s.startPos ≤ p0.val := p0.property.left
-          have : p1.val ≤ s.stopPos := p1.property.right
-          some ⟨⟨s.str, p0.val, p1.val⟩, by simp⟩
+      | some ⟨(p0, p1), h⟩ =>
+            some ⟨⟨⟨s.val.str, p0.val, p1.val⟩,
+                  ⟨p0.property.right, p1.property.right, h⟩⟩,
+                  by rfl⟩
       | none => none)
 
 /-- Search for the first match of this regex in the haystack given and return log msgs and
     the matches of each capture group. -/
-def «matches» (s : Substring) («at» : String.Pos) (nfa : Checked.NFA) (logEnabled : Bool)
-    : (Array String) × (Array (Option { m : Substring // m.str = s.str })) :=
+def «matches» (s : Regex.ValidSubstring) («at» : Regex.ValidPos s.val.str)
+  (nfa : Checked.NFA) (logEnabled : Bool)
+    : (Array String) × (Array (Option { m : Regex.ValidSubstring // m.val.str = s.val.str })) :=
   let (msgs, slots) :=
     if nfa.unanchored_prefix_in_backtrack
     then slotsWithUnanchoredPrefix s «at» nfa logEnabled #[]

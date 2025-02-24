@@ -478,3 +478,14 @@ def toCkecked (nfa : Unchecked.NFA) (groups : Array Nat) : Except String $ Check
       else Except.error s!"internal error: Slots.Valid failed, nfa {nfa}"
     else Except.error s!"internal error: states unchecked {nfa.states.size} != checked {states.size}"
   | none => Except.error "internal error: NFA.toCkecked failed"
+
+end NFA
+
+open NFA
+
+/-- A compiled regular expression for searching Unicode haystacks. -/
+structure Regex where
+  nfa : Checked.NFA
+
+instance : ToString Regex where
+  toString m := s!"{m.nfa}"

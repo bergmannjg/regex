@@ -45,7 +45,7 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
         simp [Nat.eq_pred_of_le_of_lt_succ hn1 hx1 h1]
       have hn2 : n = l2.length - 1 := by omega
       simp [← hn1, ← hn2] at heq
-      simp [heq]
+      exact heq
 
 theorem get_last_of_concat {l : List α} (h : (l ++ [last]).length - 1 < (l ++ [last]).length)
     : List.get (l ++ [last]) ⟨(l ++ [last]).length - 1, h⟩ = last  := by
@@ -60,8 +60,8 @@ theorem eq_succ_of_tail_nth {head : α} {tail : List α} (data : List α) (h1 : 
 theorem eq_succ_of_tail_nth_pred {head : α} {tail : List α} (data : List α) (h0 : n ≠ 0)
   (h1 : n < data.length) (h2 : data = head :: tail) (h3 : n - 1 < tail.length)
     : tail.get ⟨n - 1, h3⟩ = data.get ⟨n, h1⟩ := by
-  have hps : n - 1 + 1 = n := Nat.succ_pred (by simp_all)
-  have hpl : n - 1 + 1 < data.length := by simp only [hps, h1]
+  have hps : n - 1 + 1 = n := Nat.succ_pred h0
+  have hpl : n - 1 + 1 < data.length := lt_of_eq_of_lt hps h1
   have : data.get ⟨n, h1⟩ = data.get ⟨n - 1 + 1, hpl⟩ := by simp_all
   rw [this]
   exact List.eq_succ_of_tail_nth data hpl h2 h3
@@ -83,7 +83,7 @@ theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, Chain R a l ↔
     (∀ h : 0 < length l, R a (get l ⟨0, h⟩)) ∧
       ∀ (i : Nat) (h : i < l.length - 1),
         R (get l ⟨i, by omega⟩) (get l ⟨i+1, by omega⟩)
-  | a, [] => iff_of_true (by simp) ⟨fun h => by simp at h, fun _ h => by simp at h⟩
+  | a, [] => iff_of_true (Chain.nil) ⟨fun h => by simp at h, fun _ h => by simp at h⟩
   | a, b :: t => by
     rw [chain_cons, @chain_iff_get _ _ _ t]
     constructor
@@ -95,11 +95,11 @@ theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, Chain R a l ↔
       cases i
       · apply h0
       · rename_i i
-        exact h i (by simp only [length_cons] at w; omega)
+        exact h i (Nat.lt_sub_of_add_lt w)
     rintro ⟨h0, h⟩; constructor
     · apply h0
-      simp
+      exact Nat.zero_lt_succ t.length
     constructor
     · apply h 0
     intro i w
-    exact h (i+1) (by simp only [length_cons]; omega)
+    exact h (i+1) (Nat.add_lt_of_lt_sub w)

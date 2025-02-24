@@ -1,3 +1,4 @@
+import Regex.Basic
 import Regex.Syntax.Grammar.Grammar
 import Regex.Syntax.Grammar.Translate
 import Regex.Syntax.Ast.Parser
