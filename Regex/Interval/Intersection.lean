@@ -107,12 +107,12 @@ def negate (interval : IntervalSet Char) : IntervalSet Char :=
     Intervals.singleton ⟨⟨BoundedOrder.bot, BoundedOrder.top⟩, BoundedOrder.bot_le BoundedOrder.top⟩
   else
     let ranges : Array (NonemptyInterval Char) :=
-      Array.mapFinIdx interval.intervals  (fun i x => (i, x))
-      |> Array.map (fun (i, y) =>
+      Array.mapFinIdx interval.intervals (fun i x h => (⟨i, h⟩, x))
+      |> Array.map (fun ((i : Fin interval.intervals.size), y) =>
         if h : 0 < i.val
         then
           let x := interval.intervals.get (i - 1) (Intervals.Fin.pred h)
-          let y : NonemptyInterval Char := interval.intervals.get i.val i.is_lt
+          let y : NonemptyInterval Char := interval.intervals.get i i.is_lt
           Interval.between x y
             (Intervals.nonOverlapping_of_pred interval.intervals
               i

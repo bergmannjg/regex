@@ -128,6 +128,7 @@ theorem toNatUnfold (c1 c2 : UInt32) (heq : c2.toNat - c1.toNat = (c2 - c1).toNa
     : c2.val.val - c1.val.val = (c2 - c1).val.val := by
   unfold UInt32.toNat BitVec.toNat at heq
   simp_all [heq]
+  rfl
 
 theorem lt_pred_le {c1 c2 : UInt32} (h : c1 < c2) (h2 : c2.val < UInt32.size)
     : c1 ≤ c2 - 1  := by

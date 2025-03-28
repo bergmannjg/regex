@@ -167,20 +167,20 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
 
   if arr.size != t.matches.size then false
   else
-    let idx := Array.mapFinIdx arr (fun i v => (i, v))
+    let idx := Array.mapFinIdx arr (fun i v _ => (i, v))
     Array.all idx (fun (i, m) =>
-      if h : i.val < t.matches.size
+      if h : i < t.matches.size
       then
-        let t_matches := (t.matches[i.val]'h).groups
-        let idx := Array.mapFinIdx (m.matches) (fun i v => (i, v))
+        let t_matches := (t.matches[i]'h).groups
+        let idx := Array.mapFinIdx (m.matches) (fun i v _ => (i, v))
         Array.all idx (fun (i, v) =>
-          match t_matches.get? i.val, v with
+          match t_matches.get? i, v with
           | some (some span), some v =>
               span.start = v.val.startPos.byteIdx && span.end = v.val.stopPos.byteIdx
               || -- ignore maybe wrong string pos caused by pcreloader
               (Substring.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v
           | some none, none => true
-          | _, _ => (Option.getD t.«only-full-match» false) && 0 < i.val)
+          | _, _ => (Option.getD t.«only-full-match» false) && 0 < i)
       else false)
 
 private def captureToString (r : Regex.Captures s) : String :=
