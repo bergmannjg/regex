@@ -8,6 +8,60 @@ import Regex.Data.Nat.Basic
 
 namespace List
 
+def maxD [Max α] (d : α) (l : List α) : α :=
+  match l.max? with | some m => m | none => d
+
+theorem maxD_of_empty_eq {α : Type} [Max α] {d : α}: [].maxD d = d := by
+  simp [maxD]
+
+theorem all_le_maxD {l : List Nat} (d : Nat) : ∀ a ∈ l, a ≤ l.maxD d := by
+  intro a ha
+  simp [maxD]
+  split <;> try simp_all
+  rename_i a' heq
+  have := (@max?_eq_some_iff' a' l).mp heq
+  simp_all
+
+theorem maxD_of_append_lt {l : List Nat} (h : l.maxD 0 < m) (ha : a < m)
+    : (l ++ [a]).maxD 0 < m := by
+  simp [maxD]
+  split <;> try simp_all
+  rename_i a' heq
+  have := (@max?_eq_some_iff' a' (l ++ [a])).mp heq
+  have : a' ∈ l ∨ a' = a := by simp_all [List.mem_append.mp this.left]
+  cases this
+  · rename_i h'
+    exact Nat.lt_of_le_of_lt (all_le_maxD 0 a' h') h
+  · rename_i h'
+    exact lt_of_eq_of_lt h' ha
+
+theorem maxD_le_of_all_le {l : List Nat} (h : ∀ a ∈ l, a ≤ m) : l.maxD 0 ≤ m := by
+  simp [maxD]
+  split <;> try simp_all
+  rename_i a' heq
+  have h1 := (@max?_eq_some_iff' a' l).mp heq
+  exact h a' h1.left
+
+theorem maxD_all_lt_of_lt {l : List Nat} {d m : Nat} (h : l.maxD d < m) : ∀ a ∈ l, a < m := by
+  intro a ha
+  have := all_le_maxD d a ha
+  exact Nat.lt_of_le_of_lt this h
+
+theorem maxD_of_map_all_lt {l : List α} {d m : Nat} (f : α → Nat) (h : (l.map f).maxD d < m)
+  (hmem : ∀ a ∈ l, f a ∈ (l.map f)) : ∀ a ∈ l, f a < m := by
+  intro a ha
+  exact maxD_all_lt_of_lt h (f a) (hmem a ha)
+
+theorem maxD_of_all_map_le {α : Type} {l : List α} {f : α → Nat}
+  (h : ∀ a ∈ l, f a ≤ m) : (l.map f).maxD 0 ≤ m := by
+  exact @maxD_le_of_all_le m (l.map f) (by
+    intro i hi
+    simp_all
+    let ⟨a, ha⟩ := hi
+    have := h a ha.left
+    rw [← ha.right]
+    exact this)
+
 theorem singleton_val_of (a : α) (arr : List α) (h1 : arr = [a]) (h2 : 0 < List.length arr)
     : List.get arr ⟨0, h2⟩ = a  := by
   simp_all [List.get]

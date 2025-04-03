@@ -1,6 +1,8 @@
 import Batteries.Data.Fin.Basic
 import Regex.Utils
+import Regex.Data.List.Lemmas
 import Regex.Data.Array.Basic
+import Regex.Data.Array.Lemmas
 
 namespace NFA
 
@@ -63,6 +65,8 @@ inductive Look where
   | PreviousMatch : Look
   /-- Clear matches -/
   | ClearMatches : Look
+deriving BEq
+
 namespace Look
 
 def toString : Look -> String
@@ -98,12 +102,18 @@ inductive EatMode where
   | Until : StateID -> EatMode
   /-- Eat frames inclusive last occurunce of State. -/
   | ToLast : StateID -> EatMode
+deriving BEq
 
 namespace EatMode
 
 def toString : EatMode -> String
   | .Until sid => s!"Until {sid}"
   | .ToLast sid => s!"ToLast {sid}"
+
+def nextOf (m : EatMode) : Nat :=
+  match m with
+  |.Until next => next
+  |.ToLast next => next
 
 end EatMode
 
@@ -120,6 +130,7 @@ structure Transition where
   «end»: UInt32
   /--  The identifier of the state to transition to. -/
   next: StateID
+deriving BEq
 
 namespace Transition
 
@@ -171,6 +182,7 @@ inductive State where
   /-- A match state. There is at least one such occurrence of this state for
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State
+deriving BEq
 
 namespace State
 
@@ -201,6 +213,25 @@ def toString : State -> String
   | .Capture role next pattern_id group slot =>
       s!"State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
   | .Match pattern_id => s!"State.Match ({pattern_id})"
+
+def nextOf (s : State) : Nat :=
+  match s with
+  | .Empty next => next
+  | .NextChar _ next => next
+  | .Fail => 0
+  | .Eat (EatMode.Until s) next => Nat.max s next
+  | .Eat (EatMode.ToLast s) next => Nat.max s next
+  | .ChangeFrameStep f t => Nat.max f t
+  | .RemoveFrameStep next => next
+  | .BackRef _ _ next => next
+  | .ByteRange trans => trans.next
+  | .SparseTransitions trans => (trans.map (·.next)).toList.maxD 0
+  | .Look _ next => next
+  | .Union alts => alts.toList.maxD 0
+  | .UnionReverse alts => alts.toList.maxD 0
+  | .BinaryUnion alt1 alt2 => Nat.max alt1 alt2
+  | .Capture _ next _ _ _ => next
+  | .Match _ => 0
 
 end State
 
@@ -413,47 +444,53 @@ private def toCkeckedTransition? (t : Unchecked.Transition) (n : Nat)
   then some $ ⟨t.start.val, t.end.val, ⟨t.next, h⟩⟩
   else none
 
-private def toCkeckedState? (s : Unchecked.State) (n : Nat) : Option $ Checked.State n :=
+private def toCkeckedState (s : Unchecked.State) (n : Nat) (h : Unchecked.State.nextOf s < n)
+    : Checked.State n :=
   match s with
-  | .Empty next => (toFin? next n) |> Option.map (Checked.State.Empty ·)
-  | .NextChar offset next => (toFin? next n) |> Option.map (Checked.State.NextChar offset ·)
-  | .Fail => some Checked.State.Fail
-  | .Eat (.Until s) next =>
-        match (toFin? s n), (toFin? next n) with
-        | some s, some next => some (Checked.State.Eat (.Until s) next)
-        |_, _ => none
-  | .Eat (.ToLast s) next =>
-        match (toFin? s n), (toFin? next n) with
-        | some s, some next => some (Checked.State.Eat (.ToLast s) next)
-        |_, _ => none
-  | .ChangeFrameStep f t =>
-        match (toFin? f n), (toFin? t n) with
-        | some f, some t => some (Checked.State.ChangeFrameStep f t)
-        |_, _ => none
-  | .RemoveFrameStep sid => (toFin? sid n) |> Option.map (Checked.State.RemoveFrameStep ·)
-  | .BackRef b f sid => (toFin? sid n) |> Option.map (Checked.State.BackRef b f ·)
-  | .ByteRange trans => (toCkeckedTransition? trans n) |> Option.map (Checked.State.ByteRange ·)
-  | .SparseTransitions trans =>
-        trans
-        |> Array.mapM (fun t => toCkeckedTransition? t n)
-        |> Option.map (fun trans => (Checked.State.SparseTransitions trans))
-
-  | .Look look next => (toFin? next n) |> Option.map (Checked.State.Look look ·)
-  | .Union alts =>
-        alts
-        |> Array.mapM (fun alt => toFin? alt n)
-        |> Option.map (fun alts => (Checked.State.Union alts))
-  | .UnionReverse alts =>
-        alts
-        |> Array.mapM (fun alt => toFin? alt n)
-        |> Option.map (fun alts => (Checked.State.UnionReverse alts))
-  | .BinaryUnion alt1 alt2 =>
-        match (toFin? alt1 n), (toFin? alt2 n) with
-        | some alt1, some alt2 => (Checked.State.BinaryUnion alt1 alt2)
-        | _, _ => none
-  | .Capture role next pattern_id group slot =>
-        (toFin? next n) |> Option.map (Checked.State.Capture role · pattern_id group slot)
-  | .Match pattern_id => some (Checked.State.Match pattern_id)
+  | .Empty next => Checked.State.Empty ⟨next, by
+    simp [Unchecked.State.nextOf] at h; exact h⟩
+  | .NextChar offset next => Checked.State.NextChar offset ⟨next, by
+    simp [Unchecked.State.nextOf] at h; exact h⟩
+  | .Fail => Checked.State.Fail
+  | .Eat (.Until s) next => Checked.State.Eat
+      (.Until ⟨s, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩)
+      ⟨next, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩
+  | .Eat (.ToLast s) next => Checked.State.Eat
+      (.ToLast ⟨s, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩)
+      ⟨next, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩
+  | .ChangeFrameStep f t => Checked.State.ChangeFrameStep
+      ⟨f, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩
+      ⟨t, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩
+  | .RemoveFrameStep t => Checked.State.RemoveFrameStep
+      ⟨t, by simp [Unchecked.State.nextOf] at h; exact h⟩
+  | .BackRef b f sid => Checked.State.BackRef b f
+      ⟨sid, by simp [Unchecked.State.nextOf] at h; exact h⟩
+  | .ByteRange ⟨start, «end», next⟩ => Checked.State.ByteRange ⟨start.toNat, «end».toNat,
+          ⟨next, by simp [Unchecked.State.nextOf] at h; exact h⟩⟩
+  | .SparseTransitions trans => Checked.State.SparseTransitions
+      (trans.attach |> Array.map (fun ⟨t, h'⟩ => ⟨t.start.toNat, t.end.toNat, ⟨t.next, by
+        simp [Unchecked.State.nextOf] at h
+        let f : Unchecked.Transition → Nat := fun x => x.next
+        have := List.maxD_of_map_all_lt f h (by
+          intro a ha
+          exact List.mem_map_of_mem f ha) t (Array.Mem.val h')
+        simp_all +zetaDelta⟩⟩))
+  | .Look look next => Checked.State.Look look ⟨next, by
+      simp [Unchecked.State.nextOf] at h; exact h⟩
+  | .Union alts => Checked.State.Union (alts.attach |> Array.map
+      (fun ⟨alt, h'⟩ => ⟨alt, by
+        simp [Unchecked.State.nextOf] at h
+        exact List.maxD_all_lt_of_lt h alt (Array.Mem.val h')⟩))
+  | .UnionReverse alts => Checked.State.UnionReverse (alts.attach |> Array.map
+      (fun ⟨alt, h'⟩ => ⟨alt, by
+        simp [Unchecked.State.nextOf] at h
+        exact List.maxD_all_lt_of_lt h alt (Array.Mem.val h')⟩))
+  | .Capture role next pattern_id group slot => Checked.State.Capture role
+          ⟨next, by simp [Unchecked.State.nextOf] at h; exact h⟩ pattern_id group slot
+  | .BinaryUnion alt1 alt2 => Checked.State.BinaryUnion
+      ⟨alt1, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩
+      ⟨alt2, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩
+  | .Match pattern_id => Checked.State.Match pattern_id
 
 /-- Array of (slot, group) pairs of captures. -/
 private def slotsOfCaptures (states : Array (Checked.State n)) : Array (Nat × Nat) :=
@@ -464,20 +501,22 @@ private def slotsOfCaptures (states : Array (Checked.State n)) : Array (Nat × N
   |> Array.unique
 
 /-- transform Unchecked.NFA to Checked.NFA -/
-def toCkecked (nfa : Unchecked.NFA) (groups : Array Nat) : Except String $ Checked.NFA :=
+def toCkecked (nfa : Unchecked.NFA) (groups : Array Nat)
+    (hall : ∀ (i) (h : i < nfa.states.size), (nfa.states.get i h).nextOf < nfa.states.size)
+    : Except String $ Checked.NFA :=
   let n := nfa.states.size
-  match nfa.states |> Array.mapM (toCkeckedState? · n) with
-  | some states => do
-    if h1 : nfa.states.size = states.size -- todo: prove it
-    then
-      /- (slotsOfCaptures states) is a subset of nfa.slots,
-         see '(a){0}(a)' where (slotsOfCaptures states) is not equal to nfa.slots -/
-      if h2 : Checked.Slots.Valid nfa.slots
-              ∧ nfa.slots.all_contains (slotsOfCaptures states) -- todo: prove it
-      then pure ⟨n, states, groups, nfa.slots, false, by simp_all +zetaDelta, h2.left⟩
-      else Except.error s!"internal error: Slots.Valid failed, nfa {nfa}"
-    else Except.error s!"internal error: states unchecked {nfa.states.size} != checked {states.size}"
-  | none => Except.error "internal error: NFA.toCkecked failed"
+  let states := nfa.states.attach |> Array.map (fun ⟨s, h'⟩ =>
+              toCkeckedState s n (by
+                have ⟨i, hlt, _⟩  := Array.mem_iff_getElem.mp h'
+                have := hall i hlt
+                simp_all +zetaDelta))
+  have h1 : nfa.states.size = states.size := by rw [Array.size_map, Array.size_attach]
+  /- (slotsOfCaptures states) is a subset of nfa.slots,
+      see '(a){0}(a)' where (slotsOfCaptures states) is not equal to nfa.slots -/
+  if h2 : Checked.Slots.Valid nfa.slots
+          ∧ nfa.slots.all_contains (slotsOfCaptures states) -- todo: prove it
+  then pure ⟨n, states, groups, nfa.slots, false, by rw [← h1], h2.left⟩
+  else Except.error s!"internal error: Slots.Valid failed, nfa {nfa}"
 
 end NFA
 

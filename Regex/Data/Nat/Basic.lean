@@ -27,3 +27,11 @@ theorem succ_lt_lt {c1 c2 : Nat} (h : 1 + c1 < c2) : c1 < c2 := by
     rw [Nat.add_comm]
     simp[Nat.lt_succ_self _]
   simp[Nat.lt_trans h1 h]
+
+theorem lt_trans_trans {a b c d : Nat}
+  (h₁ : LT.lt a b) (h₂ : LT.lt b c) (h₃ : LT.lt c d) : LT.lt a d  :=
+  Nat.lt_trans (Nat.lt_trans h₁ h₂) h₃
+
+theorem lt_trans_trans_trans {a b c d e : Nat}
+  (h₁ : LT.lt a b) (h₂ : LT.lt b c) (h₃ : LT.lt c d) (h₄ : LT.lt d e) : LT.lt a e  :=
+  Nat.lt_trans (Nat.lt_trans (Nat.lt_trans h₁ h₂) h₃) h₄

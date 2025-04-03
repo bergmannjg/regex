@@ -15,4 +15,4 @@ rev = "v1.1.3"
 [[require]]
 scope = "leanprover"
 name = "doc-gen4"
-rev = "v4.16.0"
+rev = "v4.17.0"
