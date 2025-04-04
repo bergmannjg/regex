@@ -24,7 +24,7 @@ private def transform (data : Array (Array Substring)) : Array WordBreakProperty
     match acc.findIdx? (·.name = name) with
     | some i =>
       if h : i < acc.size then
-        let entry := acc.get i h
+        let entry := acc[i]'h
         acc.set i {entry with properties := entry.properties.push val} h
       else acc
     | none => acc.push ⟨name, #[val]⟩)

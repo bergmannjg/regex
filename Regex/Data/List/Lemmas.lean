@@ -103,7 +103,7 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
 
 theorem get_last_of_concat {l : List α} (h : (l ++ [last]).length - 1 < (l ++ [last]).length)
     : List.get (l ++ [last]) ⟨(l ++ [last]).length - 1, h⟩ = last  := by
-  simp [List.get_last _]
+  simp
 
 theorem eq_succ_of_tail_nth {head : α} {tail : List α} (data : List α) (h1 : n+1 < data.length)
   (h2 : data = head :: tail) (h3 : n < tail.length)

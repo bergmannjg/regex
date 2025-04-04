@@ -36,7 +36,7 @@ instance : Quote (Fin n) where
   quote := mkTermOfFin
 
 private def mkTermOfUInt32 (n : UInt32) : Term :=
-  Syntax.mkApp (mkCIdent `UInt32.mk) #[Quote.quote n.val]
+  Syntax.mkApp (mkCIdent `UInt32.mk) #[Quote.quote n.toFin]
 
 instance : Quote UInt32 where
   quote := mkTermOfUInt32

@@ -51,7 +51,7 @@ def intAsString (val : Nat) : String :=
   then
     if h : Nat.isValidChar val
     then
-      if '0'.val.val <= val && val <= 'z'.val.val
+      if '0'.val.toFin <= val && val <= 'z'.val.toFin
       then
         let c : Char := ⟨⟨val, hu⟩, h⟩
         c.toString
@@ -70,7 +70,7 @@ end Nat
 namespace UInt32
 
 def intAsString (val : UInt32) : String :=
-  Nat.intAsString val.val
+  Nat.intAsString val.toFin
 
 end UInt32
 

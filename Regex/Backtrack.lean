@@ -365,8 +365,7 @@ theorem slots_of_modify_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slo
       split <;> simp_all
     else
       simp_all
-      have : Option.map mf slots[i]? = none := by
-        exact Option.map_eq_none'.mpr (List.getElem?_eq_none hlt)
+      have : Option.map mf slots[i]? = none := by simp_all
       rw [this]
       have h1 := List.length_modify (Prod.map id (Prod.map id f)) slot slots.toList
       have h2 : slots.toList.length = slots.size := rfl
@@ -488,7 +487,7 @@ def checkVisited (state : SearchState n s) : Bool × SearchState n s :=
   let visited := Visited.getRefValue state.visited
   let index := Visited.index state.sid state.at
   if h : index < visited.size then
-    if visited.get index h != 0 then (true, state)
+    if visited[index]'h != 0 then (true, state)
     else
       (false, {state with visited := Visited.modifyRefValue state.visited index 1})
   else (true, state)
@@ -521,10 +520,10 @@ end Visited
 /-- capture groups of consecutive slots are equal -/
 theorem capture_groups_eq_of_consecutive_slots (slots : Array (SlotEntry s))
   (valid : SearchState.Slots.Valid slots) (h : ¬i % 2 = 0)
-  (h0 : slots.get? (i - 1) = some (s0, g0, some v0))
-  (h1 : slots.get? i = some (s1, g1, some v1)) : g0 = g1 := by
-  have hl0 : i - 1 < slots.size := by unfold Array.get? at h0; split at h0 <;> try simp_all
-  have hl1 : i < slots.size := by unfold Array.get? at h1; split at h1 <;> try simp_all
+  (h0 : slots[(i - 1)]? = some (s0, g0, some v0))
+  (h1 : slots[i]? = some (s1, g1, some v1)) : g0 = g1 := by
+  have hl0 : i - 1 < slots.size := by simp only [getElem?_def] at h0; split at h0 <;> try simp_all
+  have hl1 : i < slots.size := by simp only [getElem?_def] at h1; split at h1 <;> try simp_all
 
   have := SearchState.slots_valid_elem_eq_pair slots valid ⟨i - 1, hl0⟩
   have := SearchState.slots_valid_elem_eq_pair slots valid ⟨i, hl1⟩
@@ -541,7 +540,7 @@ private def toPairs (slots : Array (SlotEntry s)) (groups : Array Nat)
     fun acc (i, v) =>
       if h : i % 2 = 0 then acc
       else
-        match h0 : slots.get? (i - 1), h1 : slots.get? (i) with
+        match h0 : slots[(i - 1)]?, h1 : slots[(i)]? with
         | some (_, g0, some v0), some (_, g1, some v1) =>
           have : g0 = g1 := capture_groups_eq_of_consecutive_slots slots slotsValid h h0 h1
           /- simulate greedy search in possible empty capture group `g0`
@@ -823,7 +822,7 @@ private def encodeChar? (c: Option Char) : String :=
         (fun _ => s!"PreviousMatch failed at pos {state.at.pos}") state)
   | .ClearMatches =>
     if h : 0 < state.slots.size then
-      let frame : Frame n s := Frame.RestoreCapture Capture.Role.Start 0 (state.slots.get 0 h).2.2
+      let frame : Frame n s := Frame.RestoreCapture Capture.Role.Start 0 (state.slots[0]'h).2.2
       let stack := Stack.push state.stack frame
 
       let f := fun (s, g, _) =>
@@ -879,7 +878,7 @@ private def encodeChar? (c: Option Char) : String :=
 @[inline] private def step_backreference (b : Nat) (case_insensitive : Bool) (next : Fin n)
   (state : SearchState n s) : SearchState n s :=
   if h : b < state.recentCaptures.size then
-    match state.recentCaptures.get b h with
+    match state.recentCaptures[b]'h with
     | some (f, t) =>
         let s' := s.extract f t |>.toString
         match step_backreference_loop s' 0 case_insensitive state.«at» with
@@ -980,7 +979,7 @@ private def encodeChar? (c: Option Char) : String :=
   let (stack, slots, recentCaptures) :=
     if h : slot < state.slots.size
     then
-      let frame := Frame.RestoreCapture role slot (state.slots.get slot h).2.2
+      let frame := Frame.RestoreCapture role slot (state.slots[slot]'h).2.2
       let f := fun _ => some $ CharPos.toSlotEntry state.at
       let slots := state.slots.modify slot ((Prod.map id (Prod.map id f)))
       have hLength := Array.size_modify state.slots slot (Prod.map id (Prod.map id f))
@@ -989,11 +988,11 @@ private def encodeChar? (c: Option Char) : String :=
       let recentCaptures :=
         if hne : ¬slot % 2 = 0 then
           have hlt := Nat.lt_of_lt_of_eq h (Eq.symm hLength)
-          match hm : slots.val.get slot hlt with
+          match hm : slots.val[slot]'hlt with
           | (s1, g1, v1) =>
-            have h1 : slots.val.get? slot = some (s1, g1, v1) := Array.get_eq_get?_some hlt hm.symm
+            have h1 : slots.val[slot]? = some (s1, g1, v1) := Array.get_eq_get?_some hlt hm.symm
             let recentCapture :=
-                match h0 : slots.val.get? (slot - 1), v1 with
+                match h0 : slots.val[(slot - 1)]?, v1 with
                 | some (_, g0, some v0), some v1 =>
                   have : g0 = g1 := capture_groups_eq_of_consecutive_slots slots.val slots.property
                                       hne h0 h1
@@ -1151,7 +1150,7 @@ theorem toNextStep_eq {nfa : Checked.NFA} {state : Checked.State nfa.n}
     : Bool × SearchState nfa.n s :=
   match Visited.checkVisited' state with
   | (false, state') =>
-      let state := nfa.states.get state'.sid.val (by
+      let state := nfa.states[state'.sid.val]'(by
                                     rw [← Checked.NFA.isEq nfa]
                                     exact state'.sid.isLt)
       (true, toNextStep

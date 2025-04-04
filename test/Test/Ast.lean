@@ -46,7 +46,7 @@ private def «astOf'[a-b]'» : Ast :=
             String.toSpan "[a-b]" 1 4,
             ⟨String.toSpan "[a-b]" 1 2, LiteralKind.Verbatim, 'a'⟩,
             ⟨String.toSpan "[a-b]" 3 4, LiteralKind.Verbatim, 'b'⟩,
-            by simp_arith⟩)))
+            by simp +arith⟩)))
 
 private def «astOf'a|b'» : Ast :=
     Ast.Alternation

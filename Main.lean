@@ -113,8 +113,8 @@ where
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
     | some n, some m =>
       let val := 16*n+m
-      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
-    | _, _ => ⟨0, by simp_arith⟩
+      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp +arith +decide⟩
+    | _, _ => ⟨0, by simp +arith +decide⟩
   loop (chars : List Char) (acc : List Char) : List Char :=
     match chars with
     | [] => acc

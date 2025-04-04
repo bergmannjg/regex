@@ -41,7 +41,7 @@ structure ThompsonRef where
 instance : ToString ThompsonRef where
   toString s := s!"{s.start}, {s.end}"
 
-abbrev States := { a : Array Unchecked.State // ∀ i (h : i < a.size), (a.get i h).nextOf < a.size }
+abbrev States := { a : Array Unchecked.State // ∀ i (h : i < a.size), (a[i]'h).nextOf < a.size }
 
 abbrev States' (states : States) :=
   { states' : States // states.val.size ≤ states'.val.size}
@@ -102,7 +102,7 @@ private theorem all_push {s : Unchecked.State} {states : States}
   . exact Nat.lt_add_one_of_le h
 
 private theorem eat_until_lt {states : States} (h : «from» < states.val.size)
-  (hm : states.val.get «from» h = Unchecked.State.Eat (Unchecked.EatMode.Until s) n)
+  (hm : states.val[«from»]'h = Unchecked.State.Eat (Unchecked.EatMode.Until s) n)
     : s < states.val.size ∧ n < states.val.size := by
   have := states.property «from» h
   rw [hm] at this
@@ -110,7 +110,7 @@ private theorem eat_until_lt {states : States} (h : «from» < states.val.size)
   exact Nat.max_lt.mp this
 
 private theorem eat_toLast_lt {states : States} (h : «from» < states.val.size)
-  (hm : states.val.get «from» h = Unchecked.State.Eat (Unchecked.EatMode.ToLast s) n)
+  (hm : states.val[«from»]'h = Unchecked.State.Eat (Unchecked.EatMode.ToLast s) n)
     : s < states.val.size ∧ n < states.val.size := by
   have := states.property «from» h
   rw [hm] at this
@@ -118,7 +118,7 @@ private theorem eat_toLast_lt {states : States} (h : «from» < states.val.size)
   exact Nat.max_lt.mp this
 
 private theorem change_frame_step_lt {states : States} (h : «from» < states.val.size)
-  (hm : states.val.get «from» h = Unchecked.State.ChangeFrameStep f t)
+  (hm : states.val[«from»]'h = Unchecked.State.ChangeFrameStep f t)
     : f < states.val.size ∧ t < states.val.size := by
   have := states.property «from» h
   rw [hm] at this
@@ -126,7 +126,7 @@ private theorem change_frame_step_lt {states : States} (h : «from» < states.va
   assumption
 
 private theorem binary_union_lt {states : States} (h : «from» < states.val.size)
-  (hm : states.val.get «from» h = Unchecked.State.BinaryUnion alt1 alt2)
+  (hm : states.val[«from»]'h = Unchecked.State.BinaryUnion alt1 alt2)
     : alt1 < states.val.size ∧ alt2 < states.val.size := by
   have := states.property «from» h
   rw [hm] at this
@@ -134,7 +134,7 @@ private theorem binary_union_lt {states : States} (h : «from» < states.val.siz
   assumption
 
 private theorem union_lt {states : States} (h : «from» < states.val.size)
-  (ht : to < states.val.size) (hm : states.val.get «from» h = Unchecked.State.Union alternates)
+  (ht : to < states.val.size) (hm : states.val[«from»]'h = Unchecked.State.Union alternates)
     : List.maxD 0 (alternates.toList ++ [to]) < states.val.size := by
   have := states.property «from» h
   rw [hm] at this
@@ -143,7 +143,7 @@ private theorem union_lt {states : States} (h : «from» < states.val.size)
 
 private theorem union_reverse_lt {states : States} (h : «from» < states.val.size)
   (ht : to < states.val.size)
-  (hm : states.val.get «from» h = Unchecked.State.UnionReverse alternates)
+  (hm : states.val[«from»]'h = Unchecked.State.UnionReverse alternates)
     : List.maxD 0 (alternates.toList ++ [to]) < states.val.size := by
   have := states.property «from» h
   rw [hm] at this
@@ -154,7 +154,7 @@ private theorem union_reverse_lt {states : States} (h : «from» < states.val.si
 private def patch («from» «to» : Unchecked.StateID) (states : States)
   (ht : «to» < states.val.size) (h : «from» < states.val.size)
     : CompilerM { states' : States // states.val.size = states'.val.size } := do
-  match hm : states.val.get «from» h with
+  match hm : states.val[«from»]'h with
   | .Empty _ =>
     have hn : (Unchecked.State.Empty «to»).nextOf = «to» := by
       simp +zetaDelta [Unchecked.State.nextOf]
@@ -312,7 +312,7 @@ private def c_empty (states : States) : CompilerM (ThompsonRefStates states) :=
   push' (Unchecked.State.Empty 0) states (by simp +zetaDelta [Unchecked.State.nextOf])
 
 private def add_sparse (trans : Array Unchecked.Transition) (states : States)
-  (h : ∀ (i) (h : i < trans.size), (trans.get i h).next ≤ states.val.size)
+  (h : ∀ (i) (h : i < trans.size), (trans[i]'h).next ≤ states.val.size)
     : CompilerM (StateIDStates states)  :=
   push (Unchecked.State.SparseTransitions trans) states (by
     simp +zetaDelta [Unchecked.State.nextOf]

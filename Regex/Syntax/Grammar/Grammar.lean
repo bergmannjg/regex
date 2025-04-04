@@ -395,7 +395,7 @@ private def genericCharacterType : ParsecM Syntax := attempt do
 
 private def simpleAssertion (inCharacterClass : Bool := false) : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos any
-  if c = 'b' && inCharacterClass then pure $ mkLiteral ⟨8, by simp_arith⟩ f t
+  if c = 'b' && inCharacterClass then pure $ mkLiteral ⟨8, by simp +arith +decide⟩ f t
   else if (← read) == Syntax.Flavor.Rust && (← testChar (c = 'b' && · = '{')) then
     let (_, t, chars) ← withPosM (parenWithChars (asciiLetter <|> pchar '-'))
     let s : String := ⟨chars.toList⟩

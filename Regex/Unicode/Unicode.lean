@@ -39,7 +39,7 @@ private def getUnassigned : Array (NonemptyInterval Char) :=
 private def fold (data : Array UnicodeData) : Array (Char × Char) :=
   let (last, pairs) : (Char × Char) × Array (Char × Char) :=
   data
-  |> Array.foldl (init := ((⟨0, by simp_arith⟩, ⟨0, by simp_arith⟩), #[])) (fun (last, s) a =>
+  |> Array.foldl (init := ((⟨0, by simp +arith +decide⟩, ⟨0, by simp +arith +decide⟩), #[])) (fun (last, s) a =>
       if h : UInt32.isValidChar a.codeValue
       then
         let c : Char := ⟨a.codeValue, h⟩
@@ -104,13 +104,13 @@ private def rangessOfPropertyName (name : PropertyName) (prop : String)
   | .Regional_Indicator => getWordBreak "Regional_Indicator"
   | .Script => rangesOfScript prop
   | .ASCII_Hex_Digit =>
-      Except.ok #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','F'⟩, by simp_arith⟩, ⟨⟨'a','f'⟩, by simp_arith⟩]
+      Except.ok #[⟨⟨'0','9'⟩, by simp +arith⟩, ⟨⟨'A','F'⟩, by simp +arith⟩, ⟨⟨'a','f'⟩, by simp +arith⟩]
   | .Hex_Digit =>
-      Except.ok #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','F'⟩, by simp_arith⟩, ⟨⟨'a','f'⟩, by simp_arith⟩]
+      Except.ok #[⟨⟨'0','9'⟩, by simp +arith⟩, ⟨⟨'A','F'⟩, by simp +arith⟩, ⟨⟨'a','f'⟩, by simp +arith⟩]
   | .Numeric_Value => rangesOfGeneralCategory GeneralCategory.N
   | .ASSIGNED => Except.ok (IntervalSet.negate (IntervalSet.canonicalize getUnassigned)).intervals
-  | .ASCII => Except.ok #[⟨⟨'\x00', '\x7F'⟩, by simp_arith⟩]
-  | .ANY => Except.ok #[⟨⟨'\u0000', ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩]
+  | .ASCII => Except.ok #[⟨⟨'\x00', '\x7F'⟩, by simp +arith⟩]
+  | .ANY => Except.ok #[⟨⟨'\u0000', ⟨0x10FFFF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩]
   | .Default_Ignorable_Code_Point => Except.error s!"Property name {name} has no data"
   | .Noncharacter_Code_Point => Except.error s!"Property name {name} has no data"
 
@@ -203,6 +203,6 @@ theorem Uint32.sub_le_of_le {a b : UInt32} (h : a ≤ b) : b - a ≤ b := by
 
 /-- get ranges of case folds of chars in range -/
 def case_fold_range (r : NonemptyInterval Char) : Array (NonemptyInterval Char) :=
-  loop r.fst 0 (r.snd.val - r.fst.val).val.val #[] (by simp)
-    (Nat.lt_of_le_of_lt (Uint32.sub_le_of_le r.fst_le_snd) r.snd.val.val.isLt)
+  loop r.fst 0 (r.snd.val - r.fst.val).toFin.val #[] (by simp)
+    (Nat.lt_of_le_of_lt (Uint32.sub_le_of_le r.fst_le_snd) r.snd.val.toFin.isLt)
   |> Array.flatMap (fun c => case_fold_char c)

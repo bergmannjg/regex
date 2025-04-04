@@ -317,51 +317,50 @@ private def unfoldUnion (union : ClassSetUnion) : Sum ClassSetItem ClassSetBinar
     | _ => Sum.inl $ item else Sum.inl $ ClassSetItem.Empty span
   | _ => Sum.inl $ ClassSetItem.Union union
 
+private def toNode? (t : Syntax)
+    : Option { x : SourceInfo × SyntaxNodeKind × Array Syntax // sizeOf x.2.2 < sizeOf t } :=
+  match h : t with
+  | .node si kind args => some ⟨(si, kind, args), by simp [h]; omega⟩
+  | _ => none
+
 mutual
 
 private def parseClassSetItem (p : String) (x : Syntax) : ParserM ClassSetItem := do
-  match x with
-  | Syntax.node _ `whitespace _ => pure $ ClassSetItem.Empty ""
-  | Syntax.node _ `literal _ => parseLiteral p x >>= toClassSetItem
-  | Syntax.node _ `hyphen _ => parseHyphen p x >>= toClassSetItem
-  | Syntax.node _ `range #[a, b] => rangeToClassSetItem p a b
-  | Syntax.node _ `genericCharacterType _ => parseGenericCharacterType p x >>= toClassSetItem
-  | Syntax.node _ `posixCharacterClass _ => parsePosixCharacterClass p x
-  | Syntax.node _ `endQuote _ => throw  (toError p .EndQuoteWithoutOpenQuote)
-  | Syntax.node _ `unicodeCharacterProperty _ => parseUnicodeCharacterProperty p x >>= toClassSetItem
-  | Syntax.node _ `unicodeCharacterPropertyNegated _ => parseUnicodeCharacterProperty p x >>= toClassSetItem
-  | Syntax.node _ `characterClass arr => parseCharacterClass p arr >>= toClassSetItem
-  | Syntax.node _ `characterClassSetOperation arr => parseCharacterClassSetOp p arr >>= toClassSetItem
-  | _ => Except.error s!"unexpected class set item {x}"
+  if let some ⟨(_, `whitespace, _), _⟩ := toNode? x then pure $ ClassSetItem.Empty ""
+  else if let some ⟨(_, `literal, _), _⟩ := toNode? x then parseLiteral p x >>= toClassSetItem
+  else if let some ⟨(_, `hyphen, _), _⟩ := toNode? x then parseHyphen p x >>= toClassSetItem
+  else if let some ⟨(_, `range, #[a, b]), _⟩ := toNode? x then rangeToClassSetItem p a b
+  else if let some ⟨(_, `genericCharacterType, _), _⟩ := toNode? x then parseGenericCharacterType p x >>= toClassSetItem
+  else if let some ⟨(_, `posixCharacterClass, _), _⟩ := toNode? x then parsePosixCharacterClass p x
+  else if let some ⟨(_, `endQuote, _), _⟩ := toNode? x then throw (toError p .EndQuoteWithoutOpenQuote)
+  else if let some ⟨(_, `unicodeCharacterProperty, _), _⟩ := toNode? x then parseUnicodeCharacterProperty p x >>= toClassSetItem
+  else if let some ⟨(_, `unicodeCharacterPropertyNegated, _), _⟩ := toNode? x then parseUnicodeCharacterProperty p x >>= toClassSetItem
+  else if let some ⟨(_, `characterClass, arr), _⟩ := toNode? x then parseCharacterClass p arr >>= toClassSetItem
+  else if let some ⟨(_, `characterClassSetOperation, arr), _⟩ := toNode? x then parseCharacterClassSetOp p arr >>= toClassSetItem
+  else Except.error s!"unexpected class set item {x}"
 termination_by sizeOf x
 
-private def parseVal (p : String) (x : Syntax)
-    : ParserM Ast := do
+private def parseVal (p : String) (x : Syntax) : ParserM Ast := do
   match x.getKind with
   | `whitespace => pure Ast.Empty
   | `comment => pure Ast.Empty
   | `literal => parseLiteral p x
   | `dot => parseDot p x
   | `group =>
-      match x with
-      | Syntax.node (.synthetic f t) `group arr => parseGroup p f t arr
-      | _ => Except.error s!"ill-formed group syntax {x}"
+      if let some ⟨((.synthetic f t), `group, arr), _⟩ := toNode? x then parseGroup p f t arr
+      else Except.error s!"ill-formed group syntax {x}"
   | `alternatives =>
-      match x with
-      | Syntax.node _ `alternatives arr => parseAlternatives p arr
-      | _ => Except.error s!"ill-formed alternatives syntax {x}"
+      if let some ⟨(_, `alternatives, arr), _⟩ := toNode? x then parseAlternatives p arr
+      else Except.error s!"ill-formed alternatives syntax {x}"
   | `repetition =>
-      match x with
-      | Syntax.node (.synthetic f t) `repetition arr => parseRepetition p f t arr
-      | _ => Except.error s!"ill-formed repetition syntax {x}"
+      if let some ⟨((.synthetic f t), `repetition, arr), _⟩ := toNode? x then parseRepetition  p f t arr
+      else Except.error s!"ill-formed repetition syntax {x}"
   | `sequence =>
-      match x with
-      | Syntax.node _ `sequence arr => parseSequence p arr
-      | _ => Except.error s!"ill-formed sequence syntax {x}"
+      if let some ⟨(_, `sequence, arr), _⟩ := toNode? x then parseSequence p arr
+      else Except.error s!"ill-formed sequence syntax {x}"
   | `characterClass =>
-      match x with
-      | Syntax.node _ `characterClass arr => parseCharacterClass p arr
-      | _ => Except.error s!"ill-formed sequence syntax {x}"
+      if let some ⟨(_, `characterClass, arr), _⟩ := toNode? x then parseCharacterClass p arr
+      else Except.error s!"ill-formed sequence syntax {x}"
   | `simpleAssertion => parseAssertion p x
   | `backReferenceNumber => parseBackReference p x
   | `backReferenceName => parseBackReference p x
@@ -432,8 +431,8 @@ private def parseCharacterClassSetOp (p : String) (arr : Array Syntax) : ParserM
     | Syntax.node _ `op #[.atom _ op],
         Syntax.node infoL `first left,
         Syntax.node infoR `second right =>
-      have : sizeOf left < sizeOf left'.val := by rw [h1]; simp_arith
-      have : sizeOf right < sizeOf right'.val := by rw [h2]; simp_arith
+      have : sizeOf left < sizeOf left'.val := by rw [h1]; simp +arith
+      have : sizeOf right < sizeOf right'.val := by rw [h2]; simp +arith
       let itemsLeft ← left.attach.mapM (fun (item : { x // x ∈ left }) =>
         have : sizeOf item.val < sizeOf left := Array.sizeOf_lt_of_mem item.property
         parseClassSetItem p item.val)
