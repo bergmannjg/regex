@@ -6,7 +6,7 @@ open Lean System
 
 namespace Loader.Pcre
 
-private def cZero : Char := ⟨0, by simp_arith⟩
+private def cZero : Char := ⟨0, by simp +arith +decide⟩
 
 private def octDigitsToChar! (chars : List Char) : Char :=
   match Char.decodeOctDigits chars with
@@ -21,8 +21,8 @@ where
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
     | some n, some m =>
       let val := 16*n+m
-      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
-    | _, _ => ⟨0, by simp_arith⟩
+      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp +arith +decide⟩
+    | _, _ => ⟨0, by simp +arith +decide⟩
   loop (chars : List Char) : List Char :=
     match chars with
     | [] => []
@@ -33,7 +33,7 @@ where
       then (toChar a b) :: (loop tail)
       else (toChar '0' a) :: (loop (b :: tail))
     | '\\' :: 'a' :: tail => '\x07' :: (loop tail)
-    | '\\' :: 'e' :: tail => ⟨27, by simp_arith⟩ :: (loop tail)
+    | '\\' :: 'e' :: tail => ⟨27, by simp +arith +decide⟩ :: (loop tail)
     | '\\' :: 'f' :: tail => '\x0c' :: (loop tail)
     | '\\' :: 'n' :: tail => '\n' :: (loop tail)
     | '\\' :: 'r' :: tail => '\r' :: (loop tail)

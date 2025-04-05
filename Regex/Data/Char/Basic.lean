@@ -4,7 +4,7 @@ import Regex.Data.UInt.Basic
 namespace Char
 
 /-- max valid char -/
-def max : Char := ⟨0x10FFFF, by simp_arith⟩
+def max : Char := ⟨0x10FFFF, by simp +arith +decide⟩
 
 /-- incr char up to max valid char `Char.max` -/
 def increment (c : Char) : Char :=
@@ -37,7 +37,7 @@ theorem min_le (c : Char) : Char.min ≤ c := by
 theorem le_max (c : Char) : c ≤ Char.max := by
   cases c.valid
   · rename_i h
-    have hx : 0xd800 < 0x10FFFF := by simp_arith
+    have hx : 0xd800 < 0x10FFFF := by simp +arith
     have hy : c.val.toNat < 0x10FFFF := by simp [Nat.lt_trans h hx]
     have hz : c < Char.max := by exact hy
     simp [Char.lt_le hz]
@@ -70,12 +70,12 @@ theorem succ_lt_succ_lt {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2)
 
 theorem lt_pred_le {c1 c2 : Char} (h : c1 < c2) : c1.val ≤ c2.val - 1 := by
   have h : c1.val < c2.val := Char.lt_def.mp h
-  have h2 : c2.val.val < UInt32.size := UInt32.isValidChar_lt_uintSize c2.val
+  have h2 : c2.val.toFin < UInt32.size := UInt32.isValidChar_lt_uintSize c2.val
   simp [UInt32.lt_pred_le h h2]
 
 theorem lt_succ_le {c1 c2 : Char} (h : c1 < c2) : c1.val + 1 ≤ c2.val := by
   have h : c1.val < c2.val := Char.lt_def.mp h
-  have hsucc : c1.val.val + 1 < UInt32.size := UInt32.isValidChar_succ_lt_uintSize c1.val c1.valid
+  have hsucc : c1.val.toFin + 1 < UInt32.size := UInt32.isValidChar_succ_lt_uintSize c1.val c1.valid
   simp [UInt32.lt_succ_le h hsucc]
 
 theorem succ_add_le__pred {c1 c2 : Char} (h : 1 + c1.toNat < c2.toNat)

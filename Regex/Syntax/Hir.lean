@@ -14,7 +14,7 @@ namespace Syntax
 
 abbrev ClassUnicodeRange := NonemptyInterval Char
 
-instance : Inhabited ClassUnicodeRange := ⟨⟨⟨0, by simp_arith⟩, ⟨0, by simp_arith⟩⟩, by simp_arith⟩
+instance : Inhabited ClassUnicodeRange := ⟨⟨⟨0, by simp +arith +decide⟩, ⟨0, by simp +arith +decide⟩⟩, by simp +arith⟩
 
 structure ClassUnicode where
   set: IntervalSet Char
@@ -33,8 +33,8 @@ instance : ToString ClassUnicode where
 
 /-- see UInt32.isValidChar -/
 instance : Inhabited ClassUnicode :=
-  let cls1 : NonemptyInterval Char := ⟨⟨'\u0000', ⟨0xD7FF, by simp_arith⟩⟩, by simp_arith⟩
-  let cls2 : NonemptyInterval Char := ⟨⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
+  let cls1 : NonemptyInterval Char := ⟨⟨'\u0000', ⟨0xD7FF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
+  let cls2 : NonemptyInterval Char := ⟨⟨⟨0xE000, by simp +arith +decide⟩, ⟨0x10FFFF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
   let ranges := #[cls1, cls2]
   ⟨⟨IntervalSet.canonicalize ranges⟩⟩
 
@@ -343,17 +343,17 @@ def dot (dot: Dot) : Hir :=
       let kind : HirKind := HirKind.Class (Class.Unicode default)
       Hir.mk kind (Hir.toProperties kind)
     | Dot.AnyCharExceptLF =>
-      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp_arith⟩
-      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', ⟨0xD7FF, by simp_arith⟩⟩, by simp_arith⟩
-      let range3 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
+      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp +arith⟩
+      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', ⟨0xD7FF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
+      let range3 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp +arith +decide⟩, ⟨0x10FFFF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
       let cls : ClassUnicode := ⟨IntervalSet.canonicalize #[range1, range2, range3]⟩
       let kind : HirKind := HirKind.Class (Class.Unicode cls)
       Hir.mk kind (Hir.toProperties kind)
     | Dot.AnyCharExceptCRLF =>
-      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp_arith⟩
-      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', '\u000C'⟩, by simp_arith⟩
-      let range3 : ClassUnicodeRange := ⟨⟨'\u000E', ⟨0xD7FF, by simp_arith⟩⟩, by simp_arith⟩
-      let range4 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
+      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp +arith⟩
+      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', '\u000C'⟩, by simp +arith⟩
+      let range3 : ClassUnicodeRange := ⟨⟨'\u000E', ⟨0xD7FF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
+      let range4 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp +arith +decide⟩, ⟨0x10FFFF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
       let cls : ClassUnicode := ⟨IntervalSet.canonicalize #[range1, range2, range3, range4]⟩
       let kind : HirKind := HirKind.Class (Class.Unicode cls)
       Hir.mk kind (Hir.toProperties kind)

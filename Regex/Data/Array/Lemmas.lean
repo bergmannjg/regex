@@ -19,12 +19,12 @@ theorem sizeOf_head?_of_tail [SizeOf α] {as : Array α} (h : Array.head? as = s
   cases as with | _ as =>
   cases as' with | _ as' =>
   simp_all
-  simp_arith
+  simp +arith
 
 theorem sizeOf_dropLast_cons [SizeOf α] (a : α) (as : List α)
     : sizeOf (a :: as).dropLast < sizeOf (a :: as) := by
   induction as generalizing a with
-  | nil => simp_arith
+  | nil => simp +arith
   | cons a' as ih => apply Nat.add_lt_add_left _; exact ih a'
 
 theorem sizeOf_dropLast_non_empty [SizeOf α] (as : List α) (h : 0 < as.length)
@@ -51,7 +51,7 @@ theorem sizeOf_pop? [SizeOf α] {as : Array α} (h : Array.pop? as = some (a, as
 theorem size_one (a : α) : (#[a] : Array α).size = 1 := rfl
 
 theorem default_size_zero (arr : Array α) (h : arr = default) : arr.size = 0 :=
-  size_eq_zero.mpr h
+  size_eq_zero_iff.mpr h
 
 theorem non_empty_of_last? (arr : Array α) (h: Array.last? arr = some last) : 0 < arr.size := by
   unfold Array.last? at h
@@ -73,7 +73,8 @@ theorem last?_eq_getLast (a : Array α) (h1: Array.last? a = some last) (h2 : a.
   unfold Array.last? at h1
   split at h1 <;> simp_all
   rw [← h1]
-  simp [List.getLast_eq_getElem a.toList h2]
+  have := List.getLast_eq_getElem a.toList h2
+  simp_all
 
 theorem lt_of_pop?_eq_last? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
     : 0 < arr.toList.length := by
@@ -96,7 +97,7 @@ theorem concat_of_pop? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
   split at h <;> simp_all
   have hr : Array.pop arr = arr' := h
   have hr : (Array.pop arr).toList = arr'.toList := congrArg toList h
-  have hx : (Array.pop arr).toList = List.dropLast arr.toList := Array.pop_toList arr
+  have hx : (Array.pop arr).toList = List.dropLast arr.toList := Array.toList_pop arr
   rw [hx] at hr
   have hy : List.dropLast (arr'.toList ++ [last]) = arr'.toList := List.dropLast_concat
   have hz : List.dropLast arr.toList = List.dropLast (arr'.toList ++ [last]) := by
@@ -105,6 +106,6 @@ theorem concat_of_pop? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
   simp [List.eq_of_dropLast_eq_last_eq hz hlt (by simp_all)
           (by rw [List.get_last_of_concat _]; exact hlast)]
 
-theorem get_eq_get?_some {as : Array α} (hlt : i < as.size) (h : a = as.get i hlt)
-    : as.get? i = some a := by
-  simp_all [Array.get?]
+theorem get_eq_get?_some {as : Array α} (hlt : i < as.size) (h : a = as[i]'hlt)
+    : as[i]? = some a := by
+  simp_all

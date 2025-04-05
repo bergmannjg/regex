@@ -6,12 +6,12 @@ open Regex
 namespace Test.Hir
 
 def cls : Syntax.ClassUnicode :=
-  let cls : ClassUnicodeRange := ⟨⟨'b', 'c'⟩, by simp_arith⟩
+  let cls : ClassUnicodeRange := ⟨⟨'b', 'c'⟩, by simp +arith⟩
   ⟨IntervalSet.canonicalize #[cls]⟩
 
 def cls_neg : Syntax.ClassUnicode :=
-  let cls1 : ClassUnicodeRange := ⟨⟨'\u0000', 'a'⟩, by simp_arith⟩
-  let cls2 : ClassUnicodeRange := ⟨⟨'d', ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
+  let cls1 : ClassUnicodeRange := ⟨⟨'\u0000', 'a'⟩, by simp +arith⟩
+  let cls2 : ClassUnicodeRange := ⟨⟨'d', ⟨0x10FFFF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
   ⟨IntervalSet.canonicalize #[cls1, cls2]⟩
 
 example : (Syntax.ClassUnicode.negate cls |> toString) = (cls_neg |> toString) := by native_decide
@@ -51,15 +51,15 @@ example : (build "[[:alpha:]]" |> toString)
   = (mkCls #[('A', 'Z'), ('a', 'z')]).toString 0 := by native_decide
 
 example : (build "[[:^alpha:]]" |> toString)
-  = (mkCls #[('\u0000', '@'), ('[', '`'), ('{', ⟨0x10FFFF, by simp_arith⟩)]).toString 0 := by
+  = (mkCls #[('\u0000', '@'), ('[', '`'), ('{', ⟨0x10FFFF, by simp +arith +decide⟩)]).toString 0 := by
     native_decide
 
 example : (build "[^A-Za-z]" |> toString)
-  = (mkCls #[('\u0000', '@'), ('[', '`'), ('{', ⟨0x10FFFF, by simp_arith⟩)]).toString 0 := by
+  = (mkCls #[('\u0000', '@'), ('[', '`'), ('{', ⟨0x10FFFF, by simp +arith +decide⟩)]).toString 0 := by
     native_decide
 
 example : (build "[x[^xyz]]" |> toString)
-  = (mkCls #[('\u0000', 'x'), ('{', ⟨0x10FFFF, by simp_arith⟩)]).toString 0 := by native_decide
+  = (mkCls #[('\u0000', 'x'), ('{', ⟨0x10FFFF, by simp +arith +decide⟩)]).toString 0 := by native_decide
 
 example : (build "[a-y&&xyz]" |> toString) = (mkCls #[('x', 'y')]).toString 0 := by native_decide
 

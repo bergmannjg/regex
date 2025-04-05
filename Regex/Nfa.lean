@@ -303,7 +303,7 @@ namespace Transition
 
 /-- check if `c` falls in the inclusive range of chars specified in Transition `trans` -/
 def «matches» (trans : Transition n) (c : Char) : Bool :=
-  trans.start <= c.val.val && c.val.val <= trans.end
+  trans.start <= c.val.toFin && c.val.toFin <= trans.end
 
 end Transition
 
@@ -418,7 +418,7 @@ structure NFA where
   /-- slots are valid -/
   slotsValid : Slots.Valid slots
 
-instance : Inhabited NFA where default := ⟨0, #[], #[], #[], false, by simp_arith, by simp_arith⟩
+instance : Inhabited NFA where default := ⟨0, #[], #[], #[], false, by simp +arith, by simp +arith +decide⟩
 
 instance {nfa : NFA} : Coe (Fin nfa.n) (Fin (Array.size nfa.states)) where
   coe n := Fin.castLE (by simp[nfa.isEq]) n
@@ -441,7 +441,7 @@ private def toFin? (i n : Nat) : Option $ Fin n :=
 private def toCkeckedTransition? (t : Unchecked.Transition) (n : Nat)
     : Option $ Checked.Transition n :=
   if h : t.next < n
-  then some $ ⟨t.start.val, t.end.val, ⟨t.next, h⟩⟩
+  then some $ ⟨t.start.toFin, t.end.toFin, ⟨t.next, h⟩⟩
   else none
 
 private def toCkeckedState (s : Unchecked.State) (n : Nat) (h : Unchecked.State.nextOf s < n)
@@ -502,7 +502,7 @@ private def slotsOfCaptures (states : Array (Checked.State n)) : Array (Nat × N
 
 /-- transform Unchecked.NFA to Checked.NFA -/
 def toCkecked (nfa : Unchecked.NFA) (groups : Array Nat)
-    (hall : ∀ (i) (h : i < nfa.states.size), (nfa.states.get i h).nextOf < nfa.states.size)
+    (hall : ∀ (i) (h : i < nfa.states.size), (nfa.states[i]'h).nextOf < nfa.states.size)
     : Except String $ Checked.NFA :=
   let n := nfa.states.size
   let states := nfa.states.attach |> Array.map (fun ⟨s, h'⟩ =>

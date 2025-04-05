@@ -15,7 +15,7 @@ private def nfaOf'a'Checked : Checked.NFA :=
       .Empty ⟨0, by simp⟩,
       .SparseTransitions #[⟨0, 0xd7ff, ⟨1, by simp⟩⟩, ⟨0xe000, 0x10ffff, ⟨1, by simp⟩⟩],
       .Capture NFA.Capture.Role.Start ⟨4, by simp⟩ 0 0 0,
-      .ByteRange ⟨'a'.val.val, 'a'.val.val, ⟨5, by simp⟩⟩,
+      .ByteRange ⟨'a'.val.toFin, 'a'.val.toFin, ⟨5, by simp⟩⟩,
       .Capture NFA.Capture.Role.End ⟨6, by simp⟩ 0 0 1,
       .Match 0
     ]

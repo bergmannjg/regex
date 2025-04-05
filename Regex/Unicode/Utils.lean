@@ -28,6 +28,6 @@ def toRange (val : UInt32 × Option UInt32) : NonemptyInterval Char :=
         let c1 : Char := ⟨u1, h1⟩
         let c2 : Char := ⟨u2, h2⟩
         if h3 : c1 ≤ c2 then ⟨⟨c1, c2⟩, h3⟩
-        else ⟨⟨default, default⟩, by simp_arith⟩
-    else ⟨⟨default, default⟩, by simp_arith⟩
-  else ⟨⟨default, default⟩, by simp_arith⟩
+        else ⟨⟨default, default⟩, by simp +arith⟩
+    else ⟨⟨default, default⟩, by simp +arith⟩
+  else ⟨⟨default, default⟩, by simp +arith⟩

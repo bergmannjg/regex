@@ -40,7 +40,7 @@ private def isTo (t : Lean.Expr) : Decl → MetaM Bool
     pure eq
 
 /-- depth first search for path from `f` to `t` in list `decls`. -/
-private def tryFindPath (_f _t : Lean.Expr) (decls : List Decl) : MetaM $ Option (List Decl) := do
+private partial def tryFindPath (_f _t : Lean.Expr) (decls : List Decl) : MetaM $ Option (List Decl) := do
   trace[debug] s!"tryFindPath, from: {_f}, to: {_t}"
   if ← isExprDefEq _f _t then pure $ some [] else
   let (success, path) ← loop _f _t decls (false, [])
@@ -60,7 +60,6 @@ private def tryFindPath (_f _t : Lean.Expr) (decls : List Decl) : MetaM $ Option
           then loop decl.2.2.2.2 t decls' (acc.1, (decl :: _acc.2))
           else pure (true, []))
       pure res
-termination_by decls.length
 
 private def delabWithPath (d : LocalDecl) (path : Expr → Expr) : MetaM Term := do
   PrettyPrinter.delab (path d.toExpr)
@@ -131,7 +130,7 @@ private def flattenSubtype (fvarId : FVarId) (e : Lean.Expr) (acc : Lean.Expr �
   else pure (e, acc)
 
 /-- Flatten `And` and `Subtype`. -/
-private partial def flatten (fvarId : FVarId) (e : Lean.Expr)
+private def flatten (fvarId : FVarId) (e : Lean.Expr)
     : MetaM $ List (Lean.Expr × (Lean.Expr → Lean.Expr)) := do
   let (e, acc) ← flattenSubtype fvarId e id
   flattenAnd e acc
@@ -158,18 +157,22 @@ private def tryCloseGoal (goal : Entry) (decls : List Decl) : MetaM $ Option Syn
       pure (← delabProof path)
     | none => pure none
 
+private def printTermProj (t : Syntax) (args : Array Syntax) : String :=
+  match args with
+  | #[Syntax.ident _ _  a _, _, Syntax.node _ _ #[Syntax.atom _ v]] => s!"{printName a}.{v} "
+  | #[Syntax.node _ ``Lean.Parser.Term.proj
+      #[Syntax.ident _ _  a _, _, Syntax.node _ _ #[Syntax.atom _ v1]],
+          _, Syntax.node _ _ #[Syntax.atom _ v2]] => s!"{printName a}.{v1}.{v2} "
+  | _ => s!"{t}"
+  where printName (t : Name) : String :=
+    toString t.eraseMacroScopes
+
 private def printTerm (t : Syntax) : String :=
   let kindApp : Lean.Name := ``Lean.Parser.Term.app
   match t with
-  | .node _ ``Lean.Parser.Term.proj args =>
-      match args with
-      | #[Syntax.ident _ _  a _, _, Syntax.node _ _ #[Syntax.atom _ v]] => s!"{printName a}.{v} "
-      | #[Syntax.node _ ``Lean.Parser.Term.proj
-          #[Syntax.ident _ _  a _, _, Syntax.node _ _ #[Syntax.atom _ v1]],
-             _, Syntax.node _ _ #[Syntax.atom _ v2]] => s!"{printName a}.{v1}.{v2} "
-      | _ => s!"{t}"
+  | .node _ ``Lean.Parser.Term.proj args => printTermProj t args
   | .node _ kind args =>
-    let strings := args.attach.map (fun ⟨t, _⟩ => printTerm t)
+    let strings := args.map (fun t => printTerm t)
     let sOpen := if kindApp = kind then "(" else ""
     let sClose := if kindApp = kind then ") " else ""
     sOpen ++ String.join strings.toList ++ sClose

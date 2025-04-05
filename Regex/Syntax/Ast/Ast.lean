@@ -1093,7 +1093,7 @@ def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat := do
             pure width)
         if h : 0 < widths.size
         then
-          let width := widths.get 0 h
+          let width := widths[0]'h
           if Array.all widths (fun w => w = width)
           then pure width
           else throw (toError pattern .FixedWidtExcpected)

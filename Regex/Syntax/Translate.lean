@@ -157,16 +157,16 @@ private def hir_perl_unicode_class (cls : AstItems.ClassPerl) (flags : Flags)
   | .VerticalSpace =>
     let range1 : Array ClassUnicodeRange ← range_of_property "White_Space"
     let range2 : Array ClassUnicodeRange :=
-      #[⟨⟨'\u0009', '\u0009'⟩, by simp_arith⟩, ⟨⟨'\u0020', '\u0020'⟩, by simp_arith⟩, ⟨⟨'\u00a0', '\u00a0'⟩, by simp_arith⟩]
+      #[⟨⟨'\u0009', '\u0009'⟩, by simp +arith⟩, ⟨⟨'\u0020', '\u0020'⟩, by simp +arith⟩, ⟨⟨'\u00a0', '\u00a0'⟩, by simp +arith⟩]
     let is1 : IntervalSet Char := IntervalSet.canonicalize range1
     let is2 : IntervalSet Char := IntervalSet.canonicalize range2
     let diff := IntervalSet.difference is1 is2
     Except.ok (if cls.negated then ⟨IntervalSet.negate diff⟩ else ⟨diff⟩)
   | .HorizontalSpace =>
     let rangea : Array ClassUnicodeRange ← range_of_property "White_Space"
-    let rangeb : Array ClassUnicodeRange := #[⟨⟨'\u00a0', '\u00a0'⟩, by simp_arith⟩]
+    let rangeb : Array ClassUnicodeRange := #[⟨⟨'\u00a0', '\u00a0'⟩, by simp +arith⟩]
     let range1 : Array ClassUnicodeRange := rangea ++ rangeb
-    let range2 : Array ClassUnicodeRange := #[⟨⟨'\u000a', '\u000a'⟩, by simp_arith⟩]
+    let range2 : Array ClassUnicodeRange := #[⟨⟨'\u000a', '\u000a'⟩, by simp +arith⟩]
     let is1 : IntervalSet Char := IntervalSet.canonicalize range1
     let is2 : IntervalSet Char := IntervalSet.canonicalize range2
     let diff := IntervalSet.difference is1 is2
@@ -176,36 +176,36 @@ private def hir_perl_unicode_class (cls : AstItems.ClassPerl) (flags : Flags)
     Except.ok (unicode_fold_and_negate range flags cls.negated)
   | .Newline =>
     if cls.negated then
-      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp_arith⟩
-      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', ⟨0xD7FF, by simp_arith⟩⟩, by simp_arith⟩
-      let range3 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp_arith⟩, ⟨0x10FFFF, by simp_arith⟩⟩, by simp_arith⟩
+      let range1 : ClassUnicodeRange := ⟨⟨'\u0000', '\u0009'⟩, by simp +arith⟩
+      let range2 : ClassUnicodeRange := ⟨⟨'\u000B', ⟨0xD7FF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
+      let range3 : ClassUnicodeRange := ⟨⟨⟨0xE000, by simp +arith +decide⟩, ⟨0x10FFFF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩
       Except.ok ⟨IntervalSet.canonicalize #[range1, range2, range3]⟩
     else
-      let range1 : ClassUnicodeRange := ⟨⟨'\u000a', '\u000b'⟩, by simp_arith⟩
+      let range1 : ClassUnicodeRange := ⟨⟨'\u000a', '\u000b'⟩, by simp +arith⟩
       Except.ok ⟨IntervalSet.canonicalize #[range1]⟩
 
 private def hir_ascii_unicode_class (cls: AstItems.ClassAscii) (flags : Flags)
     : Except String ClassUnicode := do
   let range : Array ClassUnicodeRange :=
     match cls.kind with
-    | .Alnum => #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','Z'⟩, by simp_arith⟩, ⟨⟨'a','z'⟩, by simp_arith⟩]
-    | .Alpha => #[⟨⟨'A','Z'⟩, by simp_arith⟩, ⟨⟨'a','z'⟩, by simp_arith⟩]
-    | .Ascii => #[⟨⟨'\x00', '\x7F'⟩, by simp_arith⟩]
-    | .Blank => #[⟨⟨'\t','\t'⟩, by simp_arith⟩, ⟨⟨' ',' '⟩, by simp_arith⟩]
-    | .Cntrl => #[⟨⟨'\x00', '\x1F'⟩, by simp_arith⟩, ⟨⟨'\x7F', '\x7F'⟩, by simp_arith⟩]
-    | .Digit => #[⟨⟨'0','9'⟩, by simp_arith⟩]
-    | .Graph => #[⟨⟨'!','~'⟩, by simp_arith⟩]
-    | .Lower => #[⟨⟨'a','z'⟩, by simp_arith⟩]
-    | .Print => #[⟨⟨' ','~'⟩, by simp_arith⟩]
-    | .Punct => #[⟨⟨'!','/'⟩, by simp_arith⟩, ⟨⟨':','@'⟩, by simp_arith⟩, ⟨⟨'[','`'⟩, by simp_arith⟩,
-        ⟨⟨'{','~'⟩, by simp_arith⟩]
-    | .Space => #[⟨⟨'\t','\t'⟩, by simp_arith⟩, ⟨⟨'¬','¬'⟩, by simp_arith⟩,
-        ⟨⟨'\x0B', '\x0C'⟩, by simp_arith⟩, ⟨⟨'\n','\n'⟩, by simp_arith⟩, ⟨⟨'\r','\r'⟩, by simp_arith⟩,
-        ⟨⟨' ',' '⟩, by simp_arith⟩]
-    | .Upper => #[⟨⟨'A','Z'⟩, by simp_arith⟩]
-    | .Word => #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','Z'⟩ , by simp_arith⟩, ⟨⟨'_','_'⟩ , by simp_arith⟩,
-        ⟨⟨'a','z'⟩ , by simp_arith⟩]
-    | .Xdigit => #[⟨⟨'0','9'⟩, by simp_arith⟩, ⟨⟨'A','F'⟩ , by simp_arith⟩, ⟨⟨'a','f'⟩ , by simp_arith⟩]
+    | .Alnum => #[⟨⟨'0','9'⟩, by simp +arith⟩, ⟨⟨'A','Z'⟩, by simp +arith⟩, ⟨⟨'a','z'⟩, by simp +arith⟩]
+    | .Alpha => #[⟨⟨'A','Z'⟩, by simp +arith⟩, ⟨⟨'a','z'⟩, by simp +arith⟩]
+    | .Ascii => #[⟨⟨'\x00', '\x7F'⟩, by simp +arith⟩]
+    | .Blank => #[⟨⟨'\t','\t'⟩, by simp +arith⟩, ⟨⟨' ',' '⟩, by simp +arith⟩]
+    | .Cntrl => #[⟨⟨'\x00', '\x1F'⟩, by simp +arith⟩, ⟨⟨'\x7F', '\x7F'⟩, by simp +arith⟩]
+    | .Digit => #[⟨⟨'0','9'⟩, by simp +arith⟩]
+    | .Graph => #[⟨⟨'!','~'⟩, by simp +arith⟩]
+    | .Lower => #[⟨⟨'a','z'⟩, by simp +arith⟩]
+    | .Print => #[⟨⟨' ','~'⟩, by simp +arith⟩]
+    | .Punct => #[⟨⟨'!','/'⟩, by simp +arith⟩, ⟨⟨':','@'⟩, by simp +arith⟩, ⟨⟨'[','`'⟩, by simp +arith⟩,
+        ⟨⟨'{','~'⟩, by simp +arith⟩]
+    | .Space => #[⟨⟨'\t','\t'⟩, by simp +arith⟩, ⟨⟨'¬','¬'⟩, by simp +arith⟩,
+        ⟨⟨'\x0B', '\x0C'⟩, by simp +arith⟩, ⟨⟨'\n','\n'⟩, by simp +arith⟩, ⟨⟨'\r','\r'⟩, by simp +arith⟩,
+        ⟨⟨' ',' '⟩, by simp +arith⟩]
+    | .Upper => #[⟨⟨'A','Z'⟩, by simp +arith⟩]
+    | .Word => #[⟨⟨'0','9'⟩, by simp +arith⟩, ⟨⟨'A','Z'⟩ , by simp +arith⟩, ⟨⟨'_','_'⟩ , by simp +arith⟩,
+        ⟨⟨'a','z'⟩ , by simp +arith⟩]
+    | .Xdigit => #[⟨⟨'0','9'⟩, by simp +arith⟩, ⟨⟨'A','F'⟩ , by simp +arith⟩, ⟨⟨'a','f'⟩ , by simp +arith⟩]
 
   Except.ok (unicode_fold_and_negate range flags cls.negated)
 

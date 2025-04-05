@@ -79,8 +79,8 @@ where
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
     | some n, some m =>
       let val := 16*n+m
-      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp_arith⟩
-    | _, _ => ⟨0, by simp_arith⟩
+      if h : UInt32.isValidChar val then ⟨val, h⟩ else ⟨0, by simp +arith +decide⟩
+    | _, _ => ⟨0, by simp +arith +decide⟩
   loop (chars : List Char) : List Char :=
     match chars with
     | [] => []
@@ -118,7 +118,7 @@ def checkFlagIsTrue (f : Option Bool) : Bool :=
   match f with | some v => v | none => false
 
 private def escape (s : String) : String :=
-  s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace ⟨[⟨0, by simp_arith⟩]⟩ r"\x00"
+  s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace ⟨[⟨0, by simp +arith +decide⟩]⟩ r"\x00"
 
 instance : ToString RegexTest where
   toString s :=
@@ -174,7 +174,7 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
         let t_matches := (t.matches[i]'h).groups
         let idx := Array.mapFinIdx (m.matches) (fun i v _ => (i, v))
         Array.all idx (fun (i, v) =>
-          match t_matches.get? i, v with
+          match t_matches[i]?, v with
           | some (some span), some v =>
               span.start = v.val.startPos.byteIdx && span.end = v.val.stopPos.byteIdx
               || -- ignore maybe wrong string pos caused by pcreloader
