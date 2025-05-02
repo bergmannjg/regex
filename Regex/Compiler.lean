@@ -41,7 +41,7 @@ structure ThompsonRef where
 instance : ToString ThompsonRef where
   toString s := s!"{s.start}, {s.end}"
 
-abbrev States := { a : Array Unchecked.State // ∀ i (h : i < a.size), (a[i]'h).nextOf < a.size }
+abbrev States := { a : Array Unchecked.State // ∀ (i : Nat) _, a[i].nextOf < a.size }
 
 abbrev States' (states : States) :=
   { states' : States // states.val.size ≤ states'.val.size}
@@ -77,13 +77,12 @@ abbrev CompilerM := StateT (Array Nat) (Except String)
 
 private theorem all_set {n : Unchecked.StateID} {s : Unchecked.State} {states : States}
   (h : n < states.val.size) (hn : Unchecked.State.nextOf s < states.val.size)
-    : ∀ i (_ : i < (states.val.set n s h).size),
-     ((states.val.set n s h)[i].nextOf < (states.val.set n s h).size) := by
-  have hs := Array.size_set states.val n s h
+    : ∀ (i : Nat) _, ((states.val.set n s h)[i].nextOf < (states.val.set n s h).size) := by
+  have hs := @Array.size_set _ states.val n s h
   intro i hi
   rw [hs]
   rw [hs] at hi
-  have := Array.getElem_set states.val n h s i (by rw [hs]; exact hi)
+  have := @Array.getElem_set _ states.val n h s i (by rw [hs]; exact hi)
   split at this
   simp_all
   rw [this]
@@ -91,10 +90,9 @@ private theorem all_set {n : Unchecked.StateID} {s : Unchecked.State} {states : 
 
 private theorem all_push {s : Unchecked.State} {states : States}
   (h : Unchecked.State.nextOf s ≤ states.val.size)
-    : ∀ i (_ : i < (states.val.push s).size),
-      ((states.val.push s)[i].nextOf < (states.val.push s).size) := by
+    : ∀ (i : Nat) _, ((states.val.push s)[i].nextOf < (states.val.push s).size) := by
   intro i hi
-  have := Array.getElem_push states.val s i hi
+  have := @Array.getElem_push _ states.val s i hi
   simp_all
   split
   . rename_i h'
@@ -312,7 +310,7 @@ private def c_empty (states : States) : CompilerM (ThompsonRefStates states) :=
   push' (Unchecked.State.Empty 0) states (by simp +zetaDelta [Unchecked.State.nextOf])
 
 private def add_sparse (trans : Array Unchecked.Transition) (states : States)
-  (h : ∀ (i) (h : i < trans.size), (trans[i]'h).next ≤ states.val.size)
+  (h : ∀ (i : Nat) _, trans[i].next ≤ states.val.size)
     : CompilerM (StateIDStates states)  :=
   push (Unchecked.State.SparseTransitions trans) states (by
     simp +zetaDelta [Unchecked.State.nextOf]
@@ -331,7 +329,7 @@ private def c_unicode_class (cls : ClassUnicode) (states : States)
   let trans : Array Unchecked.Transition := cls.set.intervals.map f
   let start ← add_sparse trans «end».val.2 (by
     intro i hi
-    have := Array.getElem?_map f cls.set.intervals i
+    have := @Array.getElem?_map _ _ f cls.set.intervals i
     simp_all +zetaDelta
     exact Nat.le_of_succ_le «end».property.left)
   pure (ThompsonRefStates.mk start.val.1 «end».val.1 start.val.2 (by

@@ -271,7 +271,7 @@ def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
 
   have hSlotsValid : Slots.Valid slots := by
     simp
-    rw [← Eq.symm (Array.size_map f nfa.slots)]
+    rw [← Eq.symm (@Array.size_map _ _ f nfa.slots)]
     have h := nfa.slotsValid
     simp [Checked.Slots.Valid] at h
     simp [h.left]
@@ -282,7 +282,7 @@ def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
       have : g ∘ f = id := rfl
       simp_all +zetaDelta
     rw [this]
-    exact Array.toList_map g slots
+    exact Array.toList_map
 
   let recentCaptures : Array $ Option (String.Pos × String.Pos) :=
     slots |> Array.map (fun (_, g, _) => g) |> Array.unique |> Array.map (fun _ => none)
@@ -290,7 +290,7 @@ def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
   {
     stack := default
     visited := Array.Ref.mkRef <|
-      Array.mkArray ((nfa.states.size + 1)
+      Array.replicate ((nfa.states.size + 1)
                       * (input.val.stopPos.byteIdx - input.val.startPos.byteIdx + 1)) 0
     countVisited := 0
     sid := ⟨0, h.left⟩
@@ -315,7 +315,7 @@ theorem slots_valid_elem_eq_pair (slots : Array (SlotEntry s)) (h : Slots.Valid 
     rw [this] at h
 
     have : i < (List.range slots.toList.length).length := by simp [List.length_range]
-    have hRange := List.getElem_range i this
+    have hRange := List.getElem_range this
     have hm1 := @List.getElem_map (SlotEntry s) (Nat × Nat) (fun x  => (x.fst, x.2.fst))
               slots.toList i (by simp)
     have hm2 := @List.getElem_map Nat (Nat × Nat) (fun x  => (x, x.div 2))
@@ -349,7 +349,7 @@ theorem slots_of_modify_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slo
   simp [h.left]
   rw [h.right]
   let mf : SlotEntry s → SlotEntry s := fun (i, g , v) => (i, g, if i = slot then f v else v)
-  have : slots.toList.map mf = slots.toList.modify (Prod.map id (Prod.map id f)) slot := by
+  have : slots.toList.map mf = slots.toList.modify slot (Prod.map id (Prod.map id f)) := by
     simp [List.map_eq_iff]
     intro i
     if hlt : i < slots.size
@@ -358,7 +358,7 @@ theorem slots_of_modify_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slo
       have ⟨v, h⟩ := slots_valid_elem_eq slots (by simp; exact h) ⟨i, hlt⟩
       simp_all
       have := List.getElem_modify (Prod.map id (Prod.map id f)) slot slots.toList i (by
-        simp_all [List.length_modify (Prod.map id (Prod.map id f)) slot slots.toList])
+        simp_all [List.length_modify (Prod.map id (Prod.map id f)) slots.toList slot])
       rw [this]
       simp_all +zetaDelta
       split <;> try simp_all
@@ -367,7 +367,7 @@ theorem slots_of_modify_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slo
       simp_all
       have : Option.map mf slots[i]? = none := by simp_all
       rw [this]
-      have h1 := List.length_modify (Prod.map id (Prod.map id f)) slot slots.toList
+      have h1 := List.length_modify (Prod.map id (Prod.map id f)) slots.toList slot
       have h2 : slots.toList.length = slots.size := rfl
       rw [← h2, ← h1] at hlt
       exact List.getElem?_eq_none hlt
@@ -982,7 +982,7 @@ private def encodeChar? (c: Option Char) : String :=
       let frame := Frame.RestoreCapture role slot (state.slots[slot]'h).2.2
       let f := fun _ => some $ CharPos.toSlotEntry state.at
       let slots := state.slots.modify slot ((Prod.map id (Prod.map id f)))
-      have hLength := Array.size_modify state.slots slot (Prod.map id (Prod.map id f))
+      have hLength := @Array.size_modify _ _ _ (Prod.map id (Prod.map id f))
       let slots : SlotsValid s := ⟨slots, SearchState.slots_of_modify_valid state.slots
                                             state.slotsValid slot f⟩
       let recentCaptures :=

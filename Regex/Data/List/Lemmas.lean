@@ -81,19 +81,19 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
   have hn1 : 0 < l1.length := Nat.zero_lt_of_lt hl1
   have hn2 : 0 < l2.length := Nat.zero_lt_of_lt hl2
   have hl : l1.length = l2.length := by
-    have : l1.dropLast.length = l1.length - 1 := List.length_dropLast l1
-    have : l2.dropLast.length = l2.length - 1 := List.length_dropLast l2
+    have : l1.dropLast.length = l1.length - 1 := @List.length_dropLast α l1
+    have : l2.dropLast.length = l2.length - 1 := @List.length_dropLast α l2
     omega
   List.ext_get hl fun n h1 h2 =>
     if hx1 : n < l1.dropLast.length then by
       have hx2 : n < l2.dropLast.length := Nat.lt_of_lt_of_eq hx1 hdl
-      have hy1 : l1.dropLast.get ⟨n, hx1⟩ = l1.get ⟨n, h1⟩ := List.getElem_dropLast l1 n hx1
-      have hy2 : l2.dropLast.get ⟨n, hx2⟩ = l2.get ⟨n, h2⟩ := List.getElem_dropLast l2 n hx2
+      have hy1 : l1.dropLast.get ⟨n, hx1⟩ = l1.get ⟨n, h1⟩ := @List.getElem_dropLast α l1 n hx1
+      have hy2 : l2.dropLast.get ⟨n, hx2⟩ = l2.get ⟨n, h2⟩ := @List.getElem_dropLast α l2 n hx2
       have hy3 : l1.dropLast.get ⟨n, hx1⟩ = l2.dropLast.get ⟨n, hx2⟩ := List.get_of_fun_eq hd ⟨n, hx1⟩
       rw [hy3, hy2] at hy1
       rw [hy1]
     else by
-      rw [List.length_dropLast l1] at hx1
+      rw [@List.length_dropLast α l1] at hx1
       simp [Nat.le_of_not_gt] at hx1
       have hn1 : n = l1.length - 1 := by
         simp [Nat.eq_pred_of_le_of_lt_succ hn1 hx1 h1]

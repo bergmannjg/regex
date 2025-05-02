@@ -350,7 +350,7 @@ inductive State (n : Nat) where
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State n
 
-private partial def beq' :  State n → State n → Bool
+private def beq' :  State n → State n → Bool
   | .Empty ⟨n1, _⟩ , .Empty ⟨n2, _⟩  => n1 = n2
   | .ByteRange trans1 , .ByteRange trans2  =>
       trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
@@ -473,7 +473,7 @@ private def toCkeckedState (s : Unchecked.State) (n : Nat) (h : Unchecked.State.
         let f : Unchecked.Transition → Nat := fun x => x.next
         have := List.maxD_of_map_all_lt f h (by
           intro a ha
-          exact List.mem_map_of_mem f ha) t (Array.Mem.val h')
+          exact List.mem_map_of_mem ha) t (Array.Mem.val h')
         simp_all +zetaDelta⟩⟩))
   | .Look look next => Checked.State.Look look ⟨next, by
       simp [Unchecked.State.nextOf] at h; exact h⟩
@@ -502,15 +502,12 @@ private def slotsOfCaptures (states : Array (Checked.State n)) : Array (Nat × N
 
 /-- transform Unchecked.NFA to Checked.NFA -/
 def toCkecked (nfa : Unchecked.NFA) (groups : Array Nat)
-    (hall : ∀ (i) (h : i < nfa.states.size), (nfa.states[i]'h).nextOf < nfa.states.size)
-    : Except String $ Checked.NFA :=
+  (h : ∀ (i : Nat) _, nfa.states[i].nextOf < nfa.states.size) : Except String Checked.NFA :=
   let n := nfa.states.size
-  let states := nfa.states.attach |> Array.map (fun ⟨s, h'⟩ =>
-              toCkeckedState s n (by
-                have ⟨i, hlt, _⟩  := Array.mem_iff_getElem.mp h'
-                have := hall i hlt
-                simp_all +zetaDelta))
-  have h1 : nfa.states.size = states.size := by rw [Array.size_map, Array.size_attach]
+  let states := nfa.states.attach.map (fun ⟨s, _⟩ => toCkeckedState s n _)
+  have h1 : nfa.states.size = states.size := by
+    rw [Array.size_map, Array.size_attach]
+    exact Array.forall_getElem.mp h
   /- (slotsOfCaptures states) is a subset of nfa.slots,
       see '(a){0}(a)' where (slotsOfCaptures states) is not equal to nfa.slots -/
   if h2 : Checked.Slots.Valid nfa.slots

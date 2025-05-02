@@ -20,7 +20,7 @@ theorem one_le_of_lt {c1 c2 : UInt32} (h : c1 < c2) : 1 ≤ c2 :=
 
 theorem lt_toNat_lt {a b : UInt32} (h : a < b) : a.toNat < b.toNat := by
   unfold UInt32.toNat
-  simp [UInt32.lt_def] at h
+  simp [UInt32.lt_iff_toBitVec_lt] at h
   exact BitVec.lt_def.mpr h
 
 theorem toNat_toUInt_eq (u : UInt32) : u.toNat.toUInt32 = u := by
@@ -83,7 +83,7 @@ theorem toNat_sub_toNat {n m : UInt32} (hmn : m.toFin ≤ n.toFin) (h2 : n.toFin
 theorem toUInt32_add_toUInt32 (n m : Nat) (hnm : n + m < UInt32.size)
     : n.toUInt32 + m.toUInt32 = (n + m).toUInt32 := by
   unfold Nat.toUInt32
-  simp [UInt32.ofNat_add_ofNat n m hnm]
+  exact UInt32.ofNat_add_ofNat n m hnm
 
 theorem toUInt32_one_add (c : Nat) (h : c + 1 < UInt32.size)
     : c.toUInt32 + 1 = (c + 1).toUInt32 :=
@@ -116,24 +116,23 @@ theorem isValidChar_pred_lt_uintSize (u : UInt32) : u.toFin - 1 < UInt32.size :=
 
 theorem lt_succ_le {c1 c2 : UInt32} (h : c1 < c2) (hsucc : c1.toFin + 1 < UInt32.size)
     : c1 + 1 ≤ c2 := by
-  have hx : c1.toFin < c2.toFin := UInt32.lt_def.mp h
-  have heq : c1.toFin.val + 1 ≤ c2.toFin.val := Nat.succ_le_of_lt hx
-  have ht : c1.toFin.val + 1 = (c1 + 1).toFin.val := UInt32.toNat_add_toNat c1 1 hsucc
+  have hx : c1.toBitVec < c2.toBitVec := UInt32.lt_iff_toBitVec_lt.mp h
+  have heq : c1.toBitVec.toFin.val + 1 ≤ c2.toBitVec.toFin.val := Nat.succ_le_of_lt hx
+  have ht : c1.toBitVec.toFin.val + 1 = (c1 + 1).toBitVec.toFin.val := UInt32.toNat_add_toNat c1 1 hsucc
   rw [ht] at heq
-  simp [UInt32.le_def.mpr heq]
+  exact heq
 
 theorem toNatUnfold (c1 c2 : UInt32) (heq : c2.toNat - c1.toNat = (c2 - c1).toNat)
     : c2.toFin.val - c1.toFin.val = (c2 - c1).toFin.val := by
   unfold UInt32.toNat BitVec.toNat at heq
   simp_all [heq]
-  rfl
 
 theorem lt_pred_le {c1 c2 : UInt32} (h : c1 < c2) (h2 : c2.toFin < UInt32.size)
     : c1 ≤ c2 - 1  := by
-  have hx : c1.toFin < c2.toFin := UInt32.lt_def.mp h
-  have heq : c1.toFin.val ≤ c2.toFin.val - 1 := Nat.le_pred_of_lt hx
+  have hx : c1.toFin < c2.toFin := UInt32.lt_iff_toBitVec_lt.mp h
+  have heq : c1.toBitVec.toFin.val ≤ c2.toBitVec.toFin.val - 1 := Nat.le_pred_of_lt hx
   let hnm : 1 ≤ c2 := UInt32.one_le_of_lt h
   have ht' : c2.toNat - 1 = (c2 - 1).toNat := UInt32.toNat_sub_toNat hnm h2
-  have ht : c2.toFin.val - 1 = (c2 - 1).toFin.val := UInt32.toNatUnfold 1 c2 ht'
+  have ht : c2.toBitVec.toFin.val - 1 = (c2 - 1).toBitVec.toFin.val := UInt32.toNatUnfold 1 c2 ht'
   rw [ht] at heq
-  simp [UInt32.le_def.mpr heq]
+  exact heq

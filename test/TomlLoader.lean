@@ -10,35 +10,29 @@ namespace Loader.Toml
 
 /-- load toml files from Rust testdata -/
 
-protected def Span.decodeToml (v : Value) (s := Syntax.missing)
-    : Except (Array DecodeError) (Option RegexTest.Span) :=
+protected def Span.decodeToml (v : Value) : Option (Option RegexTest.Span) :=
   match v with
   | .array _ v =>
     match v with
-    | #[] => pure none
+    | #[] => return none
     | #[a, b] =>
       match a, b with
-      | .integer _ a, .integer _ b => pure (RegexTest.Span.mk a.toNat b.toNat none)
-      | _, _ =>  Except.error #[DecodeError.mk s s!"integer array expected {v}"]
-    | _ =>  Except.error #[DecodeError.mk s s!"array size 0 or 2 expected {v}"]
-  | _ =>
-    Except.error #[DecodeError.mk s s!"Span.decodeToml: array expected {v}"]
+      | .integer _ a, .integer _ b => return (RegexTest.Span.mk a.toNat b.toNat none)
+      | _, _ => none
+    | _ => none
+  | _ => none
 
-protected def Spans.decodeToml (v : Value) (s := Syntax.missing)
-    : Except (Array DecodeError) (Array $ Option RegexTest.Span) := do
+protected def Spans.decodeToml (v : Value) : Option (Array $ Option RegexTest.Span) := do
   match v with
-  | .array _ v =>
-    let arr ← v |> Array.mapM (fun v => do return ← Span.decodeToml v v.ref)
-    return arr
+  | .array _ v => v |> Array.mapM (fun v => Span.decodeToml v)
   | .table _ t =>
     match t.find? `span with
-    | some v => pure #[← Span.decodeToml v]
+    | some v => return #[← Span.decodeToml v]
     | _ =>
       match t.find? `spans with
-      | some _ => pure #[]
-      | _ => Except.error #[DecodeError.mk s s!"Spans.decodeToml: span|spans key expected {v}"]
-  | _ =>
-    Except.error #[DecodeError.mk s s!"Spans.decodeToml: array expected {v}"]
+      | some _ => return #[]
+      | _ => none
+  | _ => none
 
 /- possible values
    []
@@ -47,42 +41,42 @@ protected def Spans.decodeToml (v : Value) (s := Syntax.missing)
    [[[a, b], ..., [c, d]]]
 -/
 protected def Captures.decodeToml (v : Value) (s := Syntax.missing)
-    : Except (Array DecodeError) (Array RegexTest.Captures) := do
+    : EDecodeM (Array RegexTest.Captures) := do
   match v with
   | .array _ arr =>
-    match Spans.decodeToml v v.ref with
-    | Except.ok groups => pure (groups |> Array.map (fun g => ⟨#[g]⟩))
-    | Except.error _ =>
+    match Spans.decodeToml v with
+    | some groups => pure (groups |> Array.map (fun g => ⟨#[g]⟩))
+    | none =>
         let arr ← arr |> Array.mapM (fun v =>
-              match Spans.decodeToml v v.ref with
-              | Except.ok spans => pure spans
-              | Except.error e => throw e)
+              match Spans.decodeToml v with
+              | some spans => pure spans
+              | none => throwDecodeErrorAt v.ref "decode error of captures")
         pure (arr |> Array.map (fun groups => {groups}))
-  | _ => Except.error #[DecodeError.mk s s!"Captures.decodeToml: array expected {v}"]
+  | _ => throwDecodeErrorAt s s!"Captures.decodeToml: array expected {v}"
 
 instance : DecodeToml (Array RegexTest.Captures) := ⟨fun v => do Captures.decodeToml v v.ref⟩
 
 protected def Regex.decodeToml (v : Value) (s := Syntax.missing)
-    : Except (Array DecodeError) (Sum String (Array String)) := do
+    : EDecodeM (Sum String (Array String)) := do
   match v with
   | .string _ s => pure <| Sum.inl s
   | .array _ _ => pure <| Sum.inr #[]
-  | _ => Except.error #[DecodeError.mk s s!"Regex.decodeToml: string or array expected {v}"]
+  | _ => throwDecodeErrorAt s s!"Regex.decodeToml: string or array expected {v}"
 
 protected def Bounds.decodeToml (v : Value) (s := Syntax.missing)
-    : Except (Array DecodeError) (Array Nat) := do
+    : EDecodeM (Array Nat) := do
   match v with
   | .array _ #[a, b] =>
       match a, b with
       | .integer _ a, .integer _ b => pure #[a.toNat, b.toNat]
-      | _, _ =>  Except.error #[DecodeError.mk s s!"integer array expected {v}"]
+      | _, _ => throwDecodeErrorAt s s!"integer array expected {v}"
   | .table _ _ => pure <| #[]
-  | _ => Except.error #[DecodeError.mk s s!"Regex.decodeToml: array or table expected {v}"]
+  | _ => throwDecodeErrorAt s s!"Regex.decodeToml: array or table expected {v}"
 
 instance : Inhabited (Sum String (Array String)) := ⟨Sum.inr #[]⟩
 
 protected def RegexTest.decodeToml (t : Table)
-    : Except (Array DecodeError) RegexTest := ensureDecode do
+    : EDecodeM RegexTest := ensureDecode do
   let name ← t.tryDecodeD `name "."
   let regex : Sum String (Array String) ← optDecode (t.find? `regex) Regex.decodeToml
   let haystack : String ← t.tryDecodeD `haystack "."
@@ -106,9 +100,7 @@ protected def RegexTest.decodeToml (t : Table)
 instance : DecodeToml RegexTest := ⟨fun v => do RegexTest.decodeToml (← v.decodeTable)⟩
 
 nonrec def parseToml (table : Table) (tomlFile : FilePath) : IO $ Array RegexTest := do
-  let (tests, errs) := Id.run <| StateT.run (s := (#[] : Array DecodeError)) do
-    let tests ← table.tryDecodeD `test #[]
-    return tests
+  let .ok tests errs := EStateM.run (s := #[]) do return ← table.tryDecodeD `test #[]
 
   if errs.isEmpty then return tests
   else

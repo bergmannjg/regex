@@ -92,7 +92,7 @@ def main (args : List String): IO Unit := do
           let size : Nat := m
           let loops : Nat := n
           if loops < size then
-            let ref : ST.Ref Nat (Array UInt8) := Array.Ref.mkRef <| Array.mkArray size 0
+            let ref : ST.Ref Nat (Array UInt8) := Array.Ref.mkRef <| Array.replicate size 0
             let ref := ref_loop loops ref
             let arr := Array.Ref.getRefValue ref
             let marked := arr |> Array.foldl (fun acc n => if n = 0 then acc else acc + 1) 0

@@ -11,12 +11,12 @@ rev = "v1.1.5"
 [[require]]
 name = "batteries"
 git = "https://github.com/leanprover-community/batteries"
-rev = "v4.18.0"
+rev = "v4.19.0"
 
 [[require]]
 name = "tryAtEachStep"
 git = "https://github.com/dwrensha/tryAtEachStep"
-rev = "lean-v4.18.0"
+rev = "main"
 
 [[lean_lib]]
 name = "Regex"
