@@ -29,7 +29,7 @@ theorem toNat_ofNat_eq (n : Fin UInt32.size) : (Fin.ofNat' UInt32.size (n.val)) 
   let m : Fin UInt32.size := { val := n.val % UInt32.size, isLt := hn }
   have hm : m = { val := n.val % UInt32.size, isLt := hn } := by simp +zetaDelta
   rw [← hm]
-  simp_all [heq]
+  exact eq_of_val_eq heq
 
 theorem ofNat_val_add (n m : Fin UInt32.size) (h : n.val + m.val < UInt32.size)
     : (Fin.ofNat'  UInt32.size (n.val + m.val)) = n + m := by

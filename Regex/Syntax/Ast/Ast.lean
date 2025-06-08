@@ -1051,21 +1051,17 @@ termination_by sizeOf ast
 instance : ToString Ast where
   toString ast := AstItems.toString ast 0
 
-partial def find (ast : Ast) (p : Ast -> Bool) : Option Ast :=
+def find (ast : Ast) (p : Ast -> Bool) : Option Ast :=
   if p ast then some ast else
     match ast with
-    | .Repetition ⟨_, _, _, _, item⟩ => find item p
-    | .Alternation ⟨_, items⟩ =>
-        match items |> Array.filterMap  (fun item => find item p) with
-        | #[ast] => some ast
-        | _ => none
-    | .Group ⟨_, _, item⟩ => find item p
-    | .Concat ⟨_, items⟩ =>
-        match items |> Array.filterMap  (fun item => find item p) with
-        | #[ast] => some ast
-        | _ => none
-
+    | .Repetition rep => match rep with | .mk _ _ _ _ item => find item p
+    | .Alternation alt =>
+      match alt with | .mk _ items => (items |> Array.filterMap  (fun item => find item p))[0]?
+    | .Group grp => match grp with | .mk _ _ item => find item p
+    | .Concat concat =>
+      match concat with | .mk _ items => (items |> Array.filterMap  (fun item => find item p))[0]?
     | _ => none
+termination_by sizeOf ast
 
 def get_fixed_width (pattern : String) (ast : Ast) : Except String Nat := do
   match ast with

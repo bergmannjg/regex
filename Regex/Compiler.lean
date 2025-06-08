@@ -377,6 +377,8 @@ private def c_cap' (role : Capture.Role) (pattern_id slot: Nat) (states : States
     : CompilerM (StateIDStates states)  :=
   push (Unchecked.State.Capture role 0 0 pattern_id slot) states (by simp +zetaDelta [Unchecked.State.nextOf])
 
+set_option maxHeartbeats 2000000 in
+
 mutual
 
 private def c_concat (hirs : Array Hir) (states : States) : CompilerM (ThompsonRefStates states) := do

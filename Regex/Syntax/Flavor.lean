@@ -6,7 +6,7 @@ inductive Flavor where
   | Pcre : Flavor
   /-- Rust-compatible regular expressions (https://docs.rs/regex/latest/regex/#syntax). -/
   | Rust : Flavor
-deriving BEq
+deriving BEq, Repr
 
 instance : Inhabited Flavor := ⟨Syntax.Flavor.Pcre⟩
 

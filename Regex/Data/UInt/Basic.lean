@@ -60,10 +60,11 @@ theorem toNat_add_toNat (n m : UInt32) (hnm : n.toFin + m.toFin < UInt32.size)
   rw [← UInt32.add_def']
   unfold UInt32.add
   unfold UInt32.toNat
-  simp_all [Fin.add_def]
+  simp only [Fin.add_def]
   have h : (n.toBitVec.toNat + m.toBitVec.toNat) % UInt32.size
          = n.toBitVec.toNat + m.toBitVec.toNat := Nat.mod_eq_of_lt hnm
-  simp_all [h]
+  rw [← h]
+  simp_all
 
 theorem toNat_sub_toNat {n m : UInt32} (hmn : m.toFin ≤ n.toFin) (h2 : n.toFin < UInt32.size)
     : n.toNat - m.toNat = (n - m).toNat := by
