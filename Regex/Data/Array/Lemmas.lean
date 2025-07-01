@@ -56,12 +56,18 @@ theorem default_size_zero (arr : Array α) (h : arr = default) : arr.size = 0 :=
 theorem non_empty_of_last? (arr : Array α) (h: Array.last? arr = some last) : 0 < arr.size := by
   unfold Array.last? at h
   split at h <;> simp_all
+  rename_i h'
+  exact h'
 
 theorem pop?_of_last? (arr : Array α) (h: Array.last? arr = some last)
     : ∃ (arr' : Array α), Array.pop? arr = some (last, arr') := by
   unfold Array.pop?
   unfold Array.last? at h
   split <;> simp_all
+  · let ⟨_, hm⟩ := h
+    exact hm
+  · let ⟨_, _⟩ := h
+    contradiction
 
 theorem pop?_of_non_empty (arr : Array α) (h : 0 < arr.size)
     : ∃ (arr' : Array α) (last : α), Array.pop? arr = some (last, arr') := by
@@ -80,6 +86,8 @@ theorem lt_of_pop?_eq_last? {arr : Array α} (h : Array.pop? arr = some (last, a
     : 0 < arr.toList.length := by
   unfold Array.pop? at h
   split at h <;> simp_all
+  rename_i h'
+  exact h'
 
 theorem get_last_of_pop? {arr : Array α} (h1 : Array.pop? arr = some (last, arr'))
   (h2 : arr.toList.length - 1 < arr.toList.length)
@@ -103,8 +111,9 @@ theorem concat_of_pop? {arr : Array α} (h : Array.pop? arr = some (last, arr'))
   have hz : List.dropLast arr.toList = List.dropLast (arr'.toList ++ [last]) := by
     rw [← hy] at hr
     exact hr
-  simp [List.eq_of_dropLast_eq_last_eq hz hlt (by simp_all)
-          (by rw [List.get_last_of_concat _]; exact hlast)]
+  exact List.eq_of_dropLast_eq_last_eq hz (by omega) (by simp_all)
+          (by rw [List.get_last_of_concat _]; exact hlast)
+  omega
 
 theorem get_eq_get?_some {as : Array α} (hlt : i < as.size) (h : a = as[i]'hlt)
     : as[i]? = some a := by

@@ -157,3 +157,12 @@ theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, Chain R a l ↔
     · apply h 0
     intro i w
     exact h (i+1) (Nat.add_lt_of_lt_sub w)
+
+/- see Mathlib/Data/List/Basic.lean -/
+theorem ext_get_iff {l₁ l₂ : List α} :
+    l₁ = l₂ ↔ l₁.length = l₂.length ∧ ∀ n h₁ h₂, List.get l₁ ⟨n, h₁⟩ = List.get l₂ ⟨n, h₂⟩ := by
+  constructor
+  · rintro rfl
+    exact ⟨rfl, fun _ _ _ ↦ rfl⟩
+  · intro ⟨h₁, h₂⟩
+    exact List.ext_get h₁ h₂

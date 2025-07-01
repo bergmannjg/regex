@@ -25,7 +25,7 @@ theorem lt_toNat_lt {a b : UInt32} (h : a < b) : a.toNat < b.toNat := by
 
 theorem toNat_toUInt_eq (u : UInt32) : u.toNat.toUInt32 = u := by
   unfold UInt32.toNat Nat.toUInt32 UInt32.ofNat BitVec.ofNat
-  have h : (Fin.ofNat' UInt32.size (u.toFin)) = u.toFin := Fin.toNat_ofNat_eq u.toFin
+  have h : (Fin.ofNat UInt32.size (u.toFin)) = u.toFin := Fin.toNat_ofNat_eq u.toFin
   simp_all [h]
 
 theorem ofNat_eq (n : Nat) (h : n < UInt32.size) : (UInt32.ofNat n).toFin = ⟨n, h⟩ := by

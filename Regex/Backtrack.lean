@@ -12,6 +12,7 @@ import Regex.Utils
 import Regex.Data.Array.Basic
 import Regex.Data.Array.Lemmas
 import Regex.Data.String.Lemmas
+import Regex.Data.List.Lemmas
 
 /-!
 ## BoundedBacktracker
@@ -324,7 +325,8 @@ theorem slots_valid_elem_eq_pair (slots : Array (SlotEntry s)) (h : Slots.Valid 
 
     have h : (slots.toList[i.val].fst, slots.toList[i.val].snd.fst) = (i.val, (i.val).div 2) := by
       rw [← hm1, ← hm2]
-      simp [h.right]
+      apply Eq.symm
+      exact (List.ext_get_iff.mp h.right).right i (by simp) (by simp)
 
     have h1 : slots.toList[i].fst = i.val := by simp [Prod.ext_iff] at h; exact h.left
     have h2 : slots.toList[i].snd.fst = i.val.div 2 := by simp [Prod.ext_iff] at h; exact h.right
@@ -362,15 +364,9 @@ theorem slots_of_modify_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slo
       rw [this]
       simp_all +zetaDelta
       split <;> try simp_all
-      split <;> simp_all
+      omega
     else
       simp_all
-      have : Option.map mf slots[i]? = none := by simp_all
-      rw [this]
-      have h1 := List.length_modify (Prod.map id (Prod.map id f)) slots.toList slot
-      have h2 : slots.toList.length = slots.size := rfl
-      rw [← h2, ← h1] at hlt
-      exact List.getElem?_eq_none hlt
   rw [← this]
   rw [List.map_map]
   rfl
