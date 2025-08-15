@@ -25,9 +25,9 @@ private def getUnassigned : Array (NonemptyInterval Char) :=
   let (prev, arr) := UnicodeData.data |> Array.foldl (init := init) (fun (prev, acc) d =>
     match prev with
     | some prev =>
-      if d.codeValue - prev = 1 then (d.codeValue, acc)
-      else (none, acc.push (prev + 1, d.codeValue - 1))
-    | none => (d.codeValue, acc))
+      if d.code - prev = 1 then (d.code, acc)
+      else (none, acc.push (prev + 1, d.code - 1))
+    | none => (d.code, acc))
 
   let arr :=
     match prev with
@@ -38,39 +38,29 @@ private def getUnassigned : Array (NonemptyInterval Char) :=
 
 private def fold (data : Array UnicodeData) : Array (Char × Char) :=
   let (last, pairs) : (Char × Char) × Array (Char × Char) :=
-  data
-  |> Array.foldl (init := ((⟨0, by simp +arith +decide⟩, ⟨0, by simp +arith +decide⟩), #[])) (fun (last, s) a =>
-      if h : UInt32.isValidChar a.codeValue
-      then
-        let c : Char := ⟨a.codeValue, h⟩
-        if c.val - last.2.val = 1
-        then ((last.1, c), s)
-        else
-          ((c, c), if last.1.val != 0 then (s.push last) else s)
-      else (last, s))
+    data
+    |> Array.foldl (init := ((⟨0, by grind⟩, ⟨0, by grind⟩), #[])) (fun (last, s) a =>
+        if h : UInt32.isValidChar a.code
+        then
+          let c : Char := ⟨a.code, h⟩
+          if c.val - last.2.val = 1
+          then ((last.1, c), s)
+          else ((c, c), if last.1.val != 0 then (s.push last) else s)
+        else (last, s))
 
   pairs.push last
 
-def rangesOfGeneralCategory (category : GeneralCategory) : Except String $ Array (NonemptyInterval Char) :=
-  if category = GeneralCategory.Cn
+def rangesOfGeneralCategory (category : GC) : Except String $ Array (NonemptyInterval Char) :=
+  if category = GC.Cn
   then
     Except.ok getUnassigned
   else
-    let data :=
-      match category with
-      | ⟨_, some _⟩ =>
-        UnicodeData.data |> Array.filter (fun u =>
-          if category = GeneralCategory.LC
-          then u.generalCategory = GeneralCategory.Ll
-            || u.generalCategory = GeneralCategory.Lu
-            || u.generalCategory = GeneralCategory.Lt
-          else u.generalCategory = category)
-      | ⟨major, none⟩ =>
-        UnicodeData.data |> Array.filter (fun u => u.generalCategory.major = major)
-    let arr := fold data |> .filterMap (fun (c1, c2) =>
-                                        if h : c1 ≤ c2 then some ⟨⟨c1, c2⟩, h⟩ else none)
-    let arr := if category = GeneralCategory.C then arr ++ getUnassigned else arr
-    Except.ok arr
+    let arr :=
+        UnicodeData.data
+        |> .filter (fun u => u.gc ⊆ category)
+        |> fold
+        |> .filterMap (fun (c1, c2) => if h : c1 ≤ c2 then some ⟨⟨c1, c2⟩, h⟩ else none)
+    Except.ok $ if category = GC.C then arr ++ getUnassigned else arr
 
 private def rangesOfCategory (s : String) : Except String $ Array (NonemptyInterval Char) :=
   match GeneralCategory.ofValue? s with
@@ -107,7 +97,7 @@ private def rangessOfPropertyName (name : PropertyName) (prop : String)
       Except.ok #[⟨⟨'0','9'⟩, by simp +arith⟩, ⟨⟨'A','F'⟩, by simp +arith⟩, ⟨⟨'a','f'⟩, by simp +arith⟩]
   | .Hex_Digit =>
       Except.ok #[⟨⟨'0','9'⟩, by simp +arith⟩, ⟨⟨'A','F'⟩, by simp +arith⟩, ⟨⟨'a','f'⟩, by simp +arith⟩]
-  | .Numeric_Value => rangesOfGeneralCategory GeneralCategory.N
+  | .Numeric_Value => rangesOfGeneralCategory GC.N
   | .ASSIGNED => Except.ok (IntervalSet.negate (IntervalSet.canonicalize getUnassigned)).intervals
   | .ASCII => Except.ok #[⟨⟨'\x00', '\x7F'⟩, by simp +arith⟩]
   | .ANY => Except.ok #[⟨⟨'\u0000', ⟨0x10FFFF, by simp +arith +decide⟩⟩, by simp +arith +decide⟩]
@@ -161,17 +151,17 @@ def is_word_char (c : Char) : Bool :=
   rangesOfProperty "Word" |> isCharInIntervals c
 
 /-- has `c` the general category -/
-def isCharOfGeneralCategory (category : GeneralCategory) (c : Char) : Bool :=
+def isCharOfGeneralCategory (category : GC) (c : Char) : Bool :=
   rangesOfGeneralCategory category |> isCharInIntervals c
 
 /-- get ranges of case folds of char -/
 def case_fold_char (c : Char) :  Array (NonemptyInterval Char) :=
   let data := getUnicodeData c
-  match data.uppercaseMapping with
+  match data.uppercase with
   | some cUpper =>
       #[⟨⟨cUpper, cUpper⟩, by simp [Char.eq_le _]⟩, ⟨⟨c, c⟩, by simp [Char.eq_le _]⟩]
   | none =>
-    match data.lowercaseMapping with
+    match data.lowercase with
     | some cLower =>
       #[⟨⟨c, c⟩ , by simp [Char.eq_le _]⟩, ⟨⟨cLower, cLower⟩, by simp [Char.eq_le _]⟩]
     | none => #[⟨⟨c, c⟩, by simp [Char.eq_le _]⟩]

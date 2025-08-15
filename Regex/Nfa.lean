@@ -241,7 +241,7 @@ instance : ToString State where
 /-- Array of (slot, group) pairs of captures. -/
 def toSlots (states : Array State) : Array (Nat × Nat) :=
   let slots := states.filterMap (fun s => match s with | .Capture _ _ _ _ s => some s | _ => none)
-  match slots.max? with
+  match slots.getMax? (· < ·) with
   | some n => ((List.range (n + 1)).map (fun i => (i, i.div 2))).toArray
   | none => #[]
 

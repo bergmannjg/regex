@@ -4,7 +4,6 @@ import Batteries.Lean.Except
 
 import Regex.Syntax.Hir
 import Regex.Nfa
-import Regex.Tactic.SimpLte
 import Regex.Data.Nat.Basic
 
 namespace Compiler
@@ -210,7 +209,7 @@ private def patch («from» «to» : Unchecked.StateID) (states : States)
           by simp_all⟩
   | .BackRef b f _ =>
     pure ⟨⟨states.val.set «from» (Unchecked.State.BackRef b f «to»), by
-            apply all_set; simp +zetaDelta [Unchecked.State.nextOf, ht, Nat.zero_lt_of_lt ht]⟩,
+            apply all_set; simp +zetaDelta [Unchecked.State.nextOf, ht]⟩,
           by simp_all⟩
   | .ByteRange t =>
       pure ⟨⟨states.val.set «from» (Unchecked.State.ByteRange {t with «next» := «to»}) h, by
@@ -218,7 +217,7 @@ private def patch («from» «to» : Unchecked.StateID) (states : States)
             by simp_all⟩
   | .Capture role _ pattern_id group_index slot =>
       pure ⟨⟨states.val.set «from» (Unchecked.State.Capture role «to» pattern_id group_index slot),
-              by apply all_set; simp +zetaDelta [Unchecked.State.nextOf, ht, Nat.zero_lt_of_lt ht]⟩,
+              by apply all_set; simp +zetaDelta [Unchecked.State.nextOf, ht]⟩,
             by simp_all⟩
   | .BinaryUnion alt1 alt2 =>
       if alt1 = 0
@@ -335,7 +334,7 @@ private def c_unicode_class (cls : ClassUnicode) (states : States)
   pure (ThompsonRefStates.mk start.val.1 «end».val.1 start.val.2 (by
     have ⟨_, _⟩ := «end».property
     have ⟨_, _⟩ := start.property
-    and_intros <;> simp_lte))
+    grind))
 
 private def c_literal (c : Char) (states : States) : CompilerM (ThompsonRefStates states) :=
   c_range c.val c.val states
@@ -392,10 +391,10 @@ private def c_concat (hirs : Array Hir) (states : States) : CompilerM (ThompsonR
       (fun ⟨(s, states), _⟩ ⟨hir, h⟩ => do
         have : sizeOf hir < sizeOf tail := Array.sizeOf_lt_of_mem h
         let ⟨(hir, states), _⟩ ← c hir states
-        let states ← patch s hir.start states (by simp_lte) (by simp_lte)
-        pure ⟨(hir.end, states), by and_intros <;> simp_lte⟩)
+        let states ← patch s hir.start states (by grind) (by grind)
+        pure ⟨(hir.end, states), by and_intros <;> grind⟩)
 
-    pure (ThompsonRefStates.mk start hir states'' (by and_intros <;> simp_lte))
+    pure (ThompsonRefStates.mk start hir states'' (by and_intros <;> grind))
   | none => c_empty states
 termination_by sizeOf hirs
 
@@ -412,21 +411,21 @@ private def c_alt_iter (hirs : Array Hir) (states : States) : CompilerM (Thompso
       let ⟨(union, states), _⟩ ← add_union states
       let ⟨(«end», states), _⟩ ← add_empty states
 
-      let states ← patch union first.start states (by simp_lte) (by simp_lte)
-      let states ← patch first.end «end» states (by simp_lte) (by simp_lte)
-      let states ← patch union second.start states (by simp_lte) (by simp_lte)
-      let states ← patch second.end «end» states (by simp_lte) (by simp_lte)
+      let states ← patch union first.start states (by grind) (by grind)
+      let states ← patch first.end «end» states (by grind) (by grind)
+      let states ← patch union second.start states (by grind) (by grind)
+      let states ← patch second.end «end» states (by grind) (by grind)
 
       have : sizeOf tail' < sizeOf tail := Array.sizeOf_head?_of_tail hTail
       let (⟨states', _⟩ : States' states) ← tail'.attach.foldlM (init := ⟨states, by simp_all⟩)
         (fun ⟨states, _⟩ ⟨hir, h⟩  => do
           have : sizeOf hir < sizeOf tail' := Array.sizeOf_lt_of_mem h
           let ⟨(compiled, states), _⟩ ← c hir states
-          let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
-          let states ← patch compiled.end «end» states (by simp_lte) (by simp_lte)
-          pure ⟨states, by simp_lte⟩)
+          let states ← patch union compiled.start states (by grind) (by grind)
+          let states ← patch compiled.end «end» states (by grind) (by grind)
+          pure ⟨states, by grind⟩)
 
-      pure (ThompsonRefStates.mk union «end» states' (by and_intros <;> simp_lte))
+      pure (ThompsonRefStates.mk union «end» states' (by and_intros <;> grind))
     | none => Except.error "c_alt_iter, size > 1 expected"
   | none => Except.error "c_alt_iter, size > 0 expected"
 termination_by sizeOf hirs
@@ -438,9 +437,9 @@ private def c_exactly (hir : Hir) (n : Nat) (states : States) : CompilerM (Thomp
       (List.replicate (n-1) 0).foldlM (init := ⟨(«end», states'), by simp_all⟩)
         (fun ⟨(s, states), _⟩ _ => do
           let ⟨(ref, states), _⟩ ← c hir states
-          let states ← patch s ref.start states (by simp_all) (by simp_lte)
-          pure ⟨(ref.end, states), by and_intros <;> simp_lte⟩)
-    pure (ThompsonRefStates.mk start s states'' (by and_intros <;> simp_lte))
+          let states ← patch s ref.start states (by simp_all) (by grind)
+          pure ⟨(ref.end, states), by and_intros <;> grind⟩)
+    pure (ThompsonRefStates.mk start s states'' (by and_intros <;> grind))
   else c_empty states
 termination_by sizeOf hir + sizeOf n
 
@@ -456,12 +455,12 @@ private def c_possessive (tref : ThompsonRef) (states : States)
     simp [Unchecked.EatMode.nextOf])
   let  ⟨(empty, states), _⟩ ← add_empty states
 
-  let states ← patch union tref.start states (by simp_lte) (by simp_lte)
-  let states ← patch tref.«end» eat states (by simp_lte) (by simp_lte)
-  let states ← patch union fail states (by simp_lte) (by simp_lte)
-  let states ← patch eat fail states (by simp_lte) (by simp_lte)
-  let states ← patch eat empty states (by simp_lte) (by simp_lte)
-  pure (ThompsonRefStates.mk union empty states (by and_intros <;> simp_lte))
+  let states ← patch union tref.start states (by grind) (by grind)
+  let states ← patch tref.«end» eat states (by grind) (by grind)
+  let states ← patch union fail states (by grind) (by grind)
+  let states ← patch eat fail states (by grind) (by grind)
+  let states ← patch eat empty states (by grind) (by grind)
+  pure (ThompsonRefStates.mk union empty states (by and_intros <;> grind))
 
 private def is_possible_empty_repetition (hir : Hir) : Bool :=
   match hir with
@@ -496,58 +495,56 @@ private def c_at_least (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool)
     let ⟨(compiled, states), _⟩ ← c hir states
     let ⟨(plus, states), _⟩ ← (if greedy then add_union states else add_union_reverse states)
 
-    let states ← patch compiled.end plus states (by simp_lte) (by simp_lte)
-    let states ← patch plus compiled.start states (by simp_lte) (by simp_lte)
+    let states ← patch compiled.end plus states (by grind) (by grind)
+    let states ← patch plus compiled.start states (by grind) (by grind)
 
     let groups ← get
-    let groups := match (if greedy then get_possible_empty_capture_group hir else none) with
-              | some g => groups.push g
-              | none => groups
-    set groups
+    set (match (if greedy then get_possible_empty_capture_group hir else none) with
+         | some g => groups.push g
+         | none => groups)
 
     let  ⟨(question, states), _⟩ ← (if greedy then add_union states else add_union_reverse states)
     let  ⟨(empty, states), _⟩ ← add_empty states
-    let states ← patch question compiled.start states (by simp_lte) (by simp_lte)
-    let states ← patch question empty states (by simp_lte) (by simp_lte)
-    let states ← patch plus empty states (by simp_lte) (by simp_lte)
+    let states ← patch question compiled.start states (by grind) (by grind)
+    let states ← patch question empty states (by grind) (by grind)
+    let states ← patch plus empty states (by grind) (by grind)
 
     if possessive then
-      let t ← c_possessive ⟨question, empty⟩ states (by simp_lte) (by simp_lte)
-      pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; simp_lte))
+      let t ← c_possessive ⟨question, empty⟩ states (by grind) (by grind)
+      pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; grind))
     else
-      pure (ThompsonRefStates.mk question empty states (by and_intros <;> simp_lte))
+      pure (ThompsonRefStates.mk question empty states (by and_intros <;> grind))
   else if n = 1 then
     let ⟨(compiled, states), _⟩ ← c hir states
     let ⟨(union, states), _⟩ ← (if greedy then add_union states else add_union_reverse states)
 
     let groups ← get
-    let groups := match (if greedy then get_possible_empty_capture_group hir else none) with
-              | some g => groups.push g
-              | none => groups
-    set groups
+    set (match (if greedy then get_possible_empty_capture_group hir else none) with
+         | some g => groups.push g
+         | none => groups)
 
-    let states ← patch compiled.end union states (by simp_lte) (by simp_lte)
-    let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
+    let states ← patch compiled.end union states (by grind) (by grind)
+    let states ← patch union compiled.start states (by grind) (by grind)
 
     if possessive then
-      let t ← c_possessive ⟨compiled.start, union⟩ states (by simp_lte) (by simp_lte)
-      pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; simp_lte))
+      let t ← c_possessive ⟨compiled.start, union⟩ states (by grind) (by grind)
+      pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; grind))
     else
-      pure (ThompsonRefStates.mk compiled.start union states (by and_intros <;> simp_lte))
+      pure (ThompsonRefStates.mk compiled.start union states (by and_intros <;> grind))
   else
     let ⟨(«prefix», states), _⟩ ← c_exactly hir (n-1) states
     let ⟨(last, states), _⟩ ← c hir states
     let ⟨(union, states), _⟩ ← (if greedy then add_union states else add_union_reverse states)
 
-    let states ← patch «prefix».end last.start states (by simp_lte) (by simp_lte)
-    let states ← patch last.end union states (by simp_lte) (by simp_lte)
-    let states ← patch union last.start states (by simp_lte) (by simp_lte)
+    let states ← patch «prefix».end last.start states (by grind) (by grind)
+    let states ← patch last.end union states (by grind) (by grind)
+    let states ← patch union last.start states (by grind) (by grind)
 
     if possessive then
-      let t ← c_possessive  ⟨«prefix».start, union⟩ states (by simp_lte) (by simp_lte)
-      pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; simp_lte))
+      let t ← c_possessive  ⟨«prefix».start, union⟩ states (by grind) (by grind)
+      pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; grind))
     else
-      pure (ThompsonRefStates.mk «prefix».start union states (by and_intros <;> simp_lte))
+      pure (ThompsonRefStates.mk «prefix».start union states (by and_intros <;> grind))
 termination_by sizeOf hir + sizeOf n + 1
 
 /-- Compile the given expression such that it matches at least `min` times,
@@ -558,23 +555,23 @@ private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : 
     let ⟨(«prefix», states), _⟩  ← c_exactly hir min states
     if min = max then
       if possessive then
-        let t ← c_possessive «prefix» states (by simp_lte) (by simp_lte)
-        pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; simp_lte))
+        let t ← c_possessive «prefix» states (by grind) (by grind)
+        pure (ThompsonRefStates.castLt t (by have ⟨_, _, _⟩ := t.property; grind))
       else
-        pure (ThompsonRefStates.mk «prefix».start «prefix».end states (by and_intros <;> simp_lte))
+        pure (ThompsonRefStates.mk «prefix».start «prefix».end states (by and_intros <;> grind))
     else
       let ⟨(empty, states'), _⟩ ← add_empty states
 
       let (⟨(prev_end, states''), _⟩ : (StateIDStates' states states')) ←
         (List.replicate (max-min) 0).foldlM (init := ⟨(«prefix».end, states'),
-                                                       by and_intros <;> simp_lte⟩)
+                                                       by and_intros <;> grind⟩)
           (fun ⟨(prev_end, states), _⟩ _ => do
             let ⟨(compiled, states), _⟩ ← c hir states
             let ⟨(union, states), _⟩ ←
               (if greedy then add_union states else add_union_reverse states)
 
-            let states ← patch prev_end union states (by simp_lte) (by simp_lte)
-            let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
+            let states ← patch prev_end union states (by grind) (by grind)
+            let states ← patch union compiled.start states (by grind) (by grind)
 
             if possessive then
               let ⟨(union, states), _⟩ ← add_union states
@@ -582,16 +579,16 @@ private def c_bounded (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : 
               let ⟨(eat, states), _⟩ ← add_eat (Unchecked.EatMode.ToLast 0) states
                 (by simp [Unchecked.EatMode.nextOf])
 
-              let states ← patch union fail states (by simp_lte) (by simp_lte)
-              let states ← patch eat fail states (by simp_lte) (by simp_lte)
-              let states ← patch eat empty states (by simp_lte) (by simp_lte)
+              let states ← patch union fail states (by grind) (by grind)
+              let states ← patch eat fail states (by grind) (by grind)
+              let states ← patch eat empty states (by grind) (by grind)
 
-              pure ⟨(compiled.end, states), by and_intros <;> simp_lte⟩
+              pure ⟨(compiled.end, states), by and_intros <;> grind⟩
             else
-              let states ← patch union empty states (by simp_lte) (by simp_lte)
-              pure ⟨(compiled.end, states), by and_intros <;> simp_lte⟩)
-      let ⟨states'', _⟩ ← patch prev_end empty states'' (by simp_lte) (by simp_lte)
-      pure (ThompsonRefStates.mk «prefix».start empty states'' (by and_intros <;> simp_lte))
+              let states ← patch union empty states (by grind) (by grind)
+              pure ⟨(compiled.end, states), by and_intros <;> grind⟩)
+      let ⟨states'', _⟩ ← patch prev_end empty states'' (by grind) (by grind)
+      pure (ThompsonRefStates.mk «prefix».start empty states'' (by and_intros <;> grind))
   else c_empty states
 termination_by sizeOf hir + sizeOf min + sizeOf max
 
@@ -599,8 +596,8 @@ private def c_back_ref (case_insensitive : Bool) (n : Nat) (states : States)
     : CompilerM (ThompsonRefStates states) := do
   let ⟨(backrefence, states), _⟩ ← add_backrefence case_insensitive n states
   let ⟨(empty, states), _⟩ ← add_empty states
-  let states ← patch backrefence empty states (by simp_lte) (by simp_lte)
-  pure (ThompsonRefStates.mk backrefence empty states (by and_intros <;> simp_lte))
+  let states ← patch backrefence empty states (by grind) (by grind)
+  pure (ThompsonRefStates.mk backrefence empty states (by and_intros <;> grind))
 
 private def c_lookaround (look : Lookaround) (states : States)
     : CompilerM (ThompsonRefStates states) := do
@@ -612,13 +609,13 @@ private def c_lookaround (look : Lookaround) (states : States)
     let ⟨(union, states), _⟩ ← add_union states
     let ⟨(«end», states), _⟩ ← add_empty states
 
-    let states ← patch compiled.end change_state states (by simp_lte) (by simp_lte)
-    let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
-    let states ← patch change_state fail states (by simp_lte) (by simp_lte)
-    let states ← patch change_state «end» states (by simp_lte) (by simp_lte)
-    let states ← patch union fail states (by simp_lte) (by simp_lte)
+    let states ← patch compiled.end change_state states (by grind) (by grind)
+    let states ← patch union compiled.start states (by grind) (by grind)
+    let states ← patch change_state fail states (by grind) (by grind)
+    let states ← patch change_state «end» states (by grind) (by grind)
+    let states ← patch union fail states (by grind) (by grind)
 
-    pure (ThompsonRefStates.mk union «end» states (by and_intros <;> simp_lte))
+    pure (ThompsonRefStates.mk union «end» states (by and_intros <;> grind))
   | .NegativeLookahead h =>
     let ⟨(compiled, states), _⟩ ← c h states
     let ⟨(remove_state, states), _⟩ ← add_remove_state states
@@ -626,22 +623,22 @@ private def c_lookaround (look : Lookaround) (states : States)
     let ⟨(union, states), _⟩ ← add_union states
     let ⟨(«end», states), _⟩ ← add_empty states
 
-    let states ← patch compiled.end remove_state states (by simp_lte) (by simp_lte)
-    let states ← patch remove_state empty states (by simp_lte) (by simp_lte)
-    let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
-    let states ← patch empty «end» states (by simp_lte) (by simp_lte)
-    let states ← patch union empty states (by simp_lte) (by simp_lte)
+    let states ← patch compiled.end remove_state states (by grind) (by grind)
+    let states ← patch remove_state empty states (by grind) (by grind)
+    let states ← patch union compiled.start states (by grind) (by grind)
+    let states ← patch empty «end» states (by grind) (by grind)
+    let states ← patch union empty states (by grind) (by grind)
 
-    pure (ThompsonRefStates.mk union «end» states (by and_intros <;> simp_lte))
+    pure (ThompsonRefStates.mk union «end» states (by and_intros <;> grind))
   | .PositiveLookbehind length h =>
     let ⟨(next_char, states), _⟩ ← add_next_char length states
     let ⟨(compiled, states), _⟩ ← c h states
     let ⟨(«end», states), _⟩ ← add_empty states
 
-    let states ← patch next_char compiled.start states (by simp_lte) (by simp_lte)
-    let states ← patch compiled.end «end» states (by simp_lte) (by simp_lte)
+    let states ← patch next_char compiled.start states (by grind) (by grind)
+    let states ← patch compiled.end «end» states (by grind) (by grind)
 
-    pure (ThompsonRefStates.mk  next_char «end» states (by and_intros <;> simp_lte))
+    pure (ThompsonRefStates.mk  next_char «end» states (by and_intros <;> grind))
   | .NegativeLookbehind length h =>
     let ⟨(next_char, states), _⟩ ← add_next_char length states
     let ⟨(compiled, states), _⟩ ← c h states
@@ -650,14 +647,14 @@ private def c_lookaround (look : Lookaround) (states : States)
     let ⟨(union, states), _⟩ ← add_union states
     let ⟨(«end», states), _⟩ ← add_empty states
 
-    let states ← patch next_char compiled.start states (by simp_lte) (by simp_lte)
-    let states ← patch compiled.end remove_state states (by simp_lte) (by simp_lte)
-    let states ← patch remove_state empty states (by simp_lte) (by simp_lte)
-    let states ← patch union next_char states (by simp_lte) (by simp_lte)
-    let states ← patch empty «end» states (by simp_lte) (by simp_lte)
-    let states ← patch union empty states (by simp_lte) (by simp_lte)
+    let states ← patch next_char compiled.start states (by grind) (by grind)
+    let states ← patch compiled.end remove_state states (by grind) (by grind)
+    let states ← patch remove_state empty states (by grind) (by grind)
+    let states ← patch union next_char states (by grind) (by grind)
+    let states ← patch empty «end» states (by grind) (by grind)
+    let states ← patch union empty states (by grind) (by grind)
 
-    pure (ThompsonRefStates.mk union «end» states (by and_intros <;> simp_lte))
+    pure (ThompsonRefStates.mk union «end» states (by and_intros <;> grind))
 termination_by sizeOf look
 
 private def c_repetition (rep : Repetition) (_states : States)
@@ -667,22 +664,22 @@ private def c_repetition (rep : Repetition) (_states : States)
       let ⟨(union, states), _⟩ ← if greedy then add_union _states else add_union_reverse _states
       let ⟨(compiled, states), _⟩ ← c h states
       let ⟨(empty, states), _⟩ ← add_empty states
-      let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
-      let states ← patch union empty states (by simp_lte) (by simp_lte)
-      let states ← patch compiled.end empty states (by simp_lte) (by simp_lte)
-      pure (ThompsonRefStates.mk union empty states (by and_intros <;> simp_lte))
+      let states ← patch union compiled.start states (by grind) (by grind)
+      let states ← patch union empty states (by grind) (by grind)
+      let states ← patch compiled.end empty states (by grind) (by grind)
+      pure (ThompsonRefStates.mk union empty states (by and_intros <;> grind))
   | .mk 0 (some 1) _ true h => do
       let ⟨(union, states), _⟩ ← add_union _states
       let ⟨(compiled, states), _⟩ ← c h states
       let ⟨(eat, states), _⟩ ← add_eat (Unchecked.EatMode.Until 0) states
         (by simp [Unchecked.EatMode.nextOf])
       let ⟨(empty, states), _⟩ ← add_empty states
-      let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
-      let states ← patch union empty states (by simp_lte) (by simp_lte)
-      let states ← patch compiled.end eat states (by simp_lte) (by simp_lte)
-      let states ← patch eat empty states (by simp_lte) (by simp_lte)
-      let states ← patch eat empty states (by simp_lte) (by simp_lte)
-      pure (ThompsonRefStates.mk union empty states (by and_intros <;> simp_lte))
+      let states ← patch union compiled.start states (by grind) (by grind)
+      let states ← patch union empty states (by grind) (by grind)
+      let states ← patch compiled.end eat states (by grind) (by grind)
+      let states ← patch eat empty states (by grind) (by grind)
+      let states ← patch eat empty states (by grind) (by grind)
+      pure (ThompsonRefStates.mk union empty states (by and_intros <;> grind))
   | .mk min none greedy possessive sub => do
       let cannotMatchEmptyString : Bool :=
         match sub.properties.minimum_len with
@@ -692,9 +689,9 @@ private def c_repetition (rep : Repetition) (_states : States)
       then
         let ⟨(union, states), _⟩ ← if greedy then add_union _states else add_union_reverse _states
         let ⟨(compiled, states), _⟩ ← c sub  states
-        let states ← patch union compiled.start states (by simp_lte) (by simp_lte)
-        let states ← patch compiled.end union states (by simp_lte) (by simp_lte)
-        pure (ThompsonRefStates.mk union union states (by and_intros <;> simp_lte))
+        let states ← patch union compiled.start states (by grind) (by grind)
+        let states ← patch compiled.end union states (by grind) (by grind)
+        pure (ThompsonRefStates.mk union union states (by and_intros <;> grind))
       else c_at_least sub min greedy possessive _states
   | .mk min (some max) greedy possessive sub =>
       if min ≤ max then c_bounded sub min max greedy possessive _states else c_empty _states
@@ -706,9 +703,9 @@ private def c_cap (hir : Capture) (states : States) : CompilerM (ThompsonRefStat
       let ⟨(start, states), _⟩ ← c_cap' Capture.Role.Start pattern_id (pattern_id * 2) states
       let ⟨(«inner», states), _⟩ ← c sub states
       let ⟨(«end», states), _⟩ ← c_cap' Capture.Role.End pattern_id (pattern_id * 2 + 1) states
-      let states ← patch start inner.start states (by simp_lte) (by simp_lte)
-      let states ← patch inner.end «end» states (by simp_lte) (by simp_lte)
-      pure (ThompsonRefStates.mk start «end» states (by and_intros <;> simp_lte))
+      let states ← patch start inner.start states (by grind) (by grind)
+      let states ← patch inner.end «end» states (by grind) (by grind)
+      pure (ThompsonRefStates.mk start «end» states (by and_intros <;> grind))
 termination_by sizeOf hir
 
 private def c (hir : Hir) (_states : States) : CompilerM (ThompsonRefStates _states) :=
@@ -754,8 +751,8 @@ private def compile' (anchored : Bool) (expr : Hir) : CompilerM States := do
     else c_repetition (Repetition.mk 0 none false false (dot Dot.AnyChar)) states
   let ⟨(one, states), _⟩ ← c_cap (Capture.mk 0 none expr) states
   let ⟨(match_state_id, states), _⟩ ← add_match 0 states
-  let states ← patch one.end match_state_id states (by simp_lte) (by simp_lte)
-  patch unanchored_prefix.end one.start states (by simp_lte) (by simp_lte)
+  let states ← patch one.end match_state_id states (by grind) (by grind)
+  patch unanchored_prefix.end one.start states (by grind) (by grind)
 
 /-- Compile the HIR expression given. -/
 def compile (config : Config := default) (flavor : Syntax.Flavor) (expr : Hir)

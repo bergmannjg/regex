@@ -531,7 +531,7 @@ theorem capture_groups_eq_of_consecutive_slots (slots : Array (SlotEntry s))
 /-- build pairs of consecutive slots which correspond to same capture groups via `slotsValid`. -/
 private def toPairs (slots : Array (SlotEntry s)) (groups : Array Nat)
   (slotsValid : SearchState.Slots.Valid slots) : Array (Option (CharPos.Pair s)) :=
-  have : slots.size % 2 = 0 := by simp_all [slotsValid]
+  have : slots.size % 2 = 0 := by simp_all
   slots.foldl (init := #[])
     fun acc (i, v) =>
       if h : i % 2 = 0 then acc
@@ -1105,12 +1105,12 @@ private theorem step_binary_union_countVisited_eq (s1 s2 : SearchState n s)
 private theorem step_capture_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_capture role next g slot s1 = s2) : s1.countVisited = s2.countVisited := by
   unfold step_capture withMsg at h
-  repeat split at h <;> try simp [SearchState.ext_iff] at h <;> exact h.right.right.left
+  repeat split at h <;> (try simp [SearchState.ext_iff] at h; exact h.right.right.left)
 
 theorem step_match_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_match p s1 = s2) : s1.countVisited = s2.countVisited := by
   unfold step_match withMsg at h
-  split at h <;> try simp [SearchState.ext_iff] at h <;> exact h.right.right.left
+  split at h <;> (try simp [SearchState.ext_iff] at h; exact h.right.right.left)
 
 theorem toNextStep_countVisited_eq (nfa : Checked.NFA) (state : Checked.State nfa.n)
   (s1 s2 : SearchState nfa.n s) (h : toNextStep (nfa : Checked.NFA) state s1 = s2)
@@ -1337,7 +1337,7 @@ theorem toNextFrame_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
     have h2 := toNextFrameRestoreCapture_true_lt_or_eq_lt slot offset stack s h
     rw [h2.right] at h1
     omega
-  · have : false = true := by simp_all [h]
+  · have : false = true := by simp_all
     contradiction
 
 theorem searchState_lexLt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)

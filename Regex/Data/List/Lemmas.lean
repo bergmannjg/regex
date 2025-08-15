@@ -28,7 +28,7 @@ theorem maxD_of_append_lt {l : List Nat} (h : l.maxD 0 < m) (ha : a < m)
   split <;> try simp_all
   rename_i a' heq
   have := (@max?_eq_some_iff' a' (l ++ [a])).mp heq
-  have : a' ∈ l ∨ a' = a := by simp_all [List.mem_append.mp this.left]
+  have : a' ∈ l ∨ a' = a := by simp_all
   cases this
   · rename_i h'
     exact Nat.lt_of_le_of_lt (all_le_maxD 0 a' h') h
@@ -64,7 +64,7 @@ theorem maxD_of_all_map_le {α : Type} {l : List α} {f : α → Nat}
 
 theorem singleton_val_of (a : α) (arr : List α) (h1 : arr = [a]) (h2 : 0 < List.length arr)
     : List.get arr ⟨0, h2⟩ = a  := by
-  simp_all [List.get]
+  simp_all
 
 theorem singleton_val (a : α) (h : 0 < List.length [a])
     : List.get [a] ⟨0, h⟩ = a  := by
@@ -94,7 +94,7 @@ theorem eq_of_dropLast_eq_last_eq {l1 l2 : List α} (hd : List.dropLast l1 = Lis
       rw [hy1]
     else by
       rw [@List.length_dropLast α l1] at hx1
-      simp [Nat.le_of_not_gt] at hx1
+      simp at hx1
       have hn1 : n = l1.length - 1 := by
         simp_all [Nat.eq_pred_of_le_of_lt_succ hn1 (by exact Nat.pred_le_iff_le_succ.mpr hx1) h1]
       have hn2 : n = l2.length - 1 := by omega

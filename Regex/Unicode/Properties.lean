@@ -153,51 +153,51 @@ def ofName? (s : String) : Option PropertyName :=
   | none => none
 
 /-- get GeneralCategory of long property value `s` -/
-def GeneralCategory.ofLong? (s : Substring) : Option GeneralCategory :=
+def GeneralCategory.ofLong? (s : Substring) : Option GC :=
   match s with
-  | "Uppercase_Letter" => some GeneralCategory.Lu
-  | "Lowercase_Letter" => some GeneralCategory.Ll
-  | "Titlecase_Letter" => some GeneralCategory.Lt
-  | "Cased_Letter" => some GeneralCategory.LC
-  | "Modifier_Letter" => some GeneralCategory.Lm
-  | "Other_Letter" => some GeneralCategory.Lo
-  | "Letter" => some GeneralCategory.L
-  | "Nonspacing_Mark" => some GeneralCategory.Mn
-  | "Spacing_Mark" => some GeneralCategory.Mc
-  | "Enclosing_Mark" => some GeneralCategory.Me
-  | "Mark" => some GeneralCategory.M
-  | "Decimal_Number" => some GeneralCategory.Nd
-  | "Letter_Number" => some GeneralCategory.Nl
-  | "Other_Number" => some GeneralCategory.No
-  | "Number" => some GeneralCategory.N
-  | "Connector_Punctuation" => some GeneralCategory.Pc
-  | "Dash_Punctuation" => some GeneralCategory.Pd
-  | "Open_Punctuation" => some GeneralCategory.Ps
-  | "Close_Punctuation" => some GeneralCategory.Pe
-  | "Initial_Punctuation" => some GeneralCategory.Pi
-  | "Final_Punctuation" => some GeneralCategory.Pf
-  | "Other_Punctuation" => some GeneralCategory.Po
-  | "Punctuation" => some GeneralCategory.P
-  | "Math_Symbol" => some GeneralCategory.Sm
-  | "Currency_Symbol" => some GeneralCategory.Sc
-  | "Modifier_Symbol" => some GeneralCategory.Sk
-  | "Other_Symbol" => some GeneralCategory.So
-  | "Symbol" => some GeneralCategory.S
-  | "Space_Separator" => some GeneralCategory.Zs
-  | "Line_Separator" => some GeneralCategory.Zl
-  | "Paragraph_Separator" => some GeneralCategory.Zp
-  | "Separator" => some GeneralCategory.Z
-  | "Control" => some GeneralCategory.Cc
-  | "Format" => some GeneralCategory.Cf
-  | "Surrogate" => some GeneralCategory.Cs
-  | "Private_Use" => some GeneralCategory.Co
-  | "Unassigned" => some GeneralCategory.Cn
-  | "Other" => some GeneralCategory.C
+  | "Uppercase_Letter" => some GC.Lu
+  | "Lowercase_Letter" => some GC.Ll
+  | "Titlecase_Letter" => some GC.Lt
+  | "Cased_Letter" => some GC.LC
+  | "Modifier_Letter" => some GC.Lm
+  | "Other_Letter" => some GC.Lo
+  | "Letter" => some GC.L
+  | "Nonspacing_Mark" => some GC.Mn
+  | "Spacing_Mark" => some GC.Mc
+  | "Enclosing_Mark" => some GC.Me
+  | "Mark" => some GC.M
+  | "Decimal_Number" => some GC.Nd
+  | "Letter_Number" => some GC.Nl
+  | "Other_Number" => some GC.No
+  | "Number" => some GC.N
+  | "Connector_Punctuation" => some GC.Pc
+  | "Dash_Punctuation" => some GC.Pd
+  | "Open_Punctuation" => some GC.Ps
+  | "Close_Punctuation" => some GC.Pe
+  | "Initial_Punctuation" => some GC.Pi
+  | "Final_Punctuation" => some GC.Pf
+  | "Other_Punctuation" => some GC.Po
+  | "Punctuation" => some GC.P
+  | "Math_Symbol" => some GC.Sm
+  | "Currency_Symbol" => some GC.Sc
+  | "Modifier_Symbol" => some GC.Sk
+  | "Other_Symbol" => some GC.So
+  | "Symbol" => some GC.S
+  | "Space_Separator" => some GC.Zs
+  | "Line_Separator" => some GC.Zl
+  | "Paragraph_Separator" => some GC.Zp
+  | "Separator" => some GC.Z
+  | "Control" => some GC.Cc
+  | "Format" => some GC.Cf
+  | "Surrogate" => some GC.Cs
+  | "Private_Use" => some GC.Co
+  | "Unassigned" => some GC.Cn
+  | "Other" => some GC.C
   | _ => none
 
 /-- get GeneralCategory of property value `s` -/
-def GeneralCategory.ofValue? (s : Substring) : Option GeneralCategory :=
-  GeneralCategory.ofAbbrev? s <|> GeneralCategory.ofLong? s
+def GeneralCategory.ofValue? (s : Substring) : Option GC :=
+  GC.ofAbbrev? s <|> GeneralCategory.ofLong? s
 
 /-- get PropertyName of property  value -/
 def ofValue? (s : String) : Option PropertyName :=
@@ -211,15 +211,15 @@ def ofCompatibilityPropertyName? (s : String)
     : Option $ Array (PropertyName × Option String) :=
   /- alpha, lower, upper, space via palias -/
   match normalize s with
-  | "punct" => some #[(PropertyName.General_Category, GeneralCategory.P.toAbbrev)]
-  | "digit" => some #[(PropertyName.General_Category, GeneralCategory.Nd.toAbbrev)]
+  | "punct" => some #[(PropertyName.General_Category, GC.P.toAbbrev!)]
+  | "digit" => some #[(PropertyName.General_Category, GC.Nd.toAbbrev!)]
   | "xdigit" => some #[(PropertyName.Hex_Digit, none)]
-  | "cntrl" => some #[(PropertyName.General_Category, GeneralCategory.Cc.toAbbrev)]
+  | "cntrl" => some #[(PropertyName.General_Category, GC.Cc.toAbbrev!)]
   | "word" => -- \p{alpha} \p{gc=Mark} \p{digit} \p{gc=Connector_Punctuation} \p{Join_Control}
       some #[
         (PropertyName.Alphabetic, none),
-        (PropertyName.General_Category, GeneralCategory.M.toAbbrev),
-        (PropertyName.General_Category, GeneralCategory.Nd.toAbbrev),
-        (PropertyName.General_Category, GeneralCategory.Pc.toAbbrev)
+        (PropertyName.General_Category, GC.M.toAbbrev!),
+        (PropertyName.General_Category, GC.Nd.toAbbrev!),
+        (PropertyName.General_Category, GC.Pc.toAbbrev!)
       ]
   | _ => none

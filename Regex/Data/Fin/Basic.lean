@@ -7,8 +7,7 @@ theorem ofNat_eq (n : Nat) (h : n < UInt32.size)
   have hu : UInt32.size = 4294967295 + 1 := by simp +arith
   rw [hu] at h
   unfold Fin.ofNat
-  simp [Fin.val_mk h]
-  simp_all [Nat.mod_eq_of_lt h]
+  simp_all
 
 theorem ofNat_val_eq (n : Nat) (h : n < UInt32.size)
     : (Fin.ofNat  UInt32.size n).val = n := by
@@ -19,7 +18,6 @@ theorem _ofNat_add (n m : Nat) (h : n + m < UInt32.size)
   have hu : UInt32.size = 4294967295 + 1 := by simp +arith
   rw [hu] at h
   unfold Fin.ofNat
-  simp [Fin.val_mk h]
   simp_all [Nat.mod_eq_of_lt h]
 
 theorem toNat_ofNat_eq (n : Fin UInt32.size) : (Fin.ofNat UInt32.size (n.val)) = n := by

@@ -153,17 +153,17 @@ theorem nonOverlapping_of_push (acc : Acc) (next : NonemptyInterval Char)
     · rw [h] at heq
       rename_i head' tail' _ head tail
       have hh : head = head' := List.head_eq_of_cons_eq heq
-      have ht : tail ++ [last] ++ [next] = tail' := by simp_all [List.tail_eq_of_cons_eq heq]
+      have ht : tail ++ [last] ++ [next] = tail' := by simp_all
       have hn : List.Chain Interval.nonOverlapping head (tail ++ [last]) := by
         unfold Intervals.dataIsNonOverlapping at hn
-        simp_all [hn]
+        simp_all
       have hy : List.Chain Interval.nonOverlapping head (tail ++ [last]  ++ [next]) := by
-        simp [List.append_assoc, List.singleton_append, List.chain_append_cons_cons,
+        simp [List.append_assoc, List.chain_append_cons_cons,
               List.Chain.nil, and_true]
-        simp_all [h2]
+        simp_all
       rw [←hh, ←ht]
-      simp_all [hy]
-  simp_all [h5]
+      simp_all
+  simp_all
 
 theorem List.eq_head_of_get_first (arr : List α) (h1 : 0 < arr.length)
   (h2 : arr = head :: tail) : head = arr.get ⟨0, h1⟩ := by
@@ -183,11 +183,11 @@ theorem nonOverlapping_of_nth (ranges : Array $ NonemptyInterval Char) (n : Nat)
     Interval.nonOverlapping (tail.get ⟨i, by omega⟩) (tail.get ⟨i+1, Nat.add_lt_of_lt_sub h⟩))
     : Interval.nonOverlapping (ranges[n]'(Nat.lt_of_succ_lt h2)) (ranges[(n+1)]'h2) := by
   have hlt : n < Array.size ranges := Nat.lt_of_succ_lt h2
-  have hf : n+1 < ranges.toList.length := by unfold Array.size at h2; simp_all [h2]
+  have hf : n+1 < ranges.toList.length := by unfold Array.size at h2; simp_all
   have hne : ¬n = 0 := (Nat.ne_of_lt h1).symm
   have hps : n-1+1 = n := Nat.succ_pred (by simp_all)
   have ht0 : n < tail.length := by
-    have h : n < ranges.toList.length-1 := Nat.pred_lt_pred (by simp [Nat.lt_of_le_of_ne]) hf
+    have h : n < ranges.toList.length-1 := Nat.pred_lt_pred (by simp) hf
     have h : n < tail.length := Nat.lt_of_lt_of_eq h (by simp_all)
     simp [h]
   have ht1 : n-1 < tail.length-1 := Nat.pred_lt_pred (by simp_all) ht0

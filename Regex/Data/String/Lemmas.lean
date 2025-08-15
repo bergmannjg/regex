@@ -23,6 +23,6 @@ theorem Pos.sub_lt_sub_left {k m n : String.Pos} (h1 : k < m) (h2 : k < n)
 
 theorem Pos.sizeof_lt_of_lt {a b : String.Pos} (h : a < b) : sizeOf a < sizeOf b := by
   have sizeOf_string_pos {s : String.Pos} : sizeOf (s) = 1 + sizeOf s.byteIdx := rfl
-  simp [String.Pos.lt_def.mp] at h
+  simp at h
   rw [sizeOf_string_pos, sizeOf_string_pos, sizeOf_nat, sizeOf_nat]
   omega

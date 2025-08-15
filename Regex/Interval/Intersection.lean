@@ -87,7 +87,7 @@ def canonicalize (ranges : Array (NonemptyInterval Char)) : IntervalSet Char :=
       else -- [a-eg-h] => [a-eg-h]
         have : Interval.nonOverlapping l r := Intervals.isNonOverlapping l r h1 h2 h3
         Acc.with_next_set acc l r this hm
-    | none => Acc.with_none acc r (by unfold Option.isNone; simp_all [hm]))
+    | none => Acc.with_none acc r (by unfold Option.isNone; simp_all))
 
   let intervalSet :=
     match hm : acc.next with

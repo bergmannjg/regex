@@ -319,8 +319,8 @@ private def unfoldUnion (union : ClassSetUnion) : Sum ClassSetItem ClassSetBinar
 
 private def toNode? (t : Syntax)
     : Option { x : SourceInfo × SyntaxNodeKind × Array Syntax // sizeOf x.2.2 < sizeOf t } :=
-  match h : t with
-  | .node si kind args => some ⟨(si, kind, args), by simp [h]; omega⟩
+  match t with
+  | .node si kind args => some ⟨(si, kind, args), by simp; omega⟩
   | _ => none
 
 private def parseSimpleClassSetItem (p : String) (x : Syntax) (kind : SyntaxNodeKind)

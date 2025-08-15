@@ -117,7 +117,7 @@ private def range_of_category (category : String) : Except String $ Array ClassU
   let pairs ← Unicode.rangesOfProperty category
   Except.ok pairs
 
-private def range_of_general_category (category : Unicode.GeneralCategory)
+private def range_of_general_category (category : Unicode.GC)
     : Except String $ Array ClassUnicodeRange := do
   let pairs ← Unicode.rangesOfGeneralCategory category
   Except.ok pairs
@@ -149,7 +149,7 @@ private def hir_perl_unicode_class (cls : AstItems.ClassPerl) (flags : Flags)
     : Except String ClassUnicode := do
   match cls.kind with
   | .Digit =>
-    let range : Array ClassUnicodeRange ← range_of_general_category Unicode.GeneralCategory.Nd
+    let range : Array ClassUnicodeRange ← range_of_general_category Unicode.GC.Nd
     Except.ok (unicode_fold_and_negate range flags cls.negated)
   | .Space =>
     let range : Array ClassUnicodeRange ← range_of_property "White_Space"

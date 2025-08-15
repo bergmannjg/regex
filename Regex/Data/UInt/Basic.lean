@@ -26,10 +26,10 @@ theorem lt_toNat_lt {a b : UInt32} (h : a < b) : a.toNat < b.toNat := by
 theorem toNat_toUInt_eq (u : UInt32) : u.toNat.toUInt32 = u := by
   unfold UInt32.toNat Nat.toUInt32 UInt32.ofNat BitVec.ofNat
   have h : (Fin.ofNat UInt32.size (u.toFin)) = u.toFin := Fin.toNat_ofNat_eq u.toFin
-  simp_all [h]
+  simp_all
 
 theorem ofNat_eq (n : Nat) (h : n < UInt32.size) : (UInt32.ofNat n).toFin = ⟨n, h⟩ := by
-  simp_all [UInt32.ofNat, BitVec.ofNat_eq_ofNat, Fin.instOfNat]
+  simp_all [UInt32.ofNat, Fin.instOfNat]
   rw [← Fin.ofNat_eq n h]
 
 @[simp] theorem toBitVecToNat_eq_val {u : UInt32} : u.toBitVec.toNat = u.toFin.val := rfl
@@ -60,7 +60,7 @@ theorem toNat_add_toNat (n m : UInt32) (hnm : n.toFin + m.toFin < UInt32.size)
   rw [← UInt32.add_def']
   unfold UInt32.add
   unfold UInt32.toNat
-  simp only [Fin.add_def]
+  simp only
   have h : (n.toBitVec.toNat + m.toBitVec.toNat) % UInt32.size
          = n.toBitVec.toNat + m.toBitVec.toNat := Nat.mod_eq_of_lt hnm
   rw [← h]
@@ -73,13 +73,13 @@ theorem toNat_sub_toNat {n m : UInt32} (hmn : m.toFin ≤ n.toFin) (h2 : n.toFin
   rw [← UInt32.sub_def']
   unfold UInt32.sub
   unfold UInt32.toNat
-  simp [Fin.sub_def]
+  simp
   have h : (n.toBitVec.toNat + (UInt32.size - m.toBitVec.toNat)) % UInt32.size
             = n.toBitVec.toNat - m.toBitVec.toNat := Nat.mod_sub_eq_of_lt hmn h1 (Nat.le_of_lt h2)
-  simp_all [h]
+  simp_all
   have : n.toBitVec.toNat + (UInt32.size - m.toBitVec.toNat)
        = (UInt32.size - m.toBitVec.toNat) +  n.toBitVec.toNat := by simp +arith
-  simp_all [h]
+  simp_all
 
 theorem toUInt32_add_toUInt32 (n m : Nat) (hnm : n + m < UInt32.size)
     : n.toUInt32 + m.toUInt32 = (n + m).toUInt32 := by
@@ -98,9 +98,9 @@ theorem isValidChar_lt_0x110000 (u : UInt32) (h : UInt32.isValidChar u)
   cases h
   · rename_i h
     have hy : u.toFin.val < 0x110000 := Nat.lt_trans h (by simp +arith)
-    simp_all [hy]
+    simp_all
   · rename_i h
-    simp_all [ h.right]
+    simp_all
 
 theorem isValidChar_lt_uintSize (u : UInt32) : u.toFin.val < UInt32.size := by
   exact u.toFin.isLt
@@ -126,7 +126,7 @@ theorem lt_succ_le {c1 c2 : UInt32} (h : c1 < c2) (hsucc : c1.toFin + 1 < UInt32
 theorem toNatUnfold (c1 c2 : UInt32) (heq : c2.toNat - c1.toNat = (c2 - c1).toNat)
     : c2.toFin.val - c1.toFin.val = (c2 - c1).toFin.val := by
   unfold UInt32.toNat BitVec.toNat at heq
-  simp_all [heq]
+  simp_all
 
 theorem lt_pred_le {c1 c2 : UInt32} (h : c1 < c2) (h2 : c2.toFin < UInt32.size)
     : c1 ≤ c2 - 1  := by
