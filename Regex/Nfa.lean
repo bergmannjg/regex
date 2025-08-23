@@ -214,7 +214,8 @@ def toString : State -> String
       s!"State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
   | .Match pattern_id => s!"State.Match ({pattern_id})"
 
-def nextOf (s : State) : Nat :=
+/-- next StateID of State `s` -/
+def nextOf (s : State) : StateID :=
   match s with
   | .Empty next => next
   | .NextChar _ next => next
