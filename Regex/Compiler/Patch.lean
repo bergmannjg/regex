@@ -128,30 +128,31 @@ set_option mvcgen.warning false
 
 @[spec] theorem patch_spec («from»: Unchecked.StateID) {«to» : Unchecked.StateID}
   {states : Array Unchecked.State}
-    : ⦃fun s => s = states ∧ nextOfLt states ∧ «from» < states.size ∧ «to» < states.size⦄
+    : ⦃fun s => ⌜s = states ∧ nextOfLt states ∧ «from» < states.size ∧ «to» < states.size⌝⦄
       Code.patch «from» «to»
-      ⦃post⟨fun _ r => states.size = r.size ∧ «to» < r.size ∧ nextOfLt r, fun _ => ⌜True⌝ ⟩⦄ := by
+      ⦃post⟨fun _ r => ⌜states.size = r.size ∧ «to» < r.size ∧ nextOfLt r⌝, fun _ => ⌜True⌝ ⟩⦄ := by
   mintro _
   unfold Code.patch
   mvcgen
   all_goals simp_all
   all_goals try intro _ _; expose_names
-  all_goals try (apply all_set_next_of_lt «from» _ states h_1.right.right.left ?_ (h.right.left)); try assumption
-  all_goals try simp_all [Unchecked.State.nextOf, h_1.right.right.right, Nat.max_lt]
+  all_goals try (apply all_set_next_of_lt «from» _ states h_2.right.right.left ?_ (h.right.left)); try assumption
+  all_goals try simp_all [Unchecked.State.nextOf, h_2.right.right.right, Nat.max_lt]
   all_goals try simp [wp]
+  all_goals try simp [nextOfLt] at h
   expose_names
   · simp [eat_lt «from» s_1 n (Unchecked.EatMode.Until s_1)
-      states h_1.right.right.left (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
   · simp [eat_lt «from» s_1 n (Unchecked.EatMode.Until s_1)
-      states h_1.right.right.left (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
   · simp [eat_lt «from» s_1 n (Unchecked.EatMode.ToLast 0)
-      states h_1.right.right.left (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
   · simp [eat_lt «from» s_1 n (Unchecked.EatMode.ToLast s_1)
-      states h_1.right.right.left (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
-  · simp [change_frame_step_lt «from» f t states h_1.right.right.left (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
-  · simp [change_frame_step_lt «from» f t states h_1.right.right.left (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
-  · simp [binary_union_lt «from» alt1 alt2 states h_1.right.right.left (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
-  · simp [binary_union_lt «from» alt1 alt2 states h_1.right.right.left (by simp_all) (h_1.right.left «from» h_1.right.right.left)]
-  · simp [union_lt «from» «to» alternates states (by simp_all) h_1.right.right.right heq (h_1.right.left «from» h_1.right.right.left)]
-  · simp [union_reverse_lt «from» «to» alternates states (by simp_all) h_1.right.right.right heq (h_1.right.left «from» h_1.right.right.left)]
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
+  · simp [change_frame_step_lt «from» f t states (by grind) (by simp_all) (by grind)]
+  · simp [change_frame_step_lt «from» f t states (by grind) (by simp_all) (by grind)]
+  · simp [binary_union_lt «from» alt1 alt2 states (by grind) (by simp_all) (by grind)]
+  · simp [binary_union_lt «from» alt1 alt2 states (by grind) (by simp_all) (by grind)]
+  · simp [union_lt «from» «to» alternates states (by simp_all) (by grind) (by grind) (by grind)]
+  · simp [union_reverse_lt «from» «to» alternates states (by simp_all) (by grind) (by grind) (by grind)]
 end Lemmas

@@ -1408,8 +1408,7 @@ private def slotsWithUnanchoredPrefix (s : Regex.ValidSubstring)
     (init ++ msgs, slots)
   else
     let (msgs, slots) := toSlots s «at» nfa logEnabled
-    match (msgs, slots) with
-    | (msgs, #[]) =>
+    if slots.size = 0 then
       let nextPos := ⟨s.val.str.next «at», by
         apply String.valid_next «at».property
         have := String.Pos.Valid.le_endPos s.property.stopValid
@@ -1419,7 +1418,7 @@ private def slotsWithUnanchoredPrefix (s : Regex.ValidSubstring)
         have := String.lt_next s.val.str «at»
         omega
       slotsWithUnanchoredPrefix s nextPos nfa logEnabled (init ++ msgs)
-    | _ => (init ++ msgs, slots)
+    else (init ++ msgs, slots)
 termination_by s.val.stopPos.byteIdx - «at».val.byteIdx
 
 private def toMatches (s : Regex.ValidSubstring) (slots : Array (Option (CharPos.Pair s)))

@@ -4,10 +4,10 @@ namespace String
 
 theorem valid_prev {p : Pos} (h : p.Valid s) : (prev s p).Valid s := by
   match s, p, h with
-  | ⟨_⟩, ⟨_⟩, ⟨[], cs, rfl, rfl⟩ => simp [prev]
+  | ⟨_⟩, ⟨_⟩, ⟨[], cs, rfl, rfl⟩ => simp_all
   | ⟨_⟩, ⟨_⟩, ⟨cs, cs', rfl, rfl⟩ =>
     match cs, cs.eq_nil_or_concat with
-    | _, .inl rfl => simp [prev]
+    | _, .inl rfl => simp_all
     | _, .inr ⟨cs'', c, rfl⟩ =>
       simp [String.Pos.Valid]
       have := prev_of_valid cs'' c cs'

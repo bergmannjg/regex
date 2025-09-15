@@ -33,7 +33,8 @@ instance : MonadLiftT (EStateM ε σ₁) (EStateM ε (σ₁ × σ₂)) where
     | EStateM.Result.error e s' => EStateM.Result.error e (s', s.2)
 
 /--
-  the state consists of a pair of arrays of capture groups and of Unchecked.State's
+  The state consists of a pair of arrays of states and of capture groups
+  with property `get_possible_empty_capture_group`.
 -/
 abbrev CompilerM α := EStateM String (Array Unchecked.State × Array Nat) α
 
@@ -116,8 +117,8 @@ def c_look (look : Syntax.Look) : StackM ThompsonRef :=
   | .PreviousMatch => push' (Unchecked.State.Look NFA.Look.PreviousMatch 0)
   | .ClearMatches => push' (Unchecked.State.Look NFA.Look.ClearMatches 0)
 
-def c_cap' (role : Capture.Role) (pattern_id slot: Nat) : StackM Unchecked.StateID :=
-  push (Unchecked.State.Capture role 0 0 pattern_id slot)
+def c_cap' (role : Capture.Role) (group slot: Nat) : StackM Unchecked.StateID :=
+  push (Unchecked.State.Capture role 0 0 group slot)
 
 /-- embed `start` to `end` in a possessive union,
     i.e. remove backtracking frames from stack if `end` state is reached
@@ -543,10 +544,10 @@ termination_by sizeOf rep
 
 def c_cap (hir : Capture) : CompilerM ThompsonRef := do
   match hir with
-    | .mk pattern_id _ sub =>
-      let start ← c_cap' Capture.Role.Start pattern_id (pattern_id * 2)
+    | .mk group _ sub =>
+      let start ← c_cap' Capture.Role.Start group (group * 2)
       let «inner» ← c sub
-      let «end» ← c_cap' Capture.Role.End pattern_id (pattern_id * 2 + 1)
+      let «end» ← c_cap' Capture.Role.End group (group * 2 + 1)
       Code.patch start inner.start
       Code.patch inner.end «end»
       pure (ThompsonRef.mk start «end»)

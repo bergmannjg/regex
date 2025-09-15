@@ -178,11 +178,22 @@ inductive State where
        offset that is being recorded. Each capturing group has two slots
        corresponding to the start and end of the matching portion of that
        group. -/
-  | Capture (role : Capture.Role) (next: StateID) (pattern_id: PatternID) (group_index: Nat) (slot: Nat) : State
+  | Capture (role : Capture.Role) (next: StateID) (pattern_id: PatternID) (group : Nat) (slot: Nat) : State
   /-- A match state. There is at least one such occurrence of this state for
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State
-deriving BEq
+
+private def beq' :  State → State → Bool
+  | .Empty n1 , .Empty n2  => n1 = n2
+  | .ByteRange trans1 , .ByteRange trans2  =>
+      trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
+  | .SparseTransitions trans1 , .SparseTransitions trans2 => trans1.size = trans2.size
+  | .Capture r1 n1 _ g1 s1,  .Capture r2 n2 _ g2 s2 => r1 == r2 && n1 = n2 && g1 = g2 && s1 = s2
+  | .Match p1,  .Match p2 => p1 = p2
+  | _, _ => false
+
+instance : BEq State where
+  beq := beq'
 
 namespace State
 
@@ -346,7 +357,7 @@ inductive State (n : Nat) where
        offset that is being recorded. Each capturing group has two slots
        corresponding to the start and end of the matching portion of that
        group. -/
-  | Capture (role: Capture.Role) (next: Fin n) (pattern_id: PatternID) (group_index: Nat) (slot: Nat) : State n
+  | Capture (role: Capture.Role) (next: Fin n) (pattern_id: PatternID) (group : Nat) (slot: Nat) : State n
   /-- A match state. There is at least one such occurrence of this state for
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State n
@@ -355,8 +366,8 @@ private def beq' :  State n → State n → Bool
   | .Empty ⟨n1, _⟩ , .Empty ⟨n2, _⟩  => n1 = n2
   | .ByteRange trans1 , .ByteRange trans2  =>
       trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
-  | .SparseTransitions trans1 , .SparseTransitions trans2  => trans1.size = trans2.size
-  | .Capture r1 ⟨n1, _⟩ p1 _ _,  .Capture r2 ⟨n2, _⟩ p2 _ _  => r1 == r2 && n1 = n2 && p1 = p2
+  | .SparseTransitions trans1 , .SparseTransitions trans2 => trans1.size = trans2.size
+  | .Capture r1 ⟨n1, _⟩ _ g1 s1,  .Capture r2 ⟨n2, _⟩ _ g2 s2 => r1 == r2 && n1 = n2 && g1 = g2 && s1 = s2
   | .Match p1,  .Match p2 => p1 = p2
   | _, _ => false
 
@@ -499,7 +510,6 @@ private def slotsOfCaptures (states : Array (Checked.State n)) : Array (Nat × N
     match s with | .Capture _ _ _ g s => some (s, g) | _ => none)
 
   Array.qsort captures (fun (s1, g1) (s2, g2) => Prod.lexLt (g1, s1) (g2, s2))
-  |> Array.unique
 
 /-- transform Unchecked.NFA to Checked.NFA -/
 def toCkecked (nfa : Unchecked.NFA) (groups : Array Nat)

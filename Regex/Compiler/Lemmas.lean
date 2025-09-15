@@ -194,7 +194,7 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   exact ↑(add_union_spec states)
 
-theorem add_union_lift'_spec (states : Array Unchecked.State)
+@[spec] theorem add_union_lift'_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
       (Code.add_union : Code.CompilerM Unchecked.StateID)
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
@@ -232,6 +232,7 @@ theorem add_union_lift'_spec (states : Array Unchecked.State)
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s⌝⟩⦄ := by
   mvcgen [Code.c_range]
   and_intros <;> simp_all [Unchecked.State.nextOf]
+  grind
 
 @[spec] theorem add_empty_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -281,7 +282,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.add_eat mode
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝⟩⦄ := by
   mvcgen [Code.add_eat]
-  simp_all [eat_next_of_le states h.right.right]
+  simp_all [@eat_next_of_le mode states (by simp_all)]
 
 @[spec] theorem add_change_state_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -353,8 +354,6 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.c_unicode_class cls
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s⌝⟩⦄ := by
   mvcgen [Code.c_unicode_class]
-  intro _
-  and_intros ; · rfl
   all_goals simp_all <;> grind
 
 @[spec] theorem c_unicode_class_lift_spec (cls : ClassUnicode) (states : Array Unchecked.State)
@@ -393,7 +392,6 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.c_possessive tref
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_possessive]
-  intro _
   all_goals inst_mvar
     <;> (try simp [Unchecked.EatMode.nextOf])
     <;> (try simp_all) <;> grind
@@ -420,17 +418,19 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
   have := Triple.bind _ _ (c_possessive_lift_spec tref states) (tref_le_of_lt_spec states)
   rwa [lift_CompilerM_bind_pure (Code.c_possessive tref)] at this
 
-@[spec] theorem c_cap'_spec (role : Capture.Role) (pattern_id slot: Nat) (states : Array Unchecked.State)
+@[spec] theorem c_cap'_spec (role : Capture.Role) (group slot: Nat)
+  (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
-      Code.c_cap' role pattern_id slot
+      Code.c_cap' role group slot
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝⟩⦄ := by
   mvcgen [Code.c_cap'] <;> simp_all [Unchecked.State.nextOf]
 
-@[spec] theorem c_cap'_lift_spec (role : Capture.Role) (pattern_id slot: Nat) (states : Array Unchecked.State)
+@[spec] theorem c_cap'_lift_spec (role : Capture.Role) (group slot: Nat)
+  (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
-      (Code.c_cap' role pattern_id slot : Code.CompilerM Unchecked.StateID)
+      (Code.c_cap' role group slot : Code.CompilerM Unchecked.StateID)
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (c_cap'_spec role pattern_id slot states)
+  exact coe_spec_StackM_to_CompilerM (c_cap'_spec role group slot states)
 
 @[spec] theorem c_back_ref_spec (case_insensitive : Bool) (n : Nat)  (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -547,7 +547,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_0_pre compiled greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_0_pre]
-  all_goals inst_mvar <;> try simp_all <;> grind
+  all_goals (try simp_all) <;> grind
 
 @[spec] theorem c_at_least_0_pre_lift_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
@@ -642,7 +642,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_bounded.fold.patch.pre compiled prev_end greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch.pre]
-  all_goals inst_mvar <;> try simp_all <;> grind
+  all_goals (try simp_all) <;> grind
 
 @[spec] theorem c_bounded.fold.patch.possessive_spec (compiled: ThompsonRef) (empty : Unchecked.StateID)
   (states : Array Unchecked.State)
@@ -685,17 +685,9 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                       ∧ tRefLt second states ∧ nextOfLt states⌝⦄
       Code.c_alt_iter_step first second
       ⦃post⟨fun r s => ⌜tRefNextOfLt states ⟨r.1, r.2⟩ s⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mintro _
-  unfold Code.c_alt_iter_step
-  mspec add_union_lift_spec
-  inst_mvar
-  mspec add_empty_lift_spec
-  inst_mvar
-  mvcgen
+  mvcgen [Code.c_alt_iter_step]
   all_goals try (inst_mvar; grind; grind)
-  simp
-  intro _ _ _
-  and_intros <;> grind
+  all_goals (try simp_all) <;> grind
 
 @[spec] theorem c_alt_iter_step_lift_spec (first second: ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ tRefLt first states ∧ tRefLt second states ∧ nextOfLt states⌝⦄
@@ -708,8 +700,6 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_rep_pre greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_rep_pre]
-  all_goals inst_mvar
-    <;> try simp_all <;> grind
 
 @[spec] theorem c_rep_pre_lift_spec (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
@@ -717,7 +707,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   exact coe_spec_PatchM_to_CompilerM (c_rep_pre_spec greedy states)
 
-set_option maxHeartbeats 2000000
+set_option maxHeartbeats 1000000
 
 mutual
 
@@ -726,101 +716,119 @@ mutual
     : ⦃fun s => ⌜s.1 = states ∧ sid < states.size ∧ nextOfLt states⌝⦄
       Code.c_concat.fold tail sid
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_concat.fold]
-  case inv => exact (fun (r, xs) s => ⌜states.size ≤ s.1.size ∧ sid < s.1.size ∧ r < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+  mintro _
+  unfold Code.c_concat.fold
+  mspec Spec.foldlM_array
+  case inv =>
+    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ sid < s.1.size ∧ r < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
   case step =>
-    have := Array.sizeOf_lt_of_mem x.property
-    mvcgen [c_spec]
-    all_goals inst_mvar <;> grind
-  case pre1 =>
-    intro _ _
-    simp_all
-  case post.success =>
-    intro _
-    and_intros <;> simp_all
-  case post.except => simp_all
+    intros
+    expose_names
+    have := Array.sizeOf_lt_of_mem cur.property
+    mintro _
+    mspec c_spec
+    inst_mvar
+    mspec patch_lift_spec
+    inst_mvar
+    all_goals (try simp_all) <;> grind
+  all_goals simp_all
 termination_by sizeOf tail
 
 @[spec] theorem c_concat_spec (hirs : Array Hir) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
       Code.c_concat hirs
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_concat]
-  · expose_names
-    have : sizeOf head < sizeOf hirs := Array.sizeOf_head?_of_mem heq
-    have : sizeOf tail < sizeOf hirs := Array.sizeOf_head?_of_tail heq
-    mspec c_spec
-    mspec c_concat_fold_spec
-    all_goals inst_mvar <;> intro _ _ <;> simp_all <;> grind
+  mintro _
+  unfold Code.c_concat
+  split
+  expose_names
+  have := Array.sizeOf_head?_of_mem heq
+  have := Array.sizeOf_head?_of_tail heq
+  mspec c_spec
+  mspec c_concat_fold_spec
+  all_goals inst_mvar <;> (try intros) <;> (try simp_all) <;> (try grind)
+  mvcgen
 termination_by sizeOf hirs
 
 @[spec] theorem c_alt_iter_fold_spec (hirs : Array Hir) (union «end» : Unchecked.StateID) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ «end» < states.size ∧ nextOfLt states⌝⦄
       Code.c_alt_iter.fold hirs union «end»
       ⦃post⟨fun _ s => ⌜statesNextOfLeLt states s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_alt_iter.fold]
-  case inv => exact (fun (_, xs) s => ⌜states.size ≤ s.1.size ∧ union < s.1.size ∧ «end» < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+  mintro _
+  unfold Code.c_alt_iter.fold
+  mspec Spec.foldlM_array
+  case inv =>
+    exact (fun (_, xs) s => ⌜states.size ≤ s.1.size ∧ union < s.1.size ∧ «end» < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
   case step =>
-    have := Array.sizeOf_lt_of_mem x.property
-    mvcgen [c_spec]
-    all_goals inst_mvar <;> grind
-  case pre1 =>
-    intro _
+    intros
+    expose_names
+    have := Array.sizeOf_lt_of_mem cur.property
+    mintro _
+    mspec c_spec
+    inst_mvar
+    mspec patch_lift_spec
+    inst_mvar; grind; grind
+    mspec patch_lift_spec
+    inst_mvar; grind; grind
     simp_all
-  case post.success =>
-    intro _
-    and_intros <;> simp_all
-  case post.except => simp_all
+    grind
+  case pre =>
+    simp_all
+  case post =>
+    simp_all
 termination_by sizeOf hirs
 
 @[spec] theorem c_alt_iter_spec (hirs : Array Hir) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
       Code.c_alt_iter hirs
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_alt_iter]
-  expose_names
-  have : sizeOf head < sizeOf hirs := Array.sizeOf_head?_of_mem heq
-  have : sizeOf tail < sizeOf hirs := Array.sizeOf_head?_of_tail heq
-  mspec c_spec
-  have : sizeOf head_1 < sizeOf tail := Array.sizeOf_head?_of_mem heq_1
-  have : sizeOf tail_1 < sizeOf tail := Array.sizeOf_head?_of_tail heq_1
-  mspec c_spec
-  inst_mvar
-  mspec c_alt_iter_step_lift_spec
-  inst_mvar
-  all_goals try simp_all
-  · grind
-  · grind
-  · mspec c_alt_iter_fold_spec
-    inst_mvar
-    all_goals (try intro _ _) <;> simp_all <;> grind
-  all_goals intro _ _ <;> simp_all [wp]
+  mintro _
+  unfold Code.c_alt_iter
+  split
+  case h_1 =>
+    expose_names
+    have := Array.sizeOf_head?_of_mem heq
+    have := Array.sizeOf_head?_of_tail heq
+    split
+    case h_1 =>
+      expose_names
+      mspec c_spec
+      have := Array.sizeOf_head?_of_mem heq_1
+      have := Array.sizeOf_head?_of_tail heq_1
+      mspec c_spec
+      inst_mvar
+      mspec c_alt_iter_step_lift_spec
+      inst_mvar
+      case post.success.post.success.post.success =>
+        mspec c_alt_iter_fold_spec
+        inst_mvar
+        all_goals (try simp_all) <;> grind
+      all_goals (try simp_all) <;> grind
+    case h_2 =>
+      simp_all [wp]
+  case h_2 =>
+    simp_all [wp]
 termination_by sizeOf hirs
 
 @[spec] theorem c_exactly_fold_spec (hir : Hir) (n : Nat) («end» : Unchecked.StateID) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ «end» < states.size ∧  nextOfLt states⌝⦄
       Code.c_exactly.fold hir n «end»
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_exactly.fold]
-  case inv => exact (fun (r, xs) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ «end» < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+  mintro _
+  unfold Code.c_exactly.fold
+  split
+  mspec Spec.foldlM_list
+  case inv =>
+    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ «end» < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
   case step =>
+    intros
+    mintro _
     mspec c_spec
     inst_mvar
     mspec patch_lift_spec
     inst_mvar
-    · grind
-    · simp_all
-    · simp_all
-      intro _ _
-      and_intros <;> simp_all <;> grind
-  case pre1 =>
-    intro _
-    simp_all
-  case post.success =>
-    intro _
-    and_intros <;> simp_all
-  case post.except => simp_all
-  case ifFalse => simp_all
+    all_goals simp_all <;> grind
+  all_goals simp_all
 termination_by sizeOf hir + sizeOf n
 
 @[spec] theorem c_exactly_spec (hir : Hir) (n : Nat) (states : Array Unchecked.State)
@@ -833,37 +841,45 @@ termination_by sizeOf hir + sizeOf n
   · mspec c_spec
     mspec c_exactly_fold_spec
     inst_mvar
-    intro _ _
-    simp_all
-    intro _ _
-    and_intros <;> simp_all <;> grind
-  · mspec c_empty_lift_spec
+    · intros
+      simp_all
+    · mspec
+      simp_all
+      grind
+  · mspec
 termination_by sizeOf hir + sizeOf n
 
 @[spec] theorem c_at_least_spec (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
       Code.c_at_least hir n greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_at_least]
-  · mspec c_spec
+  mintro _
+  unfold Code.c_at_least
+  split
+  case isTrue =>
+    mspec c_spec
     mspec c_at_least_0_spec
     inst_mvar
-    all_goals try simp_all
-    mspec c_at_least_0_post_lift_spec
-    inst_mvar
-    all_goals (try simp_all) <;> (try intro _ _) <;> grind
-  · mspec c_spec
+    case post.success.post.success =>
+      mspec c_at_least_0_post_lift_spec
+      inst_mvar
+      all_goals (try simp_all) <;> grind
+    all_goals simp_all
+  case isFalse =>
+    split
+    mspec c_spec
     mspec c_at_least_1_spec
     inst_mvar
     mspec c_at_least_1_post_lift_spec
     inst_mvar
-    all_goals (try simp_all) <;> (try intro _ _) <;> grind
-  · mspec c_exactly_spec
-    mspec c_spec
-    inst_mvar
-    mspec c_at_least_2_lift_spec
-    inst_mvar
-    all_goals (try simp_all) <;> (try intro _ _) <;> grind
+    case isFalse =>
+      mspec c_exactly_spec
+      mspec c_spec
+      inst_mvar
+      mspec c_at_least_2_lift_spec
+      inst_mvar
+      all_goals (try simp_all) <;> grind
+    all_goals (try simp_all) <;> grind
 termination_by sizeOf hir + sizeOf n + 1
 
 @[spec] theorem c_bounded_fold_spec  (hir : Hir) (n : Nat) («prefix» : ThompsonRef) (empty : Unchecked.StateID)
@@ -871,48 +887,61 @@ termination_by sizeOf hir + sizeOf n + 1
     : ⦃fun s => ⌜s.1 = states ∧ tRefLt «prefix» states ∧ empty < states.size ∧ nextOfLt states⌝⦄
       Code.c_bounded.fold hir n «prefix» empty greedy possessive
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_bounded.fold]
-  case inv => exact (fun (r, xs) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ empty < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+  mintro _
+  unfold Code.c_bounded.fold
+  split
+  mspec Spec.foldlM_list
+  case inv =>
+    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ empty < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
   case step =>
+    intros
+    mintro _
     mspec c_spec
     inst_mvar
     mspec c_bounded.fold.patch_lift_spec
     inst_mvar
     all_goals try grind
     all_goals intro _ _ <;> simp_all <;> grind
-  case pre1 =>
+  case pre =>
     intro _
     simp_all
-  case post.success =>
+  case isTrue =>
     intro _
     and_intros <;> simp_all
-  case post.except => simp_all
-  case ifFalse => simp_all
+  case isFalse =>
+    intro _
+    simp_all
 termination_by sizeOf hir + sizeOf n
 
 @[spec] theorem c_bounded_spec (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
       Code.c_bounded hir min max greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  mvcgen [Code.c_bounded]
+  mintro _
+  unfold Code.c_bounded
+  split
   mspec c_exactly_spec
   split
-  · split
+  case isTrue.post.success.isTrue =>
+    split
     · mspec c_possessive_le_lift_spec
       inst_mvar
       all_goals (try simp_all) <;> (try intro _ _) <;> grind
     · intro _ _
       simp_all
-  · mspec add_empty_lift'_spec
-    inst_mvar
-    mspec c_bounded_fold_spec
-    inst_mvar
-    all_goals try grind
-    intro _ _
-    simp_all
-    mspec patch_lift_spec
-    inst_mvar
-    all_goals (try simp_all) <;> (try intro _ _) <;> grind
+  case isTrue.post.success.isFalse =>
+      mspec add_empty_lift'_spec
+      inst_mvar
+      mspec c_bounded_fold_spec
+      inst_mvar
+      all_goals try grind
+      intro _ _
+      simp_all
+      mspec patch_lift_spec
+      inst_mvar
+      all_goals (try simp_all) <;> (try intro _ _) <;> grind
+  case isFalse =>
+    mspec c_empty_lift_spec
 termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
 
 @[spec] theorem c_lookaround_spec (look : Lookaround) (states : Array Unchecked.State)
@@ -922,8 +951,16 @@ termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
   mintro _
   unfold Code.c_lookaround
   split
-  all_goals mvcgen [c_spec]
-  all_goals inst_mvar <;> (try simp_all) <;> grind
+  case h_1 | h_2 =>
+    mspec c_spec
+    mspec
+    all_goals inst_mvar <;> (try simp_all) <;> grind
+  case h_3 | h_4 =>
+    mspec add_next_char_lift_spec
+    mspec c_spec
+    inst_mvar
+    mspec
+    all_goals inst_mvar <;> (try simp_all) <;> grind
 termination_by sizeOf look
 
 @[spec] theorem c_repetition_spec (rep : Repetition) (states : Array Unchecked.State)
@@ -933,13 +970,32 @@ termination_by sizeOf look
   mintro _
   unfold Code.c_repetition
   split
-  all_goals mvcgen [c_spec]
-  all_goals inst_mvar <;> (try simp_all) <;> try grind
-  · mspec add_union_lift'_spec
-    mvcgen [c_spec]
-    all_goals inst_mvar <;> (try simp_all) <;> try grind
-  · mspec c_at_least_spec
-  · mspec c_bounded_spec
+  case h_1 | h_2 =>
+    mspec
+    mspec c_spec
+    inst_mvar
+    mspec
+    inst_mvar
+    grind; grind; grind
+    simp_all; simp_all
+    intros
+    grind
+  case h_3 =>
+    split
+    mspec
+    mspec c_spec
+    inst_mvar
+    mspec
+    inst_mvar
+    grind; grind; grind
+    simp_all; simp_all
+    intros
+    grind
+    mspec c_at_least_spec
+  case h_4 =>
+    split
+    mspec c_bounded_spec
+    mspec c_empty_lift_spec
 termination_by sizeOf rep
 
 @[spec] theorem c_cap_spec (hir : Capture) (states : Array Unchecked.State)
@@ -948,8 +1004,21 @@ termination_by sizeOf rep
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_cap
-  mvcgen [c_spec]
-  all_goals inst_mvar <;> grind
+  split
+  mspec c_cap'_lift_spec
+  mspec c_spec
+  inst_mvar
+  mspec c_cap'_lift_spec
+  inst_mvar
+  mspec patch_lift_spec
+  inst_mvar
+  grind; grind
+  mspec patch_lift_spec
+  inst_mvar
+  grind; grind
+  mspec
+  simp_all
+  grind
 termination_by sizeOf hir
 
 @[spec] theorem c_spec (hir : Hir) (states : Array Unchecked.State)
@@ -993,11 +1062,9 @@ end
   split
   · mspec c_empty_lift_spec
     inst_mvar
-    intro _ _
     simp_all
   · mspec c_repetition_spec
     inst_mvar
-    intro _ _
     simp_all
 
 @[spec] theorem c_compile_spec (anchored : Bool) (hir : Hir)
@@ -1013,14 +1080,11 @@ end
   inst_mvar
   mspec patch_lift_spec
   inst_mvar
-  · grind
-  · grind
-  · mspec patch_lift_spec
+  case success.post.success.post.success.post.success =>
+    mspec patch_lift_spec
     inst_mvar
-    · grind
-    · grind
-    · intro _ _
-      simp_all
+    all_goals (try simp_all) <;> grind
+  all_goals grind
 
 theorem compile_nextOf_lt {anchored : Bool} {expr : Hir}
   (h : Code.compile anchored expr (#[], #[]) = EStateM.Result.ok () (states, groups))

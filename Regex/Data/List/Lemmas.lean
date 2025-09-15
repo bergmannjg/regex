@@ -19,7 +19,7 @@ theorem all_le_maxD {l : List Nat} (d : Nat) : ∀ a ∈ l, a ≤ l.maxD d := by
   simp [maxD]
   split <;> try simp_all
   rename_i a' heq
-  have := (@max?_eq_some_iff' a' l).mp heq
+  have := max?_eq_some_iff.mp heq
   simp_all
 
 theorem maxD_of_append_lt {l : List Nat} (h : l.maxD 0 < m) (ha : a < m)
@@ -27,7 +27,7 @@ theorem maxD_of_append_lt {l : List Nat} (h : l.maxD 0 < m) (ha : a < m)
   simp [maxD]
   split <;> try simp_all
   rename_i a' heq
-  have := (@max?_eq_some_iff' a' (l ++ [a])).mp heq
+  have := max?_eq_some_iff.mp heq
   have : a' ∈ l ∨ a' = a := by simp_all
   cases this
   · rename_i h'
@@ -39,7 +39,7 @@ theorem maxD_le_of_all_le {l : List Nat} (h : ∀ a ∈ l, a ≤ m) : l.maxD 0 �
   simp [maxD]
   split <;> try simp_all
   rename_i a' heq
-  have h1 := (@max?_eq_some_iff' a' l).mp heq
+  have h1 := max?_eq_some_iff.mp heq
   exact h a' h1.left
 
 theorem maxD_all_lt_of_lt {l : List Nat} {d m : Nat} (h : l.maxD d < m) : ∀ a ∈ l, a < m := by
