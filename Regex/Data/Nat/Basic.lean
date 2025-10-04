@@ -35,3 +35,35 @@ theorem lt_trans_trans {a b c d : Nat}
 theorem lt_trans_trans_trans {a b c d e : Nat}
   (h₁ : LT.lt a b) (h₂ : LT.lt b c) (h₃ : LT.lt c d) (h₄ : LT.lt d e) : LT.lt a e  :=
   Nat.lt_trans (Nat.lt_trans (Nat.lt_trans h₁ h₂) h₃) h₄
+
+theorem toLE_iff_le : ∀ (a b : Nat), (Ord.toLE instOrdNat).le a b ↔ a ≤ b := by
+  unfold Ord.toLE instOrdNat
+  intro a b
+  rw [iff_def]
+  and_intros
+  · intro h
+    exact Nat.isLE_compare.mp h
+  · intro h
+    exact Nat.isLE_compare.mpr h
+
+theorem toLT_iff_lt : ∀ (a b : Nat), (Ord.toLT instOrdNat).lt a b ↔ a < b := by
+  unfold Ord.toLT instOrdNat
+  intro a b
+  rw [iff_def]
+  and_intros
+  · intro h
+    exact Nat.compare_eq_lt.mp h
+  · intro h
+    exact Nat.compare_eq_lt.mpr h
+
+theorem toLT_iff : ∀ (a b : Nat), (Ord.toLT instOrdNat).lt a b
+    ↔ (Ord.toLE instOrdNat).le a b ∧ ¬(Ord.toLE instOrdNat).le b a  := by
+  intro a b
+  rw [toLT_iff_lt a b, toLE_iff_le a b, toLE_iff_le b a]
+  exact Nat.lt_iff_le_not_le
+
+theorem toLT_notLt : ∀ (a b : Nat), ¬(Ord.toLT instOrdNat).lt a b
+    ↔ (Ord.toLE instOrdNat).le b a  := by
+  intro a b
+  rw [toLT_iff_lt a b, toLE_iff_le b a]
+  exact Nat.not_lt

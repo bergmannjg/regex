@@ -14,106 +14,104 @@ private def nfaOf'a'Checked : Checked.NFA :=
     #[.UnionReverse #[⟨2, by simp⟩, ⟨3, by simp⟩],
       .Empty ⟨0, by simp⟩,
       .SparseTransitions #[⟨0, 0xd7ff, ⟨1, by simp⟩⟩, ⟨0xe000, 0x10ffff, ⟨1, by simp⟩⟩],
-      .Capture NFA.Capture.Role.Start ⟨4, by simp⟩ 0 0 0,
+      .Capture NFA.Capture.Role.Start ⟨4, by simp⟩ 0 0 0 rfl,
       .ByteRange ⟨'a'.val.toFin, 'a'.val.toFin, ⟨5, by simp⟩⟩,
-      .Capture NFA.Capture.Role.End ⟨6, by simp⟩ 0 0 1,
+      .Capture NFA.Capture.Role.End ⟨6, by simp⟩ 0 0 1 rfl,
       .Match 0
     ]
     #[]
     #[(0, 0), (1, 0)]
     false
     rfl
-    rfl
+    (NFA.SlotsValidOfRangeMap #[(0, 0), (1, 0)] rfl)
 
 private def nfaOf'a' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0,
+    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
     .ByteRange ⟨'a'.val, 'a'.val, 5⟩,
-    .Capture NFA.Capture.Role.End 6 0 0 1,
+    .Capture NFA.Capture.Role.End 6 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0)], 2, 0⟩
-
-example : Unchecked.toSlots (nfaOf'a'.states) = #[(0, 0), (1, 0)] := by native_decide
+    ], 2, 0⟩
 
 private def nfaOf'ab' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0,
+    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
     .ByteRange ⟨'a'.val, 'a'.val, 5⟩,
     .ByteRange ⟨'b'.val, 'b'.val, 6⟩,
-    .Capture NFA.Capture.Role.End 7 0 0 1,
+    .Capture NFA.Capture.Role.End 7 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0)], 2, 0⟩
+    ], 2, 0⟩
 
 private def «nfaOf'a?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0,
+    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
     .Union #[5, 6],
     .ByteRange ⟨'a'.val, 'a'.val, 6⟩,
     .Empty 7,
-    .Capture NFA.Capture.Role.End 8 0 0 1,
+    .Capture NFA.Capture.Role.End 8 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0)], 2, 0⟩
+    ], 2, 0⟩
 
 private def «nfaOf'ab?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0,
+    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
     .ByteRange ⟨'a'.val, 'a'.val, 5⟩,
     .Union #[6, 7],
     .ByteRange ⟨'b'.val, 'b'.val, 7⟩,
     .Empty 8,
-    .Capture NFA.Capture.Role.End 9 0 0 1,
+    .Capture NFA.Capture.Role.End 9 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0)], 2, 0⟩
+    ], 2, 0⟩
 
 private def «nfaOf'[a-b]'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 5 0 0 0,
+    .Capture NFA.Capture.Role.Start 5 0 0 0 rfl,
     .Empty 6,
     .SparseTransitions #[⟨'a'.val, 'b'.val, 4⟩],
-    .Capture NFA.Capture.Role.End 7 0 0 1,
+    .Capture NFA.Capture.Role.End 7 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0)], 2, 0⟩
+    ], 2, 0⟩
 
 private def «nfaOf'a|b'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 6 0 0 0,
+    .Capture NFA.Capture.Role.Start 6 0 0 0 rfl,
     .ByteRange ⟨'a'.val, 'a'.val, 7⟩,
     .ByteRange ⟨'b'.val, 'b'.val, 7⟩,
     .Union #[4, 5],
     .Empty 8,
-    .Capture NFA.Capture.Role.End 9 0 0 1,
+    .Capture NFA.Capture.Role.End 9 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0)], 2, 0⟩
+    ], 2, 0⟩
 
 private def «nfaOf'(a)'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0,
-    .Capture NFA.Capture.Role.Start 5 0 1 2,
+    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 5 0 1 2 rfl,
     .ByteRange ⟨'a'.val, 'a'.val, 6⟩,
-    .Capture NFA.Capture.Role.End 7 0 1 3,
-    .Capture NFA.Capture.Role.End 8 0 0 1,
+    .Capture NFA.Capture.Role.End 7 0 1 3 rfl,
+    .Capture NFA.Capture.Role.End 8 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0), (2, 1), (3, 1)], 2, 0⟩
+    ], 2, 0⟩
 
 private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0,
+    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
     .Empty 8,
     .Empty 12,
     .Empty 11,
@@ -122,9 +120,9 @@ private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
     .Empty 5,
     .SparseTransitions #[⟨'a'.val, 'a'.val, 9⟩],
     .Union #[10, 5],
-    .Capture NFA.Capture.Role.End 13 0 0 1,
+    .Capture NFA.Capture.Role.End 13 0 0 1 rfl,
     .Match 0
-    ], #[(0, 0), (1, 0)], 2, 0⟩
+    ], 2, 0⟩
 
 open Regex.Notation
 
@@ -135,23 +133,23 @@ error: failed to parse pattern a[, error: unclosed character class
 def re := regex% "a["
 -/
 
-example : toString nfaOf'a'Checked = toString nfaOf'a'  := by native_decide
+example : toString nfaOf'a'Checked.states = toString nfaOf'a'.states  := by native_decide
 
-example : toString (regex% "a").nfa = nfaOf'a'.toString := by native_decide
+example : toString (regex% "a").nfa.states = toString nfaOf'a'.states := by native_decide
 
-example : toString (regex% "ab").nfa = nfaOf'ab'.toString := by native_decide
+example : toString (regex% "ab").nfa.states = toString nfaOf'ab'.states := by native_decide
 
-example : toString (regex% "a?").nfa = «nfaOf'a?'».toString := by native_decide
+example : toString (regex% "a?").nfa.states = toString «nfaOf'a?'».states := by native_decide
 
-example : toString (regex% "ab?").nfa = «nfaOf'ab?'».toString := by native_decide
+example : toString (regex% "ab?").nfa.states = toString «nfaOf'ab?'».states := by native_decide
 
-example : toString (regex% "[a-b]").nfa = «nfaOf'[a-b]'».toString := by native_decide
+example : toString (regex% "[a-b]").nfa.states = toString «nfaOf'[a-b]'».states := by native_decide
 
-example : toString (regex% "a|b").nfa = «nfaOf'a|b'».toString := by native_decide
+example : toString (regex% "a|b").nfa.states = toString «nfaOf'a|b'».states := by native_decide
 
-example : toString (regex% "(a)").nfa = «nfaOf'(a)'».toString := by native_decide
+example : toString (regex% "(a)").nfa.states = toString «nfaOf'(a)'».states := by native_decide
 
-example : toString (regex% "[a]{0,2}").nfa = «nfaOf'[a]{0,2}'».toString := by native_decide
+example : toString (regex% "[a]{0,2}").nfa.states = toString «nfaOf'[a]{0,2}'».states := by native_decide
 
 private def capturesOf (s : String) (startPos stopPos : ValidPos s) (h : startPos.val ≤ stopPos.val)
     : Option (Captures s) :=

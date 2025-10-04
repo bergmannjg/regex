@@ -33,10 +33,10 @@ instance : MonadLiftT (EStateM ε σ₁) (EStateM ε (σ₁ × σ₂)) where
     | EStateM.Result.error e s' => EStateM.Result.error e (s', s.2)
 
 /--
-  The state consists of a pair of arrays of states and of capture groups
+  The state consists of a tuple of arrays of states, captures and of capture groups
   with property `get_possible_empty_capture_group`.
 -/
-abbrev CompilerM α := EStateM String (Array Unchecked.State × Array Nat) α
+abbrev CompilerM α := EStateM String (Array Unchecked.State × Array NFA.Capture × Array Nat) α
 
 abbrev StackM α := StateT (Array Unchecked.State) Id α
 
@@ -116,9 +116,6 @@ def c_look (look : Syntax.Look) : StackM ThompsonRef :=
   | .WordEndHalfUnicode => push' (Unchecked.State.Look NFA.Look.WordEndHalfUnicode 0)
   | .PreviousMatch => push' (Unchecked.State.Look NFA.Look.PreviousMatch 0)
   | .ClearMatches => push' (Unchecked.State.Look NFA.Look.ClearMatches 0)
-
-def c_cap' (role : Capture.Role) (group slot: Nat) : StackM Unchecked.StateID :=
-  push (Unchecked.State.Capture role 0 0 group slot)
 
 /-- embed `start` to `end` in a possessive union,
     i.e. remove backtracking frames from stack if `end` state is reached
@@ -298,8 +295,8 @@ def c_at_least_0_post (compiled : ThompsonRef) (plus : Unchecked.StateID) (greed
   else pure (ThompsonRef.mk question empty)
 
 def c_at_least_set (possible_empty_capture_group : Option Nat) (greedy : Bool) : CompilerM Unit := do
-  let (states, groups) ← get
-  set (states,
+  let (states, captures, groups) ← get
+  set (states, captures,
         (match (if greedy then possible_empty_capture_group else none) with
          | some g => groups.push g
          | none => groups))
@@ -385,6 +382,12 @@ def c_alt_iter_step (first second : ThompsonRef)
 
 def c_rep_pre (greedy : Bool) : PatchM Unchecked.StateID := do
   if greedy then add_union else add_union_reverse
+
+def c_cap' (role : Capture.Role) (group slot: Nat) (isValid : Capture.IsValid role group slot) : CompilerM Unchecked.StateID := do
+  let (states, caputures, groups) ← get
+  let (stateId, states) ← (push (Unchecked.State.Capture role 0 0 group slot isValid)).run states
+  set (states, caputures.push (NFA.Capture.mk role group slot isValid), groups)
+  pure stateId
 
 mutual
 
@@ -542,12 +545,12 @@ def c_repetition (rep : Repetition) : CompilerM ThompsonRef := do
       if min ≤ max then c_bounded sub min max greedy possessive else c_empty
 termination_by sizeOf rep
 
-def c_cap (hir : Capture) : CompilerM ThompsonRef := do
+def c_cap (hir : Syntax.Capture) : CompilerM ThompsonRef := do
   match hir with
     | .mk group _ sub =>
-      let start ← c_cap' Capture.Role.Start group (group * 2)
+      let start ← c_cap' Capture.Role.Start group (group * 2) rfl
       let «inner» ← c sub
-      let «end» ← c_cap' Capture.Role.End group (group * 2 + 1)
+      let «end» ← c_cap' Capture.Role.End group (group * 2 + 1) rfl
       Code.patch start inner.start
       Code.patch inner.end «end»
       pure (ThompsonRef.mk start «end»)

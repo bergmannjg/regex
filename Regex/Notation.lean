@@ -113,9 +113,9 @@ private def mkTermOfState (s : NFA.Checked.State n) : Term :=
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.UnionReverse) #[Quote.quote alts]
   | .BinaryUnion alt1 alt2 =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.BinaryUnion) #[Quote.quote alt1, Quote.quote alt2]
-  | .Capture next r id g s =>
+  | .Capture next r id g s _ =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Capture)
-        #[Quote.quote next, Quote.quote r, toNumLit id, toNumLit g, toNumLit s]
+        #[Quote.quote next, Quote.quote r, toNumLit id, toNumLit g, toNumLit s, (mkCIdent ``rfl)]
   | .Match id =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Match) #[toNumLit id]
 
@@ -126,8 +126,8 @@ private def mkTermIsEq (n : Nat) : Term :=
   Syntax.mkApp (mkCIdent ``Eq.refl) #[toNumLit n]
 
 private def mkTermSlotsValid (slots : Term) : Term :=
-  let slotsValid := Syntax.mkApp (mkCIdent ``NFA.Checked.Slots.Valid) #[slots]
-  Syntax.mkApp (mkCIdent ``Eq.refl) #[slotsValid]
+  Syntax.mkApp (mkCIdent ``NFA.SlotsValidOfRangeMap) #[slots,
+      Syntax.mkApp (mkCIdent ``Eq.refl) #[Syntax.mkApp (mkCIdent ``Array.toList) #[slots]]]
 
 private def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
   let states : Term := Quote.quote nfa.states

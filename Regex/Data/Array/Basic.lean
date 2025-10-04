@@ -19,16 +19,16 @@ def last? (a : Array α) : Option α :=
   else none
 
 /-- unique array of sorted array -/
-def unique [BEq α] (intervals: Array α) : Array α :=
-  match intervals.toList with
+def unique [DecidableEq α] (as: Array α) : Array α :=
+  match as.toList with
   | [] => #[]
   | [r] => #[r]
-  | head :: tail  =>
-    let (_, unique) := tail |> List.foldl (init := (head, #[head]))
-      (fun (prev, unique) r =>
-        if prev == r then (r, unique)
-        else (r, unique.push r))
-    unique
+  | head :: tail => tail |> List.foldl (init := (head, #[head])) acc |> Prod.snd
+  where
+    acc [DecidableEq α] (x : α × Array α) r := if x.fst = r then (r, x.snd) else (r, x.snd.push r)
+
+def mergeSort (as: Array α) (le : α → α → Bool := by exact fun a b => a ≤ b) :=
+  as.toList.mergeSort le |>.toArray
 
 /-- Unattach values of subtype in `arr` and collect their properties. -/
 def map_option_subtype {p : α → Prop} [DecidablePred p] (arr : Array (Option { m : α // p m }))

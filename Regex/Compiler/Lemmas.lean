@@ -22,7 +22,7 @@ namespace Lemmas
 /-!
 ## Lemmas
 
-Proof that `Compiler.Code.compile` gives an array with the `Compiler.nextOfLt` property
+Proof that `Compiler.Code.compile` gives an array with the `Compiler.nextOfLt` and `NFA.Capture.valid` property
 
 - `c_compile_spec`: main result
 -/
@@ -32,6 +32,12 @@ Proof that `Compiler.Code.compile` gives an array with the `Compiler.nextOfLt` p
 -/
 syntax "inst_mvar" : tactic
 macro_rules | `(tactic|inst_mvar) => `(tactic| simp; (try and_intros; rfl); try simp_all)
+
+/-- instantiate mvars,
+    mspec with a precondition like `fun s => s = states ∧ P` gives a uninstantiated mvar
+-/
+syntax "inst_mvars" : tactic
+macro_rules | `(tactic|inst_mvars) => `(tactic| simp; and_intros; all_goals try rfl)
 
 private theorem all_push {sid : Unchecked.State} (states : Array Unchecked.State)
   (h : Unchecked.State.nextOf sid ≤ states.size)
@@ -49,7 +55,7 @@ open Std.Do
 
 set_option mvcgen.warning false
 
-@[spec] theorem lift_StackM_to_PatchM_spec
+@[spec] theorem lift_StackT_to_EStateM_spec
   (v : StateT σ Id α)
   {P : σ → Prop}
   (Q : σ → α → σ → Prop)
@@ -59,7 +65,7 @@ set_option mvcgen.warning false
       ⦃post⟨fun a s => ⌜Q n a s⌝, fun _ => ⌜True⌝ ⟩⦄ := by
   assumption
 
-def coe_spec_StackM_to_PatchM
+def coe_spec_StackT_to_EStateM
   {v : StateT σ Id α}
   {P : σ → Prop}
   {Q : α → σ → Prop}
@@ -72,39 +78,7 @@ def coe_spec_StackM_to_PatchM
 instance {v : StateT σ Id α} {P : σ → Prop} {Q : α → σ → Prop}
   : Coe (⦃fun s => ⌜P s⌝⦄ v ⦃post⟨fun a s => ⌜Q a s⌝⟩⦄)
       (⦃fun s => ⌜P s⌝⦄ (v : (EStateM ε σ α)) ⦃post⟨fun a s => ⌜Q a s⌝, fun _ _ => ⌜True⌝ ⟩⦄)
-  where coe := coe_spec_StackM_to_PatchM
-
-def coe_spec_PatchM_to_CompilerM
-  {v : EStateM ε σ₁ α}
-  {P : σ₁ → Prop}
-  {Q : α → σ₁ → Prop}
-  (hspec : ⦃fun s => ⌜P s⌝⦄ v ⦃post⟨fun a s => ⌜Q a s⌝, fun _ => ⌜True⌝⟩⦄)
-    : ⦃fun s => ⌜P s.1⌝⦄
-      (v : EStateM ε (σ₁ × σ₂) α)
-      ⦃post⟨fun r s => ⌜Q r s.1⌝, fun _ _ => ⌜True⌝ ⟩⦄ := by
-  simp_all [Triple, wp, liftM, monadLift, SPred.entails, EStateM.run]
-  grind
-
-instance {v : EStateM ε σ₁ α} {P : σ₁ → Prop} {Q : α → σ₁ → Prop}
-  : Coe (⦃fun s => ⌜P s⌝⦄ v ⦃post⟨fun a s => ⌜Q a s⌝, fun _ => ⌜True⌝⟩⦄)
-    (⦃fun s => ⌜P s.1⌝⦄ (v : EStateM ε (σ₁ × σ₂) α)
-     ⦃post⟨fun r s => ⌜Q r s.1⌝, fun _ => ⌜True⌝⟩⦄)
-  where coe := coe_spec_PatchM_to_CompilerM
-
-def coe_spec_StackM_to_CompilerM
-  {v : StateT σ₁ Id α}
-  {P : σ₁ → Prop}
-  {Q : α → σ₁ → Prop}
-  (hspec : ⦃fun s => ⌜P s⌝⦄ v ⦃post⟨fun a s => ⌜Q a s⌝⟩⦄)
-    : ⦃fun s => ⌜P s.1⌝⦄
-      (v : EStateM ε (σ₁ × σ₂) α)
-      ⦃post⟨fun r s => ⌜Q r s.1⌝, fun _ _ => ⌜True⌝⟩⦄ :=
-  hspec |> coe_spec_StackM_to_PatchM |> coe_spec_PatchM_to_CompilerM
-
-instance {v : StateT σ₁ Id α} {P : σ₁ → Prop} {Q : α → σ₁ → Prop}
-  : Coe (⦃fun s => ⌜P s⌝⦄ v ⦃post⟨fun a s => ⌜Q a s⌝⟩⦄) (⦃fun s => ⌜P s.1⌝⦄ (v : EStateM ε (σ₁ × σ₂) α)
-                          ⦃post⟨fun r s => ⌜Q r s.1⌝, fun _ _ => ⌜True⌝⟩⦄)
-  where coe := coe_spec_StackM_to_CompilerM
+  where coe := coe_spec_StackT_to_EStateM
 
 @[simp, grind] def tRefLt (t : ThompsonRef) (r : Array Unchecked.State) :=
   t.1 < r.size ∧ t.2 < r.size
@@ -127,6 +101,72 @@ instance {v : StateT σ₁ Id α} {P : σ₁ → Prop} {Q : α → σ₁ → Pro
 @[simp, grind] def tRefNextOfLeLt (prevs : Array Unchecked.State) (t : ThompsonRef) (s : Array Unchecked.State) :=
   prevs.size ≤ s.size ∧ tRefLt t s ∧ nextOfLt s
 
+@[simp, grind] def cValid (caps : Array NFA.Capture) :=
+  NFA.Capture.valid caps
+
+@[simp, grind] def cMemAndValid (prev caps : Array NFA.Capture) :=
+  (∀ a ∈ prev, a ∈ caps) ∧ NFA.Capture.valid caps
+
+@[simp, grind] def cValidFunc (captures : Array NFA.Capture) : Array NFA.Capture → Prop :=
+    fun (curr : Array NFA.Capture) => curr = captures ∧ cValid captures
+
+@[simp] def cMemAndValidFunc (captures : Array NFA.Capture) : Array NFA.Capture → Prop :=
+    fun (curr : Array NFA.Capture) => curr = captures ∧ cMemAndValid captures curr
+
+@[simp] theorem cMemAndValid_of_cValid (captures : Array NFA.Capture)
+    : ∀ (s : Array NFA.Capture), s = captures ∧ cValid captures → cMemAndValid captures s := by
+  intro s h
+  unfold cValid at h
+  unfold cMemAndValid
+  rw [h.left]
+  simp_all
+
+@[simp] theorem cMemAndValidFunc_of_cValidFunc (captures : Array NFA.Capture)
+    : ∀ (s : Array NFA.Capture), cValidFunc captures s → cMemAndValidFunc captures s := by
+  intro s h
+  simp [cValidFunc] at h
+  dsimp only [cMemAndValidFunc]
+  simp_all
+
+private theorem coe_spec_EStateM_to_EStateM_Prod
+  (σ₃ : Type)
+  {v₁ : EStateM ε σ₁ α}
+  {P₁ : σ₁ → Prop}
+  {Q₁  : α → σ₁ → Prop}
+  (hspec₁ : ⦃fun s => ⌜P₁ s⌝⦄ v₁ ⦃post⟨fun a s => ⌜Q₁ a s⌝, fun _ => ⌜True⌝⟩⦄)
+  (P₂ : σ₂ → Prop)
+  (Q₂ : σ₂ → Prop)
+  (hpq : ∀ s : σ₂, P₂ s → Q₂ s)
+    : ⦃fun s => ⌜P₁ s.1 ∧ P₂ s.2.1⌝⦄
+      (v₁ : EStateM ε (σ₁ × σ₂ × σ₃) α)
+      ⦃post⟨fun r s => ⌜Q₁ r s.1 ∧ Q₂ s.2.1⌝, fun _ _ => ⌜True⌝ ⟩⦄ := by
+  simp_all [Triple, wp, liftM, monadLift, SPred.entails, EStateM.run]
+  grind
+
+private theorem coe_spec_EStateM_to_CompilerM
+  {captures : Array NFA.Capture}
+  {v₁ : EStateM ε σ₁ α}
+  {P₁ : σ₁ → Prop}
+  {Q₁  : α → σ₁ → Prop}
+  (hspec₁ : ⦃fun s => ⌜P₁ s⌝⦄ v₁ ⦃post⟨fun a s => ⌜Q₁ a s⌝, fun _ => ⌜True⌝⟩⦄)
+    : ⦃fun s => ⌜P₁ s.1 ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+      (v₁ : EStateM ε (σ₁ × (Array NFA.Capture) × (Array Nat)) α)
+      ⦃post⟨fun r s => ⌜Q₁ r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ _ => ⌜True⌝ ⟩⦄ := by
+  exact coe_spec_EStateM_to_EStateM_Prod (Array Nat) hspec₁
+          (cValidFunc captures) (cMemAndValidFunc captures) (by simp_all)
+
+private theorem coe_spec_StateT_to_CompilerM
+  {captures : Array NFA.Capture}
+  {v : StateT σ₁ Id α}
+  {P₁: σ₁ → Prop}
+  {Q₁ : α → σ₁ → Prop}
+  (hspec : ⦃fun s => ⌜P₁ s⌝⦄ v ⦃post⟨fun a s => ⌜Q₁ a s⌝⟩⦄)
+    : ⦃fun s => ⌜P₁ s.1 ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+      (v : EStateM ε (σ₁ × (Array NFA.Capture) × (Array Nat)) α)
+      ⦃post⟨fun r s => ⌜Q₁ r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ _ => ⌜True⌝⟩⦄ :=
+  coe_spec_EStateM_to_EStateM_Prod (Array Nat) (coe_spec_StackT_to_EStateM hspec)
+          (cValidFunc captures) (cMemAndValidFunc captures) (by simp_all)
+
 theorem lift_CompilerM_bind_pure [MonadLiftT (EStateM ε σ) Code.CompilerM] (x : EStateM ε σ α)
     : liftM x >>= EStateM.pure = (x : Code.CompilerM α) := by
   apply bind_pure
@@ -139,12 +179,43 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
   intro _ _
   grind
 
+@[spec] theorem patch_spec («from»: Unchecked.StateID) {«to» : Unchecked.StateID}
+  {states : Array Unchecked.State}
+    : ⦃fun s => ⌜s = states ∧ nextOfLt states ∧ «from» < states.size ∧ «to» < states.size⌝⦄
+      Code.patch «from» «to»
+      ⦃post⟨fun _ r => ⌜stateIdNextOfEqLt states «to» r⌝, fun _ => ⌜True⌝ ⟩⦄ := by
+  mintro _
+  unfold Code.patch
+  mvcgen
+  all_goals simp_all <;> try intro _ _; expose_names
+  all_goals try (apply all_set_next_of_lt «from» _ states h_2.right.right.left ?_ (h.right.left)); try assumption
+  all_goals try simp_all [Unchecked.State.nextOf, h_2.right.right.right, Nat.max_lt]
+  all_goals try simp [wp]
+  all_goals try simp [nextOfLt] at h
+  expose_names
+  · simp [eat_lt «from» s_1 n (Unchecked.EatMode.Until s_1)
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
+  · simp [eat_lt «from» s_1 n (Unchecked.EatMode.Until s_1)
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
+  · simp [eat_lt «from» s_1 n (Unchecked.EatMode.ToLast 0)
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
+  · simp [eat_lt «from» s_1 n (Unchecked.EatMode.ToLast s_1)
+      states (by grind) (by simp_all [Unchecked.EatMode.nextOf]) (by simp_all) (by grind)]
+  · simp [change_frame_step_lt «from» f t states (by grind) (by simp_all) (by grind)]
+  · simp [change_frame_step_lt «from» f t states (by grind) (by simp_all) (by grind)]
+  · simp [binary_union_lt «from» alt1 alt2 states (by grind) (by simp_all) (by grind)]
+  · simp [binary_union_lt «from» alt1 alt2 states (by grind) (by simp_all) (by grind)]
+  · simp [union_lt «from» «to» alternates states (by simp_all) (by grind) (by grind) (by grind)]
+  · simp [union_reverse_lt «from» «to» alternates states (by simp_all) (by grind) (by grind) (by grind)]
+
 @[spec] theorem patch_lift_spec («from»: Unchecked.StateID) {«to» : Unchecked.StateID}
-  (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states ∧ «from» < states.size ∧ «to» < states.size⌝⦄
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states ∧ «from» < states.size ∧ «to» < states.size)
+                 ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.patch «from» «to» : Code.CompilerM Unit)
-      ⦃post⟨fun _ s => ⌜stateIdNextOfEqLt states «to» s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (@patch_spec «from» «to» states)
+      ⦃post⟨fun _ s => ⌜stateIdNextOfEqLt states «to» s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝,
+           fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (patch_spec _)
 
 @[spec] theorem push_spec (sid : Unchecked.State) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
@@ -159,6 +230,31 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
       (Code.push sid : Code.PatchM Unchecked.StateID)
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝ ⟩⦄ := by
   exact ↑(push_spec sid states)
+
+@[spec] theorem push_run_spec (sid : Unchecked.State) (states : Array Unchecked.State)
+  (h1 : nextOfLt states) (h2 : NFA.Unchecked.State.nextOf sid ≤ states.size)
+    : ⦃⌜True⌝⦄
+      ((Code.push sid).run states : Id (Unchecked.StateID × Array Unchecked.State))
+      ⦃post⟨fun r => ⌜stateIdNextOfLt states r.1 r.2⌝⟩⦄ := by
+  mintro _
+  mvcgen [Code.push]
+  simp
+  dsimp only [bind, StateT.bind, Functor.map, StateT.map, wp, Id.run]
+  split
+  rename_i heq
+  dsimp only [MonadStateOf.get, StateT.get, pure] at heq
+  dsimp only [set, StateT.set, pure]
+  and_intros <;> intros <;> simp_all <;> grind
+
+@[spec] theorem push_run_lift_spec (sid : Unchecked.State) (states : Array Unchecked.State)
+    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
+      (Code.push sid states : Code.CompilerM (Unchecked.StateID × Array Unchecked.State))
+      ⦃post⟨fun r _ => ⌜stateIdNextOfLt states r.1 r.2⌝, fun _ => ⌜True⌝ ⟩⦄ := by
+  mvcgen
+  intros
+  generalize h : (Code.push sid).run states = x
+  apply Id.of_wp_run_eq h
+  apply push_run_spec sid states <;> simp_all
 
 @[spec] theorem push'_spec (sid : Unchecked.State) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
@@ -176,10 +272,11 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
   and_intros <;> simp_all [Unchecked.State.nextOf]
 
 @[spec] theorem add_match_lift_spec (pattern_id : PatternID) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.add_match pattern_id : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝ , fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (add_match_spec pattern_id states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝ , fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (add_match_spec _ _)
 
 @[spec] theorem add_union_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -194,11 +291,11 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   exact ↑(add_union_spec states)
 
-@[spec] theorem add_union_lift'_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+@[spec] theorem add_union_lift'_spec (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.add_union : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (add_union_spec states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (add_union_spec _)
 
 @[spec] theorem add_union_reverse_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -247,11 +344,11 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   exact ↑(add_empty_spec states)
 
-theorem add_empty_lift'_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+theorem add_empty_lift'_spec (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.add_empty : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (add_empty_spec states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (add_empty_spec _)
 
 @[spec] theorem add_fail_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -312,10 +409,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
   and_intros <;> simp_all [Unchecked.State.nextOf, List.maxD]
 
 @[spec] theorem add_next_char_lift_spec (offset : Nat) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.add_next_char offset : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (add_next_char_spec offset states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (add_next_char_spec _ _)
 
 @[spec] theorem c_empty_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -324,11 +422,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
   mvcgen [Code.c_empty]
   and_intros <;> simp_all [Unchecked.State.nextOf]
 
-@[spec] theorem c_empty_lift_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+@[spec] theorem c_empty_lift_spec (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_empty : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (c_empty_spec states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (c_empty_spec _)
 
 @[simp] theorem transition_lt_of_lt (states: Array Unchecked.State) (trans : Array Unchecked.Transition)
   (h : ∀ (i : Nat) (x : i < trans.size), trans[i].next ≤ states.size)
@@ -357,10 +455,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
   all_goals simp_all <;> grind
 
 @[spec] theorem c_unicode_class_lift_spec (cls : ClassUnicode) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_unicode_class cls : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (c_unicode_class_spec cls states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (c_unicode_class_spec _ _)
 
 @[spec] theorem c_literal_spec (c : Char) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -369,10 +468,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
   mvcgen [Code.c_literal]
 
 @[spec] theorem c_literal_lift_spec (c : Char) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_literal c : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (c_literal_spec c states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (c_literal_spec _ _)
 
 @[spec] theorem c_look_spec (look : Syntax.Look) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -381,10 +481,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
   mvcgen [Code.c_look] <;> simp_all [Unchecked.State.nextOf]
 
 @[spec] theorem c_look_lift_spec (look : Syntax.Look) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_look look : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (c_look_spec look states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_StateT_to_CompilerM (c_look_spec _ _)
 
 @[spec] theorem c_possessive_spec (tref : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tref.start < states.size
@@ -392,149 +493,182 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.c_possessive tref
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_possessive]
-  all_goals inst_mvar
-    <;> (try simp [Unchecked.EatMode.nextOf])
-    <;> (try simp_all) <;> grind
+  all_goals simp_all [Unchecked.EatMode.nextOf] <;> grind
 
 @[spec] theorem c_possessive_lift_spec (tref : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_possessive tref : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_possessive_spec tref states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_possessive_spec _ _)
 
 theorem tref_le_of_lt_spec (states : Array Unchecked.State)
     : ∀ (tref : ThompsonRef),
-      ⦃fun s => ⌜tRefNextOfLt states tref s.1⌝⦄
+      ⦃fun s => ⌜tRefNextOfLt states tref s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝⦄
       (EStateM.pure tref : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   intro tref
-  apply pure_of_imp_spec (by intro _ _ _; and_intros; all_goals grind)
+  apply pure_of_imp_spec (by grind)
 
 -- relax postcondition of c_possessive_lift_spec
 theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size ∧ nextOfLt states)
+                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_possessive tref : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  have := Triple.bind _ _ (c_possessive_lift_spec tref states) (tref_le_of_lt_spec states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  have := Triple.bind _ _ (c_possessive_lift_spec tref states captures) (tref_le_of_lt_spec states)
   rwa [lift_CompilerM_bind_pure (Code.c_possessive tref)] at this
 
-@[spec] theorem c_cap'_spec (role : Capture.Role) (group slot: Nat)
-  (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
-      Code.c_cap' role group slot
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝⟩⦄ := by
+@[spec] theorem c_cap'_start_spec (group slot: Nat)
+  (isValid : Capture.IsValid Capture.Role.Start group slot) (states : Array Unchecked.State)
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+      Code.c_cap' Capture.Role.Start group slot isValid
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1
+                        ∧ cMemAndValid captures s.2.1
+                        ∧ (NFA.Capture.mk Capture.Role.Start group slot isValid) ∈ s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_cap'] <;> simp_all [Unchecked.State.nextOf]
+  intros
+  and_intros
+  · intros
+    and_intros <;> have := isValid <;> simp_all <;> grind
+  · intros
+    and_intros
+    · rename_i h _ _ _
+      cases h <;> have := isValid <;> simp_all <;> grind
+    · have := isValid <;> simp_all <;> grind
+  · grind
 
-@[spec] theorem c_cap'_lift_spec (role : Capture.Role) (group slot: Nat)
-  (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
-      (Code.c_cap' role group slot : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_StackM_to_CompilerM (c_cap'_spec role group slot states)
+@[spec] theorem c_cap'_end_spec (group slot: Nat)
+  (isValid : Capture.IsValid Capture.Role.End group slot) (states : Array Unchecked.State)
+  (captures : Array NFA.Capture) (h : ∃ c ∈ captures, c.role = Capture.Role.Start ∧ c.group = group)
+    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+      Code.c_cap' Capture.Role.End group slot isValid
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  mvcgen [Code.c_cap'] <;> simp_all [Unchecked.State.nextOf]
+  intros
+  and_intros <;> have := isValid <;> simp_all <;> grind
 
 @[spec] theorem c_back_ref_spec (case_insensitive : Bool) (n : Nat)  (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
       Code.c_back_ref case_insensitive n
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_back_ref]
-  all_goals inst_mvar <;> grind
+  all_goals grind
 
 @[spec] theorem c_back_ref_lift_spec (case_insensitive : Bool) (n : Nat)  (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_back_ref case_insensitive n : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_back_ref_spec case_insensitive n states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_back_ref_spec _ _ _)
 
 @[spec] theorem c_lookaround_PositiveLookahead_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
       Code.c_lookaround_PositiveLookahead compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_lookaround_PositiveLookahead]
-  all_goals inst_mvar <;> grind
+  all_goals grind
 
 @[spec] theorem c_lookaround_PositiveLookahead_lift_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_lookaround_PositiveLookahead compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_lookaround_PositiveLookahead_spec compiled states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_lookaround_PositiveLookahead_spec _ _)
 
 @[spec] theorem c_lookaround_NegativeLookahead_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
       Code.c_lookaround_NegativeLookahead compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_lookaround_NegativeLookahead]
-  all_goals inst_mvar <;> grind
+  all_goals grind
 
 @[spec] theorem c_lookaround_NegativeLookahead_lift_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_lookaround_NegativeLookahead compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_lookaround_NegativeLookahead_spec compiled states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_lookaround_NegativeLookahead_spec _ _)
 
 @[spec] theorem c_lookaround_PositiveLookbehind_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
       Code.c_lookaround_PositiveLookbehind next_char compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_lookaround_PositiveLookbehind]
-  all_goals inst_mvar <;> grind
+  all_goals grind
 
 @[spec] theorem c_lookaround_PositiveLookbehind_lift_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_lookaround_PositiveLookbehind next_char compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_lookaround_PositiveLookbehind_spec next_char compiled states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_lookaround_PositiveLookbehind_spec _ _ _)
 
 @[spec] theorem c_lookaround_NegativeLookbehind_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
       Code.c_lookaround_NegativeLookbehind next_char compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_lookaround_NegativeLookbehind]
-  all_goals inst_mvar <;> grind
+  all_goals grind
 
 @[spec] theorem c_lookaround_NegativeLookbehind_lift_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ nextOfLt states)
+                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_lookaround_NegativeLookbehind next_char compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_lookaround_NegativeLookbehind_spec next_char compiled states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_lookaround_NegativeLookbehind_spec _ _ _)
 
 @[spec] theorem c_repetition_0_some_1_false_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
       Code.c_repetition_0_some_1_false union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_repetition_0_some_1_false]
-  all_goals inst_mvar <;> grind
+  all_goals grind
 
 @[spec] theorem c_repetition_0_some_1_false_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_repetition_0_some_1_false union compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_repetition_0_some_1_false_spec union compiled states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_repetition_0_some_1_false_spec _ _ _)
 
 @[spec] theorem c_repetition_0_some_1_true_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
       Code.c_repetition_0_some_1_true union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_repetition_0_some_1_true]
-  all_goals inst_mvar <;> (try simp [Unchecked.EatMode.nextOf]) <;> grind
+  all_goals simp_all [Unchecked.EatMode.nextOf] <;> grind
 
 @[spec] theorem c_repetition_0_some_1_true_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states)
+                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_repetition_0_some_1_true union compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_repetition_0_some_1_true_spec union compiled states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_repetition_0_some_1_true_spec _ _ _)
 
 @[spec] theorem c_repetition_0_none_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
       Code.c_repetition_0_none union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_repetition_0_none]
-  all_goals inst_mvar <;> try simp_all <;> grind
+  all_goals try simp_all <;> grind
 
 @[spec] theorem c_repetition_0_none_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_repetition_0_none union compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_repetition_0_none_spec union compiled states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_repetition_0_none_spec _ _ _)
 
 @[spec] theorem greedy_union_spec (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -547,19 +681,21 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_0_pre compiled greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_0_pre]
-  all_goals (try simp_all) <;> grind
+  all_goals simp_all <;> grind
 
 @[spec] theorem c_at_least_0_pre_lift_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states)
+                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_at_least_0_pre compiled greedy : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_at_least_0_pre_spec compiled greedy states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_at_least_0_pre_spec _ _ _)
 
 @[spec] theorem c_at_least_set_spec (possible_empty_capture_group : Option Nat) (greedy : Bool)
   (states : Array Unchecked.State) {groups : Array Nat}
-    : ⦃fun s => ⌜s.1 = states ∧ s.2 = groups⌝⦄
+    : ⦃fun s => ⌜s.1 = states ∧ s.2.2 = groups⌝⦄
       Code.c_at_least_set possible_empty_capture_group greedy
-      ⦃post⟨fun _ s => ⌜states = s.1  ∧ groups.size ≤ s.2.size⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun _ s => ⌜states = s.1  ∧ groups.size ≤ s.2.2.size⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_set]
   split <;> simp_all
 
@@ -569,34 +705,37 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_0_post compiled plus greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_0_post]
-  all_goals inst_mvar <;> (try simp_all) <;> try grind
+  all_goals inst_mvar <;> grind
 
 @[spec] theorem c_at_least_0_post_lift_spec (compiled : ThompsonRef) (plus : Unchecked.StateID) (greedy : Bool)
-  (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ plus < states.size ∧ compiled.start < states.size ∧ nextOfLt states⌝⦄
+  (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ plus < states.size ∧ compiled.start < states.size ∧ nextOfLt states)
+                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_at_least_0_post compiled plus greedy possessive : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_at_least_0_post_spec compiled plus greedy possessive states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_at_least_0_post_spec _ _ _ _ _)
 
 @[spec] theorem c_at_least_0_spec (compiled : ThompsonRef) (possible_empty_capture_group : Option Nat) (greedy : Bool)
-  (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_at_least_0 compiled possible_empty_capture_group greedy
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_0]
+  grind
 
 @[spec] theorem c_at_least_1_pre_spec (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
       Code.c_at_least_1_pre greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_1_pre]
-  all_goals inst_mvar <;> (try simp_all) <;> grind
+  all_goals simp_all <;> grind
 
 @[spec] theorem c_at_least_1_pre_lift_spec (greedy : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_at_least_1_pre greedy : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_at_least_1_pre_spec greedy states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_at_least_1_pre_spec _ _)
 
 @[spec] theorem c_at_least_1_post_spec (compiled : ThompsonRef) (union : Unchecked.StateID)
   (possessive : Bool) (states : Array Unchecked.State)
@@ -604,20 +743,21 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_1_post compiled union possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_1_post]
-  all_goals inst_mvar <;> (try simp_all) <;> try grind
+  all_goals (inst_mvar <;> try simp_all) <;> grind
 
 @[spec] theorem c_at_least_1_post_lift_spec (compiled : ThompsonRef) (union : Unchecked.StateID)
-  (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
+  (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_at_least_1_post compiled union possessive : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_at_least_1_post_spec compiled union possessive states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_at_least_1_post_spec _ _ _ _)
 
 @[spec] theorem c_at_least_1_spec (possible_empty_capture_group : Option Nat) (greedy : Bool)
-  (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_at_least_1 possible_empty_capture_group greedy
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_1]
 
 @[spec] theorem c_at_least_2_spec («prefix» last : ThompsonRef) (greedy : Bool)
@@ -626,14 +766,15 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_2 «prefix» last greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_2]
-  all_goals inst_mvar <;> (try simp_all) <;> try grind
+  all_goals inst_mvar <;> grind
 
 @[spec] theorem c_at_least_2_lift_spec («prefix» last : ThompsonRef) (greedy : Bool)
-  (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt «prefix» states ∧ tRefLt last states ∧ nextOfLt states⌝⦄
+  (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt «prefix» states ∧ tRefLt last states ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_at_least_2 «prefix» last greedy possessive : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_at_least_2_spec «prefix» last greedy possessive states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_at_least_2_spec _ _ _ _ _)
 
 @[spec] theorem c_bounded.fold.patch.pre_spec (compiled: ThompsonRef) (prev_end : Unchecked.StateID)
   (greedy : Bool) (states : Array Unchecked.State)
@@ -642,7 +783,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_bounded.fold.patch.pre compiled prev_end greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch.pre]
-  all_goals (try simp_all) <;> grind
+  all_goals simp_all <;> grind
 
 @[spec] theorem c_bounded.fold.patch.possessive_spec (compiled: ThompsonRef) (empty : Unchecked.StateID)
   (states : Array Unchecked.State)
@@ -651,9 +792,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_bounded.fold.patch.possessive compiled empty
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch.possessive]
-  all_goals inst_mvar
-    <;> (try simp [Unchecked.EatMode.nextOf])
-    <;> (try simp_all) <;> grind
+  all_goals inst_mvar <;> grind
 
 @[spec] theorem c_bounded.fold.patch.post_spec (compiled: ThompsonRef) (union empty : Unchecked.StateID) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ compiled.end < states.size
@@ -661,7 +800,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_bounded.fold.patch.post compiled union empty
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch.post]
-  all_goals inst_mvar <;> (try simp_all) <;> grind
+  all_goals grind
 
 @[spec] theorem c_bounded.fold.patch_spec (compiled: ThompsonRef) (prev_end empty : Unchecked.StateID)
   (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
@@ -670,15 +809,16 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_bounded.fold.patch compiled prev_end empty greedy possessive
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch]
-  all_goals inst_mvar <;> (try simp_all) <;> grind
+  all_goals inst_mvar <;> grind
 
 @[spec] theorem c_bounded.fold.patch_lift_spec  (compiled: ThompsonRef) (prev_end empty : Unchecked.StateID)
-  (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states
-                      ∧ prev_end < states.size ∧ empty < states.size ∧ nextOfLt states⌝⦄
+  (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states
+                      ∧ prev_end < states.size ∧ empty < states.size ∧ nextOfLt states)
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_bounded.fold.patch compiled prev_end empty greedy possessive : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_bounded.fold.patch_spec compiled prev_end empty greedy possessive states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_bounded.fold.patch_spec _ _ _ _ _ _)
 
 @[spec] theorem c_alt_iter_step_spec (first second: ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt first states
@@ -686,14 +826,15 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_alt_iter_step first second
       ⦃post⟨fun r s => ⌜tRefNextOfLt states ⟨r.1, r.2⟩ s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_alt_iter_step]
-  all_goals try (inst_mvar; grind; grind)
-  all_goals (try simp_all) <;> grind
+  all_goals grind
 
 @[spec] theorem c_alt_iter_step_lift_spec (first second: ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt first states ∧ tRefLt second states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt first states ∧ tRefLt second states ∧ nextOfLt states)
+                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_alt_iter_step first second : Code.CompilerM (Unchecked.StateID × Unchecked.StateID))
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states ⟨r.1, r.2⟩ s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_alt_iter_step_spec first second states)
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states ⟨r.1, r.2⟩ s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_alt_iter_step_spec _ _ _)
 
 @[spec] theorem c_rep_pre_spec (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
@@ -702,42 +843,52 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
   mvcgen [Code.c_rep_pre]
 
 @[spec] theorem c_rep_pre_lift_spec (greedy : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_rep_pre greedy : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
-  exact coe_spec_PatchM_to_CompilerM (c_rep_pre_spec greedy states)
+      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+  exact coe_spec_EStateM_to_CompilerM (c_rep_pre_spec _ _)
 
-set_option maxHeartbeats 1000000
+set_option maxHeartbeats 4000000
 
 mutual
 
 @[spec] theorem c_concat_fold_spec (tail : Array Hir) (sid : Unchecked.StateID)
- (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ sid < states.size ∧ nextOfLt states⌝⦄
+ (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ sid < states.size ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_concat.fold tail sid
-      ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_concat.fold
   mspec Spec.foldlM_array
   case inv =>
-    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ sid < s.1.size ∧ r < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ sid < s.1.size ∧ r < s.1.size ∧ nextOfLt s.1
+                              ∧ cMemAndValid captures s.2.1⌝, fun e => ⌜true⌝, ())
   case step =>
     intros
     expose_names
     have := Array.sizeOf_lt_of_mem cur.property
     mintro _
     mspec c_spec
-    inst_mvar
-    mspec patch_lift_spec
-    inst_mvar
-    all_goals (try simp_all) <;> grind
+    inst_mvars
+    case post.success =>
+      mspec patch_lift_spec
+      · inst_mvars
+        simp_all; grind; grind; all_goals simp_all
+      · simp
+        grind
+    all_goals simp_all
+  case pre =>
+    simp
+    intros
+    and_intros <;> simp_all
   all_goals simp_all
 termination_by sizeOf tail
 
-@[spec] theorem c_concat_spec (hirs : Array Hir) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+@[spec] theorem c_concat_spec (hirs : Array Hir) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜(s.1 = states ∧ nextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_concat hirs
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_concat
   split
@@ -745,33 +896,48 @@ termination_by sizeOf tail
   have := Array.sizeOf_head?_of_mem heq
   have := Array.sizeOf_head?_of_tail heq
   mspec c_spec
-  mspec c_concat_fold_spec
-  all_goals inst_mvar <;> (try intros) <;> (try simp_all) <;> (try grind)
+  inst_mvars
+  case h_1.post.success =>
+    mspec c_concat_fold_spec
+    inst_mvars
+    grind; simp_all; simp_all; simp_all; simp_all; simp_all; grind
+  all_goals simp_all
+  intros
   mvcgen
+  · and_intros
+    all_goals simp_all
+  · simp_all
 termination_by sizeOf hirs
 
-@[spec] theorem c_alt_iter_fold_spec (hirs : Array Hir) (union «end» : Unchecked.StateID) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ «end» < states.size ∧ nextOfLt states⌝⦄
+@[spec] theorem c_alt_iter_fold_spec (hirs : Array Hir) (union «end» : Unchecked.StateID)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ «end» < states.size ∧ nextOfLt states
+                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_alt_iter.fold hirs union «end»
-      ⦃post⟨fun _ s => ⌜statesNextOfLeLt states s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun _ s => ⌜statesNextOfLeLt states s.1  ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_alt_iter.fold
   mspec Spec.foldlM_array
   case inv =>
-    exact (fun (_, xs) s => ⌜states.size ≤ s.1.size ∧ union < s.1.size ∧ «end» < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+    exact (fun (_, xs) s => ⌜states.size ≤ s.1.size ∧ union < s.1.size ∧ «end» < s.1.size
+                              ∧ nextOfLt s.1 ∧ cMemAndValid captures s.2.1⌝, fun e => ⌜true⌝, ())
   case step =>
     intros
     expose_names
     have := Array.sizeOf_lt_of_mem cur.property
     mintro _
     mspec c_spec
-    inst_mvar
-    mspec patch_lift_spec
-    inst_mvar; grind; grind
-    mspec patch_lift_spec
-    inst_mvar; grind; grind
-    simp_all
-    grind
+    inst_mvars
+    case post.success =>
+      mspec patch_lift_spec
+      inst_mvars
+      case post.success =>
+        mspec patch_lift_spec
+        inst_mvars
+        case post.success => simp; intros; grind
+        simp_all; grind; grind; all_goals simp_all
+      simp_all; grind; grind; all_goals simp_all
+    all_goals simp_all
   case pre =>
     simp_all
   case post =>
@@ -779,9 +945,10 @@ termination_by sizeOf hirs
 termination_by sizeOf hirs
 
 @[spec] theorem c_alt_iter_spec (hirs : Array Hir) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_alt_iter hirs
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_alt_iter
   split
@@ -796,112 +963,133 @@ termination_by sizeOf hirs
       have := Array.sizeOf_head?_of_mem heq_1
       have := Array.sizeOf_head?_of_tail heq_1
       mspec c_spec
-      inst_mvar
-      mspec c_alt_iter_step_lift_spec
-      inst_mvar
-      case post.success.post.success.post.success =>
-        mspec c_alt_iter_fold_spec
-        inst_mvar
-        all_goals (try simp_all) <;> grind
-      all_goals (try simp_all) <;> grind
+      inst_mvars
+      case post.success.post.success =>
+        mspec c_alt_iter_step_lift_spec
+        inst_mvars
+        case post.success =>
+          mspec c_alt_iter_fold_spec
+          inst_mvars
+          case post.success => simp; intros; grind
+          grind; grind; all_goals simp_all
+        grind; grind; all_goals simp_all
+      all_goals simp_all
     case h_2 =>
       simp_all [wp]
   case h_2 =>
     simp_all [wp]
 termination_by sizeOf hirs
 
-@[spec] theorem c_exactly_fold_spec (hir : Hir) (n : Nat) («end» : Unchecked.StateID) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ «end» < states.size ∧  nextOfLt states⌝⦄
+@[spec] theorem c_exactly_fold_spec (hir : Hir) (n : Nat) («end» : Unchecked.StateID)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧ «end» < states.size ∧  nextOfLt states
+                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_exactly.fold hir n «end»
-      ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_exactly.fold
   split
   mspec Spec.foldlM_list
   case inv =>
-    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ «end» < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ «end» < s.1.size
+                              ∧ nextOfLt s.1 ∧ cMemAndValid captures s.2.1⌝, fun e => ⌜true⌝, ())
   case step =>
     intros
     mintro _
     mspec c_spec
-    inst_mvar
-    mspec patch_lift_spec
-    inst_mvar
+    inst_mvars
+    case post.success =>
+      mspec patch_lift_spec
+      inst_mvars
+      case post.success => inst_mvars; grind
+      simp_all; grind; all_goals simp_all
     all_goals simp_all <;> grind
   all_goals simp_all
 termination_by sizeOf hir + sizeOf n
 
 @[spec] theorem c_exactly_spec (hir : Hir) (n : Nat) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
+   (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_exactly hir n
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_exactly
   split
   · mspec c_spec
     mspec c_exactly_fold_spec
-    inst_mvar
-    · intros
-      simp_all
-    · mspec
-      simp_all
-      grind
-  · mspec
+    inst_mvars
+    case isTrue.post.success.post.success => inst_mvars; grind
+    grind; all_goals simp_all
+  · mspec c_empty_lift_spec
+    inst_mvars
+    all_goals simp_all
 termination_by sizeOf hir + sizeOf n
 
-@[spec] theorem c_at_least_spec (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
+@[spec] theorem c_at_least_spec (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_at_least hir n greedy possessive
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_at_least
   split
   case isTrue =>
     mspec c_spec
     mspec c_at_least_0_spec
-    inst_mvar
+    inst_mvars
     case post.success.post.success =>
       mspec c_at_least_0_post_lift_spec
-      inst_mvar
-      all_goals (try simp_all) <;> grind
+      inst_mvars
+      case post.success => simp; intros; grind
+      grind; grind; all_goals simp_all
     all_goals simp_all
   case isFalse =>
     split
     mspec c_spec
     mspec c_at_least_1_spec
-    inst_mvar
-    mspec c_at_least_1_post_lift_spec
-    inst_mvar
+    inst_mvars
+    case isTrue.post.success.post.success =>
+      mspec c_at_least_1_post_lift_spec
+      inst_mvars
+      case post.success => simp; intros; grind
+      grind; grind; grind; all_goals simp_all
     case isFalse =>
       mspec c_exactly_spec
       mspec c_spec
-      inst_mvar
-      mspec c_at_least_2_lift_spec
-      inst_mvar
-      all_goals (try simp_all) <;> grind
-    all_goals (try simp_all) <;> grind
+      inst_mvars
+      case post.success.post.success =>
+        mspec c_at_least_2_lift_spec
+        inst_mvars
+        case post.success => simp; intros; grind
+        grind; grind; grind; grind; all_goals simp_all
+      all_goals simp_all
+    all_goals simp_all
 termination_by sizeOf hir + sizeOf n + 1
 
 @[spec] theorem c_bounded_fold_spec  (hir : Hir) (n : Nat) («prefix» : ThompsonRef) (empty : Unchecked.StateID)
-  (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt «prefix» states ∧ empty < states.size ∧ nextOfLt states⌝⦄
+  (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧ tRefLt «prefix» states ∧ empty < states.size ∧ nextOfLt states
+                 ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_bounded.fold hir n «prefix» empty greedy possessive
-      ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_bounded.fold
   split
   mspec Spec.foldlM_list
   case inv =>
-    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ empty < s.1.size ∧ nextOfLt s.1⌝, fun e => ⌜true⌝, ())
+    exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ r < s.1.size ∧ empty < s.1.size
+                            ∧ nextOfLt s.1 ∧ cMemAndValid captures s.2.1⌝, fun e => ⌜true⌝, ())
   case step =>
     intros
     mintro _
     mspec c_spec
-    inst_mvar
-    mspec c_bounded.fold.patch_lift_spec
-    inst_mvar
-    all_goals try grind
-    all_goals intro _ _ <;> simp_all <;> grind
+    inst_mvars
+    case post.success =>
+      mspec c_bounded.fold.patch_lift_spec
+      inst_mvars
+      case post.success => simp; intros; grind
+      grind; grind; grind; grind; all_goals simp_all
+    all_goals simp_all
   case pre =>
     intro _
     simp_all
@@ -913,10 +1101,11 @@ termination_by sizeOf hir + sizeOf n + 1
     simp_all
 termination_by sizeOf hir + sizeOf n
 
-@[spec] theorem c_bounded_spec (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
+@[spec] theorem c_bounded_spec (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : Bool)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_bounded hir min max greedy possessive
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_bounded
   split
@@ -925,118 +1114,153 @@ termination_by sizeOf hir + sizeOf n
   case isTrue.post.success.isTrue =>
     split
     · mspec c_possessive_le_lift_spec
-      inst_mvar
-      all_goals (try simp_all) <;> (try intro _ _) <;> grind
-    · intro _ _
-      simp_all
+      inst_mvars
+      case post.success => simp; intros; grind
+      all_goals simp_all
+    · simp_all
   case isTrue.post.success.isFalse =>
       mspec add_empty_lift'_spec
-      inst_mvar
-      mspec c_bounded_fold_spec
-      inst_mvar
-      all_goals try grind
-      intro _ _
-      simp_all
-      mspec patch_lift_spec
-      inst_mvar
-      all_goals (try simp_all) <;> (try intro _ _) <;> grind
+      inst_mvars
+      case post.success =>
+        mspec c_bounded_fold_spec
+        inst_mvars
+        case post.success =>
+          mspec patch_lift_spec
+          · inst_mvars
+            simp_all; grind; grind; all_goals simp_all
+          · simp
+            grind
+        grind; grind; grind; all_goals simp_all
+      all_goals simp_all
   case isFalse =>
     mspec c_empty_lift_spec
+    inst_mvars
+    case post.success => simp; intros; grind
+    all_goals simp_all
 termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
 
 @[spec] theorem c_lookaround_spec (look : Lookaround) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_lookaround look
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_lookaround
   split
   case h_1 | h_2 =>
     mspec c_spec
     mspec
-    all_goals inst_mvar <;> (try simp_all) <;> grind
+    inst_mvars
+    all_goals simp_all <;> grind
   case h_3 | h_4 =>
     mspec add_next_char_lift_spec
-    mspec c_spec
-    inst_mvar
-    mspec
-    all_goals inst_mvar <;> (try simp_all) <;> grind
+    inst_mvars
+    case post.success =>
+      mspec c_spec
+      inst_mvars
+      case post.success =>
+        mspec
+        inst_mvars
+        case post.success => simp; intros; grind
+        all_goals simp_all <;> grind
+      all_goals simp_all
+    all_goals simp_all
 termination_by sizeOf look
 
 @[spec] theorem c_repetition_spec (rep : Repetition) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧ nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_repetition rep
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_repetition
   split
   case h_1 | h_2 =>
     mspec
-    mspec c_spec
-    inst_mvar
-    mspec
-    inst_mvar
-    grind; grind; grind
-    simp_all; simp_all
-    intros
-    grind
+    inst_mvars
+    case post.success =>
+      mspec c_spec
+      inst_mvars
+      case post.success =>
+        mspec
+        inst_mvars
+        case post.success => simp; intros; grind
+        grind; grind; all_goals simp_all
+      all_goals simp_all
+    all_goals simp_all
   case h_3 =>
     split
-    mspec
-    mspec c_spec
-    inst_mvar
-    mspec
-    inst_mvar
-    grind; grind; grind
-    simp_all; simp_all
-    intros
-    grind
-    mspec c_at_least_spec
+    · mspec
+      inst_mvars
+      case post.success =>
+        mspec c_spec
+        inst_mvars
+        case post.success =>
+          mspec
+          inst_mvars
+          case post.success => simp; intros; grind
+          grind; grind; grind; all_goals simp_all
+        all_goals simp_all
+      all_goals simp_all
+    · mspec c_at_least_spec
   case h_4 =>
     split
     mspec c_bounded_spec
-    mspec c_empty_lift_spec
+    inst_mvars
+    intros
+    mvcgen <;> simp_all
 termination_by sizeOf rep
 
-@[spec] theorem c_cap_spec (hir : Capture) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
+@[spec] theorem c_cap_spec (hir : Syntax.Capture) (states : Array Unchecked.State)
+  (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_cap hir
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.c_cap
   split
-  mspec c_cap'_lift_spec
+  mspec c_cap'_start_spec
   mspec c_spec
-  inst_mvar
-  mspec c_cap'_lift_spec
-  inst_mvar
-  mspec patch_lift_spec
-  inst_mvar
-  grind; grind
-  mspec patch_lift_spec
-  inst_mvar
-  grind; grind
-  mspec
-  simp_all
-  grind
+  inst_mvars
+  case h_1.post.success.post.success =>
+    intros
+    mspec c_cap'_end_spec
+    inst_mvars
+    case post.success =>
+      mspec patch_lift_spec
+      inst_mvars
+      case post.success =>
+        mspec patch_lift_spec
+        inst_mvars
+        case post.success =>
+          simp; intros; and_intros; grind; grind; grind; grind; grind; grind; grind; simp_all
+        simp_all; grind; grind; all_goals simp_all
+      simp_all; grind; grind; all_goals simp_all
+    all_goals simp_all <;> grind
+  all_goals simp_all
 termination_by sizeOf hir
 
-@[spec] theorem c_spec (hir : Hir) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states⌝⦄
+@[spec] theorem c_spec (hir : Hir) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => ⌜s.1 = states ∧  nextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c hir
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   have : sizeOf hir.kind < sizeOf hir := Hir.sizeOfKindOfHir hir
   mintro _
   unfold Code.c
   split
   · mspec c_empty_lift_spec
+    inst_mvars; all_goals simp_all
   · mspec c_literal_lift_spec
+    inst_mvars; all_goals simp_all
   · mspec c_unicode_class_lift_spec
+    inst_mvars; all_goals simp_all
   · mspec c_look_lift_spec
+    inst_mvars; all_goals simp_all
   · expose_names
     have : sizeOf look < sizeOf hir.kind := by simp [heq]
     mspec c_lookaround_spec
   · mspec c_back_ref_lift_spec
+    inst_mvars; all_goals simp_all
   · expose_names
     have : sizeOf rep < sizeOf hir.kind := by simp [heq]
     mspec c_repetition_spec
@@ -1046,6 +1270,7 @@ termination_by sizeOf hir
   · expose_names
     have : sizeOf items < sizeOf hir.kind := by simp [heq]
     mspec c_concat_spec
+    inst_mvars; all_goals simp_all
   · expose_names
     have : sizeOf sub < sizeOf hir.kind := by simp [heq]
     mspec c_alt_iter_spec
@@ -1054,41 +1279,53 @@ termination_by sizeOf hir
 end
 
 @[spec] theorem c_init_spec (anchored : Bool)
-    : ⦃fun s => ⌜s.1.size = 0⌝⦄
+    : ⦃fun s => ⌜s.1.size = 0 ∧ s.2.1.size = 0⌝⦄
       Code.init anchored
-      ⦃post⟨fun r s => ⌜tRefLt r s.1 ∧ nextOfLt s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefLt r s.1 ∧ nextOfLt s.1 ∧ cValid s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.init
   split
   · mspec c_empty_lift_spec
-    inst_mvar
-    simp_all
+    inst_mvars
+    all_goals simp_all
   · mspec c_repetition_spec
-    inst_mvar
-    simp_all
+    inst_mvars
+    all_goals simp_all
 
 @[spec] theorem c_compile_spec (anchored : Bool) (hir : Hir)
-    : ⦃fun s => ⌜s.1.size = 0⌝⦄
+    : ⦃fun s => ⌜s.1.size = 0 ∧ s.2.1.size = 0⌝⦄
       Code.compile anchored hir
-      ⦃post⟨fun _ s => ⌜nextOfLt s.1⌝, fun _ => ⌜True⌝⟩⦄ := by
+      ⦃post⟨fun _ s => ⌜nextOfLt s.1 ∧ cValid s.2.1⌝, fun _ => ⌜True⌝⟩⦄ := by
   mintro _
   unfold Code.compile
   mspec c_init_spec
   mspec c_cap_spec
-  inst_mvar
-  mspec add_match_lift_spec
-  inst_mvar
-  mspec patch_lift_spec
-  inst_mvar
-  case success.post.success.post.success.post.success =>
-    mspec patch_lift_spec
-    inst_mvar
-    all_goals (try simp_all) <;> grind
-  all_goals grind
+  inst_mvars
+  case success.post.success =>
+    mspec add_match_lift_spec
+    inst_mvars
+    case post.success =>
+      mspec patch_lift_spec
+      inst_mvars
+      case post.success =>
+        mspec patch_lift_spec
+        inst_mvars
+        case post.success => simp; intros; grind
+        simp_all; grind; grind; all_goals simp_all
+      simp_all; grind; grind; all_goals simp_all
+    all_goals simp_all
+  all_goals simp_all
 
 theorem compile_nextOf_lt {anchored : Bool} {expr : Hir}
-  (h : Code.compile anchored expr (#[], #[]) = EStateM.Result.ok () (states, groups))
-    :  nextOfLt states := by
-  have heq := (c_compile_spec anchored expr) (#[], #[])
+  (h : Code.compile anchored expr (#[], #[], #[]) = EStateM.Result.ok () (states, captures, groups))
+    : nextOfLt states := by
+  have heq := c_compile_spec anchored expr (#[], #[], #[])
   simp [wp] at heq
-  split at heq <;> try simp_all
+  split at heq <;> simp_all
+
+theorem compile_captures_valid {anchored : Bool} {expr : Hir}
+  (h : Code.compile anchored expr (#[], #[], #[]) = EStateM.Result.ok () (states, captures, groups))
+    : Capture.valid captures := by
+  have heq := c_compile_spec anchored expr (#[], #[], #[])
+  simp [wp] at heq
+  split at heq <;> simp_all

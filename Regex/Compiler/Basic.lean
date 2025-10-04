@@ -34,4 +34,4 @@ instance : ToString ThompsonRef where
   toString s := s!"{s.start}, {s.end}"
 
 /-- the next `StateID` of all states in array `arr` is less than size of `arr`. -/
-@[simp] def nextOfLt (r : Array Unchecked.State) := ∀ (i : Nat) _, r[i].nextOf < r.size
+@[simp, grind] def nextOfLt (r : Array Unchecked.State) := ∀ (i : Nat) _, r[i].nextOf < r.size

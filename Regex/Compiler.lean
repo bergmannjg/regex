@@ -20,11 +20,11 @@ def compile (config : Config := default) (flavor : Syntax.Flavor) (expr : Hir)
     : Except String Checked.NFA := do
   let unanchored_prefix_simulation := expr.containsLookaround || config.unanchored_prefix_simulation
   let anchored := !config.unanchored_prefix || startsWithStart expr || unanchored_prefix_simulation
-  match hm : Code.compile anchored expr (#[], #[]) with
-  | EStateM.Result.ok _ (states, groups) =>
-    let nfa ← NFA.toCkecked ⟨states, Unchecked.toSlots states, 0, 0⟩
+  match hm : Code.compile anchored expr (#[], #[], #[]) with
+  | EStateM.Result.ok _ (states, captures, groups) =>
+    let nfa := NFA.toCkecked ⟨states, 0, 0⟩ captures
                 (match flavor with | Syntax.Flavor.Pcre => groups | _ => #[])
-                (Lemmas.compile_nextOf_lt hm)
+                (Lemmas.compile_nextOf_lt hm) (Lemmas.compile_captures_valid hm)
     Except.ok {nfa with unanchored_prefix_in_backtrack :=
                     !startsWithStart expr && unanchored_prefix_simulation}
   | EStateM.Result.error e _ => Except.error e

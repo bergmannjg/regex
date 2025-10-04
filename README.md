@@ -28,6 +28,11 @@ git = "https://github.com/bergmannjg/regex"
 
 The main documentation is in [Regex.lean](https://bergmannjg.github.io/regex/Regex.html)
 
+## Verification
+
+Prove some [lemmas](https://bergmannjg.github.io/regex/Regex/Compiler/Lemmas.html)
+for [Compiler.Code.compile](https://bergmannjg.github.io/regex/Regex/Compiler/Compile.html#Compiler.Code.compile) with Std.Do.
+
 ## Example
 
 Get captures of "∀ (n : Nat), 0 ≤ n" :
