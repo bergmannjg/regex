@@ -20,7 +20,7 @@ instance : LawfulBEq Role where
   rfl {a} := by cases a <;> decide
 
 instance  : ReflBEq Role where
-  rfl {r} := beq_self_eq_true' r.toCtorIdx
+  rfl {r} := beq_self_eq_true' r.ctorIdx
 
 @[simp] def toSlot (role : Role) (group : Nat) :=
   match role with

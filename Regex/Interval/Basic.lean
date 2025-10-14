@@ -35,7 +35,7 @@ class BoundedOrder (α : Type) [LE α] where
 instance : BoundedOrder Char where
   bot := Char.min
   bot_le := Char.min_le
-  top := Char.max
+  top := Char.maxChar
   le_top := Char.le_max
 
 theorem NonemptyInterval.eq_val_of_eq {α : Type} [LE α]
@@ -115,7 +115,7 @@ def dataIsNonOverlapping {α : Type} [LE α] [HSub α α Nat]
   match intervals with
   | [] => true
   | [_] => true
-  | head :: tail  => List.Chain (Interval.nonOverlapping) head tail
+  | head :: tail => List.IsChain (Interval.nonOverlapping) (head :: tail)
 
 /-- an array of intervals is non overlapping when `intervals.data` is non overlapping -/
 def nonOverlapping {α : Type} [LE α] [HSub α α Nat]

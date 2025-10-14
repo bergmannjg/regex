@@ -323,7 +323,7 @@ private theorem nodup.nodup_of_foldl [DecidableEq α] [LE α] [LT α] [Std.IsPre
 @[simp] theorem mem_mergeSort [LT α] (as : Array α) (le : α → α → Bool := by exact (· ≤ ·))
     : a ∈ as.mergeSort le ↔ a ∈ as := by
   unfold Array.mergeSort
-  simp_all only [mem_toArray, List.mem_mergeSort, mem_toList_iff]
+  simp_all only [List.mem_toArray, List.mem_mergeSort, mem_toList_iff]
 
 open Std.Do
 

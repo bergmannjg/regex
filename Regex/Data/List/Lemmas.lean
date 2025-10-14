@@ -122,24 +122,24 @@ theorem eq_succ_of_tail_nth_pred {head : α} {tail : List α} (data : List α) (
 
 /- see Mathlib/Data/List/Chain.lean -/
 theorem chain_split {a b : α} {l₁ l₂ : List α} :
-    Chain R a (l₁ ++ b :: l₂) ↔ Chain R a (l₁ ++ [b]) ∧ Chain R b l₂ := by
+    IsChain R (a :: (l₁ ++ b :: l₂)) ↔ IsChain R (a :: (l₁ ++ [b])) ∧ IsChain R (b :: l₂) := by
   induction l₁ generalizing a with
   | nil => simp
-  | cons x l₁ IH => simp only [cons_append, chain_cons, and_assoc, IH]
+  | cons x l₁ IH => simp only [cons_append, isChain_cons_cons, and_assoc, IH]
 
 /- see Mathlib/Data/List/Chain.lean -/
 theorem chain_append_cons_cons {a b c : α} {l₁ l₂ : List α} :
-    Chain R a (l₁ ++ b :: c :: l₂) ↔ Chain R a (l₁ ++ [b]) ∧ R b c ∧ Chain R c l₂ := by
-  rw [chain_split, chain_cons]
+    IsChain R (a :: (l₁ ++ b :: c :: l₂)) ↔ IsChain R (a :: (l₁ ++ [b])) ∧ R b c ∧ IsChain R (c :: l₂) := by
+  rw [chain_split, isChain_cons_cons]
 
 /- see Mathlib/Data/List/Chain.lean -/
-theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, Chain R a l ↔
+theorem chain_iff_get {R} : ∀ {a : α} {l : List α}, IsChain R (a :: l) ↔
     (∀ h : 0 < length l, R a (get l ⟨0, h⟩)) ∧
       ∀ (i : Nat) (h : i < l.length - 1),
         R (get l ⟨i, by omega⟩) (get l ⟨i+1, by omega⟩)
-  | a, [] => iff_of_true (Chain.nil) ⟨fun h => by simp at h, fun _ h => by simp at h⟩
+  | a, [] => iff_of_true (IsChain.singleton a) ⟨fun h => by simp at h, fun _ h => by simp at h⟩
   | a, b :: t => by
-    rw [chain_cons, @chain_iff_get _ _ _ t]
+    rw [isChain_cons_cons, @chain_iff_get _ _ _ t]
     constructor
     · rintro ⟨R, ⟨h0, h⟩⟩
       constructor

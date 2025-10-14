@@ -142,26 +142,19 @@ theorem nonOverlapping_of_push (acc : Acc) (next : NonemptyInterval Char)
     unfold Intervals.nonOverlapping at hn
     unfold Intervals.dataIsNonOverlapping
     split <;> simp_all
-    rename_i heq
+    rename_i head tail _ heq
     cases h : acc'.toList
     · rw [h] at heq
-      simp_all
-      rw [← heq.left, ← heq.right]
-      rw [← heq.left] at h2
-      have hx : List.Chain Interval.nonOverlapping next [] := by simp_all
-      simp [List.chain_cons.mpr ⟨h2, hx⟩]
+      grind
     · rw [h] at heq
-      rename_i head' tail' _ head tail
-      have hh : head = head' := List.head_eq_of_cons_eq heq
-      have ht : tail ++ [last] ++ [next] = tail' := by simp_all
-      have hn : List.Chain Interval.nonOverlapping head (tail ++ [last]) := by
+      rename_i head tail
+      have hn : List.IsChain Interval.nonOverlapping (head :: (tail ++ [last])) := by
         unfold Intervals.dataIsNonOverlapping at hn
         simp_all
-      have hy : List.Chain Interval.nonOverlapping head (tail ++ [last]  ++ [next]) := by
+      have hy : List.IsChain Interval.nonOverlapping (head :: (tail ++ [last]  ++ [next])) := by
         simp [List.append_assoc, List.chain_append_cons_cons,
-              List.Chain.nil, and_true]
+              and_true]
         simp_all
-      rw [←hh, ←ht]
       simp_all
   simp_all
 
@@ -217,7 +210,7 @@ theorem nonOverlapping_of_pred (ranges : Array $ NonemptyInterval Char) (i : Fin
     have : 1 < ranges.size := Nat.lt_of_le_of_lt (Nat.succ_le_of_lt h) i.isLt
     contradiction
   · rename_i head tail _ heq
-    let ⟨h1, h2⟩ := List.chain_iff_get.mp hr
+    let ⟨h1, h2⟩  := List.chain_iff_get.mp hr
     match i with
     | ⟨0, h⟩ => contradiction
     | ⟨1, hf⟩ =>

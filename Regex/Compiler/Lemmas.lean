@@ -452,7 +452,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.c_unicode_class cls
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s⌝⟩⦄ := by
   mvcgen [Code.c_unicode_class]
-  all_goals simp_all <;> grind
+  all_goals simp_all; grind
 
 @[spec] theorem c_unicode_class_lift_spec (cls : ClassUnicode) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -537,8 +537,8 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
   · intros
     and_intros
     · rename_i h _ _ _
-      cases h <;> have := isValid <;> simp_all <;> grind
-    · have := isValid <;> simp_all <;> grind
+      cases h; have := isValid; simp_all; grind
+    · have := isValid; simp_all; grind
   · grind
 
 @[spec] theorem c_cap'_end_spec (group slot: Nat)
@@ -660,7 +660,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_repetition_0_none union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_repetition_0_none]
-  all_goals try simp_all <;> grind
+  all_goals simp_all
 
 @[spec] theorem c_repetition_0_none_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -674,7 +674,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
     : ⦃fun s => ⌜s = states ∧ nextOfLt states⌝⦄
       (if greedy then Code.add_union else Code.add_union_reverse : Code.PatchM Unchecked.StateID)
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
-  split <;> mvcgen <;> simp_all
+  split <;> mvcgen
 
 @[spec] theorem c_at_least_0_pre_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ nextOfLt states⌝⦄
@@ -728,7 +728,6 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_1_pre greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_1_pre]
-  all_goals simp_all <;> grind
 
 @[spec] theorem c_at_least_1_pre_lift_spec (greedy : Bool) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -1003,7 +1002,7 @@ termination_by sizeOf hirs
       inst_mvars
       case post.success => inst_mvars; grind
       simp_all; grind; all_goals simp_all
-    all_goals simp_all <;> grind
+    all_goals simp_all
   all_goals simp_all
 termination_by sizeOf hir + sizeOf n
 
@@ -1095,7 +1094,7 @@ termination_by sizeOf hir + sizeOf n + 1
     simp_all
   case isTrue =>
     intro _
-    and_intros <;> simp_all
+    simp_all
   case isFalse =>
     intro _
     simp_all

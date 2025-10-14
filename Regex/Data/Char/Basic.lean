@@ -1,10 +1,11 @@
 import Batteries.Data.Nat.Lemmas
 import Regex.Data.UInt.Basic
+import Batteries.Data.Char.Basic
 
 namespace Char
 
 /-- max valid char -/
-def max : Char := ⟨0x10FFFF, by simp +arith +decide⟩
+def maxChar : Char := ⟨Char.max.toUInt32, by simp +arith +decide⟩
 
 /-- incr char up to max valid char `Char.max` -/
 def increment (c : Char) : Char :=
@@ -23,23 +24,23 @@ theorem eq_le {c1 c2 : Char} (h : c1 = c2) : c1 ≤ c2 := by
 
 theorem lt_le {c1 c2 : Char} (h : c1 < c2) : c1 ≤ c2 := by
   have h₁ : c1.val.toNat < c2.val.toNat := h
-  have h₂ : c1.val.toNat ≤ c2.val.toNat := by simp [Nat.le_of_lt h₁]
+  have h₂ : c1.val.toNat ≤ c2.val.toNat := by grind
   exact h₂
 
 theorem succ_lt {c1 c2 : Char} (h : (c2.val.toNat - c1.val.toNat) = 1) : c1 < c2 := by
-  have hx : c1.val.toNat < c2.val.toNat := by simp_all [Nat.lt_of_sub_eq_succ h]
+  have hx : c1.val.toNat < c2.val.toNat := by grind
   exact hx
 
 theorem min_le (c : Char) : Char.min ≤ c := by
   have h : 0 ≤ c.val.toNat := by simp_all
   exact h
 
-theorem le_max (c : Char) : c ≤ Char.max := by
+theorem le_max (c : Char) : c ≤ Char.maxChar := by
   cases c.valid
   · rename_i h
     have hx : 0xd800 < 0x10FFFF := by simp +arith
-    have hy : c.val.toNat < 0x10FFFF := by simp [Nat.lt_trans h hx]
-    have hz : c < Char.max := by exact hy
+    have hy : c.val.toNat < 0x10FFFF := by grind
+    have hz : c < Char.maxChar := by exact hy
     simp [Char.lt_le hz]
   · rename_i h
     have hx : c.val.toNat < 0x10FFFF.succ := h.right
@@ -51,7 +52,7 @@ theorem one_le_of_lt {c1 c2 : Char} (h : c1 < c2) : 1 ≤ c2.val :=
   UInt32.one_le_of_lt h
 
 theorem toNat_eq (c : Char) : c.val.toNat.toUInt32 = c.val := by
-  simp [UInt32.toNat_toUInt_eq c.val]
+  exact UInt32.ofNat_toNat
 
 theorem succ_lt_lt {c1 c2 : Char} (h : 1 + Char.toNat c1 < Char.toNat c2) : c1 < c2 := by
   have h : Char.toNat c1 < Char.toNat c2 := Nat.succ_lt_lt h
