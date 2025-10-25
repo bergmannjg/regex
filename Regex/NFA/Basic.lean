@@ -22,72 +22,59 @@ instance : LawfulBEq Role where
 instance  : ReflBEq Role where
   rfl {r} := beq_self_eq_true' r.ctorIdx
 
-@[simp] def toSlot (role : Role) (group : Nat) :=
-  match role with
-  | .Start => group * 2
-  | .End => group * 2 + 1
-
-@[simp] def IsValid (role : Role) (group slot : Nat) :=
-  match role with
-  | .Start => group * 2 = slot
-  | .End => group * 2 + 1 = slot
-
-def toString : Role -> String
+def roleToString : Role -> String
   | .Start => s!"Start"
   | .End => s!"End"
 
 instance : ToString Role where
-  toString := toString
+  toString := roleToString
 
 end Capture
 
-/-- A capture location.
-  `slot` in this context refers to the specific capture group slot
-    offset that is being recorded. Each capturing group has two slots
+/-- A capture location. Each capturing group has two slots
     corresponding to the start and end of the matching portion of that
     group. -/
 @[ext] structure Capture where
   role: Capture.Role
   group : Nat
-  slot: Nat
-  isValid : Capture.IsValid role group slot
+deriving BEq, DecidableEq
+
+instance : LE NFA.Capture where
+  le a b := if a.group = b.group
+            then if a.role = b.role then true else a.role = Capture.Role.Start
+            else a.group < b.group
+
+instance (a b : NFA.Capture) : Decidable (LE.le a b) := by
+  simp [NFA.instLECapture]
+  exact instDecidableIte
 
 namespace Capture
 
-abbrev SlotGroup := Nat × Nat
+def toString (c : Capture) : String :=
+  s!"{c.role} {c.group}"
 
-/-- Transform `captures` to a sorted array of (slot, group) tuples. -/
-def toSlots (captures : Array NFA.Capture) : Array SlotGroup :=
-  let slots := captures.map f
-  Array.mergeSort slots le |> Array.unique
-where
-  f c := (c.slot, c.group)
-  le := fun (a : SlotGroup) (b : SlotGroup) => decide (a.1 ≤ b.1)
+instance : ToString Capture where
+  toString := toString
 
 /-- A valid capture array consists of capture groups with two slots.
   For every capture group slot with `Role.End` exists a group slot with `Role.Start` -/
-@[simp] def valid (captures : Array NFA.Capture) :=
-    (∀ c : { c : NFA.Capture // c ∈ captures ∧ c.slot % 2 = 0 },
-            c.val.role = Capture.Role.Start ∧ c.val.slot = c.val.group * 2)
-    ∧ (∀ c : { c : NFA.Capture // c ∈ captures ∧ c.slot % 2 = 1 },
-            c.val.role = Capture.Role.End ∧ c.val.slot = c.val.group * 2 + 1)
-    ∧ ∀ c : { c : NFA.Capture // c ∈ captures ∧ c.role = Capture.Role.End },
+inductive Valid : Array NFA.Capture → Prop where
+  | mk {captures : Array NFA.Capture}
+       (h : ∀ c : { c : NFA.Capture // c ∈ captures ∧ c.role = Capture.Role.End },
+            (∃ c' ∈ captures, c'.role = Capture.Role.Start ∧ c.val.group = c'.group))
+    : Valid captures
+
+theorem Valid.forall : {captures : Array NFA.Capture} → (Valid captures)
+    → ∀ c : { c : NFA.Capture // c ∈ captures ∧ c.role = Capture.Role.End },
       (∃ c' ∈ captures, c'.role = Capture.Role.Start ∧ c.val.group = c'.group)
+  | _, .mk _ => by assumption
+
+@[grind] theorem Valid.iff {captures : Array NFA.Capture}
+    : Valid captures ↔ ∀ c : { c : NFA.Capture // c ∈ captures ∧ c.role = Capture.Role.End },
+      (∃ c' ∈ captures, c'.role = Capture.Role.Start ∧ c.val.group = c'.group) :=
+  Iff.intro (by intro h; exact Valid.forall h) (by apply Valid.mk)
 
 end Capture
-
-namespace Slots
-
-/-- A valid slot array of (slot, group) tuples consists of groups with two slots
-    at consecutive positions. The groups are not always consecutive,
-    i.e. regex '(a){0}(a)' with slots #[(0, 0), (1, 0), (4, 2), (5, 2)] -/
-@[simp] def Valid (slots : Array Capture.SlotGroup) :=
-  (∀ slot : { slot : Capture.SlotGroup // slot ∈ slots ∧ slot.1 % 2 = 0 }, slot.val.1 = slot.val.2 * 2)
-  ∧ (∀ slot : { slot : Capture.SlotGroup // slot ∈ slots ∧ slot.1 % 2 = 1 }, slot.val.1 = slot.val.2 * 2 + 1)
-  ∧ (∀ slot : { slot : Capture.SlotGroup // slot ∈ slots ∧ slot.1 = slot.2 * 2 + 1 },
-    ∃ slot' ∈ slots, (slot.val.2 = slot'.2 ∧ slot'.1 = slot'.2 * 2))
-
-end Slots
 
 /-- The high-level intermediate representation for a look-around assertion. -/
 inductive Look where
@@ -234,8 +221,7 @@ inductive State where
        offset that is being recorded. Each capturing group has two slots
        corresponding to the start and end of the matching portion of that
        group. -/
-  | Capture (role : Capture.Role) (next: StateID) (pattern_id: PatternID) (group : Nat)
-    (slot: Nat) (isValid : Capture.IsValid role group slot) : State
+  | Capture (role : Capture.Role) (next: StateID) (pattern_id: PatternID) (group : Nat) : State
   /-- A match state. There is at least one such occurrence of this state for
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State
@@ -246,7 +232,7 @@ private def beq' :  State → State → Bool
   | .ByteRange trans1 , .ByteRange trans2  =>
       trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
   | .SparseTransitions trans1 , .SparseTransitions trans2 => trans1.size = trans2.size
-  | .Capture r1 n1 _ g1 s1 _,  .Capture r2 n2 _ g2 s2 _ => r1 == r2 && n1 = n2 && g1 = g2 && s1 = s2
+  | .Capture r1 n1 _ g1,  .Capture r2 n2 _ g2 => r1 == r2 && n1 = n2 && g1 = g2
   | .Match p1,  .Match p2 => p1 = p2
   | _, _ => false
 
@@ -279,8 +265,8 @@ def toString : State -> String
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
       s!"State.UnionReverse [{lines} ]"
   | .BinaryUnion alt1 alt2 => s!"State.BinaryUnion({alt1}, {alt2})"
-  | .Capture role next pattern_id group slot _ =>
-      s!"State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
+  | .Capture role next pattern_id group =>
+      s!"State.Capture {role}(pid={pattern_id}, group={group}) => {next}"
   | .Match pattern_id => s!"State.Match ({pattern_id})"
 
 /-- next StateID of State `s` -/
@@ -300,7 +286,7 @@ def toString : State -> String
   | .Union alts => alts.toList.maxD 0
   | .UnionReverse alts => alts.toList.maxD 0
   | .BinaryUnion alt1 alt2 => Nat.max alt1 alt2
-  | .Capture _ next _ _ _ _ => next
+  | .Capture _ next _ _ => next
   | .Match _ => 0
 
 end State
@@ -408,8 +394,7 @@ inductive State (n : Nat) where
        offset that is being recorded. Each capturing group has two slots
        corresponding to the start and end of the matching portion of that
        group. -/
-  | Capture (role: Capture.Role) (next: Fin n) (pattern_id: PatternID) (group : Nat)
-      (slot: Nat) (isValid : Capture.IsValid role group slot) : State n
+  | Capture (role: Capture.Role) (next: Fin n) (pattern_id: PatternID) (group : Nat) : State n
   /-- A match state. There is at least one such occurrence of this state for
       each regex that can match that is in this NFA. -/
   | Match (pattern_id : PatternID) : State n
@@ -420,7 +405,7 @@ private def beq' :  State n → State n → Bool
   | .ByteRange trans1 , .ByteRange trans2  =>
       trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
   | .SparseTransitions trans1 , .SparseTransitions trans2 => trans1.size = trans2.size
-  | .Capture r1 ⟨n1, _⟩ _ g1 s1 _,  .Capture r2 ⟨n2, _⟩ _ g2 s2 _ => r1 == r2 && n1 = n2 && g1 = g2 && s1 = s2
+  | .Capture r1 ⟨n1, _⟩ _ g1,  .Capture r2 ⟨n2, _⟩ _ g2 => r1 == r2 && n1 = n2 && g1 = g2
   | .Match p1,  .Match p2 => p1 = p2
   | _, _ => false
 
@@ -453,8 +438,8 @@ def toString : State n -> String
       let lines := String.join (alts.toList |> List.map (fun t => s!" {t}"))
       s!"State.UnionReverse [{lines} ]"
   | .BinaryUnion alt1 alt2 => s!"State.BinaryUnion ({alt1}, {alt2})"
-  | .Capture role next pattern_id group slot _ =>
-      s!"State.Capture {role}(pid={pattern_id}, group={group}, slot={slot}) => {next}"
+  | .Capture role next pattern_id group =>
+      s!"State.Capture {role}(pid={pattern_id}, group={group}) => {next}"
   | .Match pattern_id => s!"State.Match ({pattern_id})"
 
 end State
@@ -469,17 +454,17 @@ structure NFA where
   states : Array (State n)
   /-- capture groups which may match with a empty string -/
   groups : Array Nat
-  /-- Array of (slot, group) pairs of captures -/
-  slots : Array Capture.SlotGroup
+  /-- all captures in states -/
+  captures : Array NFA.Capture
   /-- simulate a unanchored prefix by the backtracker -/
   unanchored_prefix_in_backtrack : Bool
   /-- assertion that n equals size of states -/
   isEq : n = states.size
   /-- slots are valid -/
-  slotsValid : Slots.Valid slots
+  capturesValid : Capture.Valid captures
 
 instance : Inhabited NFA where default := ⟨0, #[], #[], #[], false, rfl, by
-                                           unfold Slots.Valid; and_intros <;> grind⟩
+                                           apply Capture.Valid.mk; simp⟩
 
 instance {nfa : NFA} : Coe (Fin nfa.n) (Fin (Array.size nfa.states)) where
   coe n := Fin.castLE (by simp[nfa.isEq]) n
@@ -489,7 +474,7 @@ def toString (nfa : NFA) : String :=
   let states := String.join (states.toList |> List.map (fun (i, s) =>
       let iv := String.mk (Nat.toDigits 10 i)
       "\n  " ++ iv ++ ": " ++ s.toString))
-  s!"states {states}\nslots {nfa.slots}"
+  s!"states {states}\ncaptures {nfa.captures}"
 
 instance : ToString NFA where
   toString := Checked.toString
@@ -546,8 +531,8 @@ def toCkeckedState (s : Unchecked.State) (n : Nat) (h : Unchecked.State.nextOf s
       (fun ⟨alt, h'⟩ => ⟨alt, by
         simp [Unchecked.State.nextOf] at h
         exact List.maxD_all_lt_of_lt h alt (Array.Mem.val h')⟩))
-  | .Capture role next pattern_id group slot isValid => Checked.State.Capture role
-          ⟨next, by simp [Unchecked.State.nextOf] at h; exact h⟩ pattern_id group slot isValid
+  | .Capture role next pattern_id group => Checked.State.Capture role
+          ⟨next, by simp [Unchecked.State.nextOf] at h; exact h⟩ pattern_id group
   | .BinaryUnion alt1 alt2 => Checked.State.BinaryUnion
       ⟨alt1, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩
       ⟨alt2, by simp [Unchecked.State.nextOf] at h; simp [Nat.max_lt.mp h]⟩

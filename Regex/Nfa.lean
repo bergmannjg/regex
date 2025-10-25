@@ -14,10 +14,9 @@ see also [Tagged NFA](https://en.wikipedia.org/wiki/Tagged_Deterministic_Finite_
 /-- transform Unchecked.NFA to Checked.NFA -/
 def toCkecked (nfa : Unchecked.NFA) (captures : Array NFA.Capture) (groups : Array Nat)
   (hs : ∀ (i : Nat) _, nfa.states[i].nextOf < nfa.states.size)
-  (hv : NFA.Capture.valid captures) : Checked.NFA :=
+  (hv : NFA.Capture.Valid captures) : Checked.NFA :=
   let states := nfa.states.attach.map (toFun nfa.states hs)
-  ⟨nfa.states.size, states, groups, NFA.Capture.toSlots captures, false,
-    by grind, toSlots_valid captures hv⟩
+  ⟨nfa.states.size, states, groups, captures, false, by grind, hv⟩
 
 end NFA
 

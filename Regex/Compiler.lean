@@ -22,9 +22,10 @@ def compile (config : Config := default) (flavor : Syntax.Flavor) (expr : Hir)
   let anchored := !config.unanchored_prefix || startsWithStart expr || unanchored_prefix_simulation
   match hm : Code.compile anchored expr (#[], #[], #[]) with
   | EStateM.Result.ok _ (states, captures, groups) =>
-    let nfa := NFA.toCkecked ⟨states, 0, 0⟩ captures
+    let nfa := NFA.toCkecked ⟨states, 0, 0⟩ captures.mergeSort.unique
                 (match flavor with | Syntax.Flavor.Pcre => groups | _ => #[])
-                (Lemmas.compile_nextOf_lt hm) (Lemmas.compile_captures_valid hm)
+                (NextOfLt.forall (Lemmas.compile_nextOf_lt hm))
+                (by have := Lemmas.compile_captures_valid hm; grind)
     Except.ok {nfa with unanchored_prefix_in_backtrack :=
                     !startsWithStart expr && unanchored_prefix_simulation}
   | EStateM.Result.error e _ => Except.error e

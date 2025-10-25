@@ -33,5 +33,14 @@ structure ThompsonRef where
 instance : ToString ThompsonRef where
   toString s := s!"{s.start}, {s.end}"
 
-/-- the next `StateID` of all states in array `arr` is less than size of `arr`. -/
-@[simp, grind] def nextOfLt (r : Array Unchecked.State) := ∀ (i : Nat) _, r[i].nextOf < r.size
+/-- the next `StateID` of all states in array `r` is less than size of `r`. -/
+inductive NextOfLt : Array Unchecked.State → Prop where
+  | mk {r : Array Unchecked.State} (h : ∀ (i : Nat) _, r[i].nextOf < r.size) : NextOfLt r
+
+theorem NextOfLt.forall : {r : Array Unchecked.State} → NextOfLt r
+    → ∀ (i : Nat) _, r[i].nextOf < r.size
+  | _, NextOfLt.mk _ => by assumption
+
+@[grind] theorem NextOfLt.iff {r : Array Unchecked.State}
+    : NextOfLt r ↔ ∀ (i : Nat) _, r[i].nextOf < r.size :=
+  Iff.intro (by intro h; exact NextOfLt.forall h) (by apply NextOfLt.mk)

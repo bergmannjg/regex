@@ -383,10 +383,10 @@ def c_alt_iter_step (first second : ThompsonRef)
 def c_rep_pre (greedy : Bool) : PatchM Unchecked.StateID := do
   if greedy then add_union else add_union_reverse
 
-def c_cap' (role : Capture.Role) (group slot: Nat) (isValid : Capture.IsValid role group slot) : CompilerM Unchecked.StateID := do
+def c_cap' (role : Capture.Role) (group : Nat) : CompilerM Unchecked.StateID := do
   let (states, caputures, groups) ← get
-  let (stateId, states) ← (push (Unchecked.State.Capture role 0 0 group slot isValid)).run states
-  set (states, caputures.push (NFA.Capture.mk role group slot isValid), groups)
+  let (stateId, states) ← (push (Unchecked.State.Capture role 0 0 group)).run states
+  set (states, caputures.push (NFA.Capture.mk role group), groups)
   pure stateId
 
 mutual
@@ -548,9 +548,9 @@ termination_by sizeOf rep
 def c_cap (hir : Syntax.Capture) : CompilerM ThompsonRef := do
   match hir with
     | .mk group _ sub =>
-      let start ← c_cap' Capture.Role.Start group (group * 2) rfl
+      let start ← c_cap' Capture.Role.Start group
       let «inner» ← c sub
-      let «end» ← c_cap' Capture.Role.End group (group * 2 + 1) rfl
+      let «end» ← c_cap' Capture.Role.End group
       Code.patch start inner.start
       Code.patch inner.end «end»
       pure (ThompsonRef.mk start «end»)

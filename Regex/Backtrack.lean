@@ -235,7 +235,7 @@ abbrev SlotEntry s := Nat × Nat × (Option (CharPos.PosInRange s))
 
 abbrev SlotsValid s := {slots : Array (SlotEntry s) // SearchState.Slots.Valid slots}
 
-theorem SlotsValidOfRangeMap (slots : Array (SlotEntry s))
+theorem valid_of_range_map (s : Regex.ValidSubstring) (slots : Array (SlotEntry s))
   (f : Nat → SlotEntry s) (hf : f = (fun i => (i, i.div 2, none)))
   (h : (List.range slots.size).map f = slots.toList)
     : SearchState.Slots.Valid slots := by
@@ -277,44 +277,96 @@ private theorem mem_le_max (xs : Array Nat) (h : xs.max? = some m)
     : ∀ a ∈ xs, (Ord.toLE instOrdNat).le a m := by
   exact Array.mem_le_max xs h Nat.toLT_iff Nat.toLT_notLt
 
-theorem mem_RangeMap_if_Valid (slots : Array (SlotEntry s))
+namespace Capture
+
+def toSlot (c : Capture) :=
+  match c.role with
+  | .Start => c.group * 2
+  | .End => c.group * 2 + 1
+
+end Capture
+
+def toSlotEntry (c : Capture) : SlotEntry s :=
+  (Capture.toSlot c, c.group, none)
+
+theorem valid_map_of_valid (s : Substring)
+  (captures : Array Capture) (h : NFA.Capture.Valid captures)
+  (slots : Array (SlotEntry s)) (hs : slots = captures.map (@toSlotEntry s))
+    : ∀ slot : { slot : SlotEntry s // slot ∈ slots ∧ slot.1 = slot.2.1 * 2 + 1},
+    ∃ slot' ∈ slots, (slot.val.2.1 = slot'.2.1 ∧ slot'.1 = slot'.2.1 * 2) := by
+  intro ⟨slot, ⟨h1, h2⟩⟩
+  have : slot ∈ Array.map toSlotEntry captures := by grind
+  have ⟨c, ⟨h1, h2⟩⟩ : ∃ c, c ∈ captures ∧ (@toSlotEntry s) c = slot := Array.mem_map.mp this
+  unfold toSlotEntry Capture.toSlot at h2
+  split at h2
+  · grind
+  · have h := NFA.Capture.Valid.forall h
+    have ⟨c', h'⟩ := h ⟨c, by grind⟩
+    let slot' := (@toSlotEntry s) c'
+    have heq : c'.group = slot'.snd.fst := rfl
+    exact ⟨slot', by
+      and_intros
+      · have : c' ∈ captures := h'.left
+        have : slot' ∈ Array.map (@toSlotEntry s) captures := Array.mem_map_of_mem this
+        simp_all
+      · have : c.group = slot.snd.fst := by rw [← h2]
+        simp_all
+      · have : slot' = (@toSlotEntry s) c' := rfl
+        rw [this]
+        simp [toSlotEntry, Capture.toSlot]
+        split <;> simp_all⟩
+
+theorem mem_range_map_of_mem (captures : Array Capture)
+  (slots : Array (SlotEntry s))
   (f : Nat → SlotEntry s) (hf : f = (fun i => (i, i.div 2, none)))
   (heq: (Array.range slots.size).map f = slots)
-  (slots' : Array (Nat × Nat)) (hv : NFA.Slots.Valid slots')
-  (hsize : slots.size = match (slots'.map Prod.fst).max? with | some m => m + 1 | none => 0)
-    : ∀ slot ∈ slots', (slot.1, slot.2, none) ∈ slots := by
-  intro slot h
-  have : slot.fst ∈ Array.range slots.size := by
-    have : slot.fst < slots.size := by
-      split at hsize
-      · rename_i m heq
-        have : ∀ a ∈ (Array.map Prod.fst slots'), a ≤ m := by
-          intro a ha
-          apply (Nat.toLE_iff_le a m).mp
-          exact mem_le_max (Array.map Prod.fst slots') heq a ha
-        have := Array.forall_mem_map.mp this
-        grind
-      · rename_i heq
-        unfold Array.max? Array.min? at heq
-        simp_all
-    grind
-  have := @Array.mem_map_of_mem Nat (SlotEntry s) (Array.range slots.size) slot.fst f this
-  rw [heq] at this
-  have : (slot.fst, slot.snd, none) = f slot.fst := by
-    simp_all
-    by_cases h : slot.fst % 2 = 0
-    · have := hv.left slot.fst slot.snd (by simp_all) h
-      rw [this]
-      have := @Nat.div_eq_of_eq_mul_left 2 (slot.snd * 2) slot.snd (by simp) (by simp)
-      exact id (Eq.symm this)
-    · have h : slot.fst % 2 = 1 := by grind
-      have := hv.right.left slot.fst slot.snd (by simp_all) h
-      rw [this]
-      have := @Nat.add_mul_div_right 1 slot.snd 2 (by simp)
-      simp at this
-      rw [Nat.add_comm]
-      exact id (Eq.symm this)
-  simp_all
+  (hsize : slots.size = match (captures.map Capture.toSlot).max? with | some m => m + 1 | none => 0)
+    : ∀ capture ∈ captures, toSlotEntry capture ∈ slots := by
+  rw [← heq]
+  intro capture hMem
+  have : ∃ i, i ∈ Array.range slots.size ∧ f i = toSlotEntry capture := by
+    simp [toSlotEntry, Capture.toSlot]
+    split
+    · exact ⟨capture.group * 2, by
+        split at hsize
+        · and_intros
+          · expose_names
+            have : ∀ a ∈ (Array.map Capture.toSlot captures), a ≤ m := by
+              intro a ha
+              apply (Nat.toLE_iff_le a m).mp
+              exact mem_le_max (Array.map Capture.toSlot captures) heq_2 a ha
+            have := Array.forall_mem_map.mp this capture hMem
+            simp [Capture.toSlot] at this
+            grind
+          · simp_all
+            exact Nat.mul_div_cancel capture.group (by simp)
+        · rename_i heq
+          unfold Array.max? Array.min? at heq
+          simp_all⟩
+    · exact ⟨capture.group * 2 + 1, by
+        split at hsize
+        · and_intros
+          · expose_names
+            have : ∀ a ∈ (Array.map Capture.toSlot captures), a ≤ m := by
+              intro a ha
+              apply (Nat.toLE_iff_le a m).mp
+              exact mem_le_max (Array.map Capture.toSlot captures) heq_2 a ha
+            have := Array.forall_mem_map.mp this capture hMem
+            simp [Capture.toSlot] at this
+            grind
+          · simp_all
+            have h1 : (capture.group * 2 + 1) % 2 = 1 := by grind
+            have h2 := @Nat.div_eq_sub_mod_div (capture.group * 2 + 1) 2
+            rw [h1] at h2
+            have h3 : (capture.group * 2 + 1) - 1 = capture.group * 2 := by grind
+            rw [h3] at h2
+            have h3 := @Nat.mul_div_cancel capture.group 2 (by simp)
+            simp_all
+            assumption
+        · rename_i heq
+          unfold Array.max? Array.min? at heq
+          simp_all⟩
+  grind
 
 /-- State of the backtracking search -/
 @[ext] structure SearchState (n : Nat) (input : Substring) where
@@ -351,16 +403,17 @@ def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
   («at» :  Regex.ValidPos input.val.str) (logEnabled : Bool)
   (h : 0 < nfa.n ∧ input.val.startPos ≤ «at» ∧ «at» ≤ input.val.stopPos)
     : SearchState nfa.n input :=
-  let max := match (nfa.slots.map Prod.fst).max? with | some max => max + 1 | none => 0
+  let max := match (nfa.captures.map Capture.toSlot).max? with | some max => max + 1 | none => 0
   let f : Nat → SlotEntry input := (fun i => (i, i.div 2, none))
   let slots := Array.range max |> Array.map f
-  -- nfa.slots is a subset of slots
-  have : ∀ slot ∈ nfa.slots, (slot.fst, (slot.snd, none)) ∈ slots := @mem_RangeMap_if_Valid
-      input slots f (by simp +zetaDelta) (by simp +zetaDelta) nfa.slots nfa.slotsValid (by simp +zetaDelta)
-  have hSlotsValid := @SlotsValidOfRangeMap input slots f (by simp +zetaDelta) (by simp +zetaDelta)
-
+  have hSlotsValid := valid_of_range_map input slots f (by simp +zetaDelta) (by simp +zetaDelta)
   let recentCaptures : Array $ Option (String.Pos × String.Pos) :=
     slots |> Array.map (fun (_, g, _) => g) |> Array.unique |> Array.map (fun _ => none)
+
+  -- toSlotEntry of nfa.captures is a member of slots
+  have := mem_range_map_of_mem nfa.captures slots f (by grind) (by grind) (by grind)
+  -- toSlotEntry of nfa.captures gives valid slots
+  have := valid_map_of_valid input nfa.captures nfa.capturesValid
 
   {
     stack := default
@@ -1061,7 +1114,7 @@ private def encodeChar? (c: Option Char) : String :=
   | .Union alts => step_union alts searchState
   | .UnionReverse alts => step_union_reverse alts searchState
   | .BinaryUnion alt1 alt2 => step_binary_union alt1 alt2 searchState
-  | .Capture role next _ g slot _ => step_capture role next g slot searchState
+  | .Capture role next _ g => step_capture role next g (Capture.toSlot ⟨role, g⟩) searchState
   | .Match pattern_id => step_match pattern_id searchState
 
 private theorem witMsg_countVisited_eq (msg : Unit -> String) (s1 s2 : SearchState n s)

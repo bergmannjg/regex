@@ -14,24 +14,24 @@ private def nfaOf'a'Checked : Checked.NFA :=
     #[.UnionReverse #[⟨2, by simp⟩, ⟨3, by simp⟩],
       .Empty ⟨0, by simp⟩,
       .SparseTransitions #[⟨0, 0xd7ff, ⟨1, by simp⟩⟩, ⟨0xe000, 0x10ffff, ⟨1, by simp⟩⟩],
-      .Capture NFA.Capture.Role.Start ⟨4, by simp⟩ 0 0 0 rfl,
+      .Capture NFA.Capture.Role.Start ⟨4, by simp⟩ 0 0,
       .ByteRange ⟨'a'.val.toFin, 'a'.val.toFin, ⟨5, by simp⟩⟩,
-      .Capture NFA.Capture.Role.End ⟨6, by simp⟩ 0 0 1 rfl,
+      .Capture NFA.Capture.Role.End ⟨6, by simp⟩ 0 0,
       .Match 0
     ]
     #[]
-    #[(0, 0), (1, 0)]
+    #[⟨NFA.Capture.Role.Start, 0⟩, ⟨NFA.Capture.Role.End, 0⟩]
     false
     rfl
-    (NFA.SlotsValidOfRangeMap #[(0, 0), (1, 0)] rfl)
+    (NFA.CapturesValidOfRangeMap #[⟨NFA.Capture.Role.Start, 0⟩, ⟨NFA.Capture.Role.End, 0⟩] rfl)
 
 private def nfaOf'a' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 4 0 0,
     .ByteRange ⟨'a'.val, 'a'.val, 5⟩,
-    .Capture NFA.Capture.Role.End 6 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 6 0 0,
     .Match 0
     ], 2, 0⟩
 
@@ -39,10 +39,10 @@ private def nfaOf'ab' : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 4 0 0,
     .ByteRange ⟨'a'.val, 'a'.val, 5⟩,
     .ByteRange ⟨'b'.val, 'b'.val, 6⟩,
-    .Capture NFA.Capture.Role.End 7 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 7 0 0,
     .Match 0
     ], 2, 0⟩
 
@@ -50,11 +50,11 @@ private def «nfaOf'a?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 4 0 0,
     .Union #[5, 6],
     .ByteRange ⟨'a'.val, 'a'.val, 6⟩,
     .Empty 7,
-    .Capture NFA.Capture.Role.End 8 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 8 0 0,
     .Match 0
     ], 2, 0⟩
 
@@ -62,12 +62,12 @@ private def «nfaOf'ab?'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 4 0 0,
     .ByteRange ⟨'a'.val, 'a'.val, 5⟩,
     .Union #[6, 7],
     .ByteRange ⟨'b'.val, 'b'.val, 7⟩,
     .Empty 8,
-    .Capture NFA.Capture.Role.End 9 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 9 0 0,
     .Match 0
     ], 2, 0⟩
 
@@ -75,10 +75,10 @@ private def «nfaOf'[a-b]'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 5 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 5 0 0,
     .Empty 6,
     .SparseTransitions #[⟨'a'.val, 'b'.val, 4⟩],
-    .Capture NFA.Capture.Role.End 7 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 7 0 0,
     .Match 0
     ], 2, 0⟩
 
@@ -86,12 +86,12 @@ private def «nfaOf'a|b'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 6 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 6 0 0,
     .ByteRange ⟨'a'.val, 'a'.val, 7⟩,
     .ByteRange ⟨'b'.val, 'b'.val, 7⟩,
     .Union #[4, 5],
     .Empty 8,
-    .Capture NFA.Capture.Role.End 9 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 9 0 0,
     .Match 0
     ], 2, 0⟩
 
@@ -99,11 +99,11 @@ private def «nfaOf'(a)'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
-    .Capture NFA.Capture.Role.Start 5 0 1 2 rfl,
+    .Capture NFA.Capture.Role.Start 4 0 0,
+    .Capture NFA.Capture.Role.Start 5 0 1,
     .ByteRange ⟨'a'.val, 'a'.val, 6⟩,
-    .Capture NFA.Capture.Role.End 7 0 1 3 rfl,
-    .Capture NFA.Capture.Role.End 8 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 7 0 1,
+    .Capture NFA.Capture.Role.End 8 0 0,
     .Match 0
     ], 2, 0⟩
 
@@ -111,7 +111,7 @@ private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
   ⟨#[.UnionReverse #[2, 3],
     .Empty 0,
     .SparseTransitions #[⟨0, 0xd7ff, 1⟩, ⟨0xe000, 0x10ffff, 1⟩],
-    .Capture NFA.Capture.Role.Start 4 0 0 0 rfl,
+    .Capture NFA.Capture.Role.Start 4 0 0,
     .Empty 8,
     .Empty 12,
     .Empty 11,
@@ -120,7 +120,7 @@ private def «nfaOf'[a]{0,2}'» : Unchecked.NFA :=
     .Empty 5,
     .SparseTransitions #[⟨'a'.val, 'a'.val, 9⟩],
     .Union #[10, 5],
-    .Capture NFA.Capture.Role.End 13 0 0 1 rfl,
+    .Capture NFA.Capture.Role.End 13 0 0,
     .Match 0
     ], 2, 0⟩
 
