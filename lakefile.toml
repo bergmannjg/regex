@@ -13,6 +13,11 @@ name = "batteries"
 git = "https://github.com/leanprover-community/batteries"
 rev = "v4.24.0"
 
+[[require]]
+name = "Parser"
+git = "https://github.com/fgdorais/lean4-parser"
+rev = "1df69ca"
+
 [[lean_lib]]
 name = "Regex"
 buildType = "debug"

@@ -441,7 +441,7 @@ private def parseRepetition (p : String) (f t : String.Pos) (arr : Array Syntax)
         exact Array.sizeOf_get arr 3 (by omega)
       pure $ (← toRepetition p f t l r m (← parseVal p s))
     | _, _, _ => Except.error s!"ill-formed repetition parts {left} {right}"
-  | _, _, _, _, _ => Except.error s!"ill-formed repetition array {arr}"
+  | _, _, _, _, _ => Except.error s!"ill-formed repetition array {f}:{t} {arr}"
 termination_by sizeOf arr
 
 private def innerParseCharacterClassSetOp (p op : String) (left right : Array Syntax) : ParserM Ast := do

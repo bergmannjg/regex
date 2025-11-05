@@ -262,13 +262,14 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
       ⦃post⟨fun r => ⌜stateIdNextOfLt states r.1 r.2⌝⟩⦄ := by
   mintro _
   mvcgen [Code.push]
-  simp
   dsimp only [bind, StateT.bind, Functor.map, StateT.map, wp, Id.run]
   split
   rename_i heq
   dsimp only [MonadStateOf.get, StateT.get, pure] at heq
-  dsimp only [set, StateT.set, pure]
-  and_intros <;> intros <;> simp_all <;> grind
+  dsimp only [set, StateT.set, StateT.pure, pure]
+  simp only [stateIdNextOfLt, PredTrans.pure_apply, Array.size_push, Nat.lt_add_one, true_and,
+    SPred.down_pure]
+  and_intros <;> grind
 
 @[spec] theorem push_run_lift_spec (sid : Unchecked.State) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s.1 = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
