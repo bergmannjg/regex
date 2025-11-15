@@ -10,7 +10,7 @@ Definitions for Regex api
 -/
 
 abbrev ValidSubstring := { s : Substring // Substring.Valid s }
-abbrev ValidPos s := { pos : String.Pos // String.Pos.Valid s pos }
+abbrev ValidPos s := { pos : String.Pos.Raw // String.Pos.Raw.Valid s pos }
 
 instance instSubstringValid (s : ValidSubstring) : Inhabited (ValidPos s.val.str) where
   default := ⟨s.val.startPos, s.property.startValid⟩
@@ -37,13 +37,13 @@ structure Captures (s : String) where
   areSubstringsOf : groups.all (Option.all (·.val.str = s) ·)
 
 theorem start_pos_valid_of {s : ValidSubstring} (captures : Captures s.val.str)
-    : String.Pos.Valid s.val.str captures.fullMatch.val.startPos  := by
+    : String.Pos.Raw.Valid s.val.str captures.fullMatch.val.startPos  := by
   have : captures.fullMatch.val.str = s.val.str := by simp [captures.isSubstringOf]
   have := captures.fullMatch.property.startValid
   simp_all
 
 theorem stop_pos_valid_of {s : ValidSubstring} (captures : Captures s.val.str)
-    : String.Pos.Valid s.val.str captures.fullMatch.val.stopPos  := by
+    : String.Pos.Raw.Valid s.val.str captures.fullMatch.val.stopPos  := by
   have : captures.fullMatch.val.str = s.val.str := by simp [captures.isSubstringOf]
   have := captures.fullMatch.property.stopValid
   simp_all

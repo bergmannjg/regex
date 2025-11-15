@@ -37,7 +37,7 @@ def map_option_subtype {p : α → Prop} [DecidablePred p] (arr : Array (Option 
     cases arr
     rename_i l
     induction l with
-    | nil => rfl
+    | nil => simp
     | cons a l ih =>
         rw [Array.all_eq_true_iff_forall_mem] at ih
         rw [Array.all_eq_true_iff_forall_mem]

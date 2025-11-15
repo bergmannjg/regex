@@ -63,13 +63,13 @@ instance {α β : Type} [Inhabited β] : Inhabited (ST.Ref β (Array α)) where
 
 end Array.Ref
 
-@[simp] def CharPos.posInRange (s : Substring) (pos : String.Pos) :=
+@[simp] def CharPos.posInRange (s : Substring) (pos : String.Pos.Raw) :=
   s.startPos ≤ pos ∧ pos ≤ s.stopPos
 
 /-- Char position in a substring-/
 structure CharPos (s : Substring) where
   /-- current position -/
-  pos : String.Pos := s.startPos
+  pos : String.Pos.Raw := s.startPos
   /-- char at current position -/
   curr? : Option Char := none
   /-- char at previous position -/
@@ -77,18 +77,18 @@ structure CharPos (s : Substring) where
   /-- `pos` is in range of substring `s` -/
   isPosInRange : CharPos.posInRange s pos
   /-- `pos` is valid string position in `s.str` -/
-  isValidPos : String.Pos.Valid s.str pos
+  isValidPos : String.Pos.Raw.Valid s.str pos
   /-- `s` is a valid substring -/
   isValidSubstring : Substring.Valid s
 
 abbrev CharPos.PosInRange s :=
-  { pos : String.Pos // CharPos.posInRange s pos ∧ String.Pos.Valid s.str pos}
+  { pos : String.Pos.Raw // CharPos.posInRange s pos ∧ String.Pos.Raw.Valid s.str pos}
 
 abbrev CharPos.Pair s := { p : (CharPos.PosInRange s) × (CharPos.PosInRange s)
                            // p.1.val ≤ p.2.val }
 
 instance : Inhabited (CharPos default) :=
-  ⟨default, none, none, by simp; decide, String.Pos.valid_zero, Substring.Valid_default⟩
+  ⟨default, none, none, by simp; decide, String.Pos.Raw.valid_zero, Substring.Valid_default⟩
 
 instance : ToString (CharPos s) where
   toString s := s!"{s.pos} {s.curr?} {s.prev?}"
@@ -98,7 +98,7 @@ namespace CharPos
 def toSlotEntry («at»: CharPos input) : CharPos.PosInRange input :=
   ⟨«at».pos, And.intro «at».isPosInRange «at».isValidPos⟩
 
-def get? (s : Substring) («at» : String.Pos) : Option Char :=
+def get? (s : Substring) («at» : String.Pos.Raw) : Option Char :=
   if «at» < s.stopPos then s.get «at» else none
 
 /-- create a CharPos from `s` and position `«at»` -/
@@ -108,13 +108,13 @@ def create (s : Regex.ValidSubstring)
   let prev? := if «at».val = 0 then none else get? s (s.val.prev «at»)
   ⟨«at», get? s «at», prev?, h, «at».property, s.property⟩
 
-theorem valid_prev (cp : CharPos s) : String.Pos.Valid s.str (s.str.prev cp.pos) := by
+theorem valid_prev (cp : CharPos s) : String.Pos.Raw.Valid s.str (String.Pos.Raw.prev s.str cp.pos) := by
   exact String.valid_prev cp.isValidPos
 
 /-- to prev position of `cp` -/
 def prev (cp : CharPos s) : Option (CharPos s) :=
   if 0 < cp.pos.byteIdx then
-    let pos := s.str.prev cp.pos
+    let pos := String.Pos.Raw.prev s.str cp.pos
     if h : s.startPos ≤ pos ∧ pos ≤ s.stopPos
     then some (create ⟨s, cp.isValidSubstring⟩ ⟨pos, valid_prev cp⟩  h)
     else none
@@ -128,9 +128,9 @@ def prevn (offset : Nat) (cp : CharPos s) : Option (CharPos s) :=
     else cp
 
 theorem valid_next (cp : CharPos s) (h : cp.pos < s.stopPos)
-    : String.Pos.Valid s.str (s.str.next cp.pos) := by
+    : String.Pos.Raw.Valid s.str (String.Pos.Raw.next s.str cp.pos) := by
   simp_all [String.valid_next cp.isValidPos (by
-          have := String.Pos.Valid.le_endPos cp.isValidSubstring.stopValid
+          have := String.Pos.Raw.Valid.le_endPos cp.isValidSubstring.stopValid
           exact Nat.lt_of_lt_of_le h this)]
 
 /-- to next position of `cp` -/
@@ -139,7 +139,7 @@ def next (cp : CharPos s) : CharPos s :=
   else
     match cp.curr? with
     | some _ =>
-      let nextPos := s.str.next cp.pos
+      let nextPos := String.Pos.Raw.next s.str cp.pos
       if hInRange : s.startPos ≤ nextPos ∧ nextPos ≤ s.stopPos
       then {cp with pos := nextPos, prev? := cp.curr?, curr? := get? s nextPos,
                     isPosInRange := hInRange
@@ -175,14 +175,14 @@ structure HalfMatch where
     /-- The pattern ID. -/
     pattern: PatternID
     /-- The offset of the match. -/
-    offset: String.Pos
+    offset: String.Pos.Raw
 
 instance : Inhabited HalfMatch := ⟨0, 0⟩
 
 instance : ToString HalfMatch where
   toString a := s!"pattern {a.pattern}, offset {a.offset}"
 
-private def compare (a : Fin n × String.Pos) (b : Fin n × String.Pos) : Ordering :=
+private def compare (a : Fin n × String.Pos.Raw) (b : Fin n × String.Pos.Raw) : Ordering :=
   if a.1 < b.1 then Ordering.lt
   else if a.1 = b.1 && a.2 = b.2 then Ordering.eq
   else Ordering.gt
@@ -386,7 +386,7 @@ theorem mem_range_map_of_mem (captures : Array Capture)
   /-- slots are valid -/
   slotsValid: SearchState.Slots.Valid slots
   /-- recent captures of capture groups -/
-  recentCaptures: Array (Option (String.Pos × String.Pos))
+  recentCaptures: Array (Option (String.Pos.Raw × String.Pos.Raw))
   /-- is logging enabled -/
   logEnabled : Bool
   /-- log msgs -/
@@ -407,7 +407,7 @@ def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
   let f : Nat → SlotEntry input := (fun i => (i, i.div 2, none))
   let slots := Array.range max |> Array.map f
   have hSlotsValid := valid_of_range_map input slots f (by simp +zetaDelta) (by simp +zetaDelta)
-  let recentCaptures : Array $ Option (String.Pos × String.Pos) :=
+  let recentCaptures : Array $ Option (String.Pos.Raw × String.Pos.Raw) :=
     slots |> Array.map (fun (_, g, _) => g) |> Array.unique |> Array.map (fun _ => none)
 
   -- toSlotEntry of nfa.captures is a member of slots
@@ -936,7 +936,7 @@ private def encodeChar? (c: Option Char) : String :=
   if i < s.length
   then
     if cp.atStop then none else
-    let c := s.get ⟨i⟩
+    let c := String.Pos.Raw.get s ⟨i⟩
     let cf := if case_insensitive
       then
         match Unicode.case_fold_char c with
@@ -1494,13 +1494,13 @@ private def slotsWithUnanchoredPrefix (s : Regex.ValidSubstring)
   else
     let (msgs, slots) := toSlots s «at» nfa logEnabled
     if slots.size = 0 then
-      let nextPos := ⟨s.val.str.next «at», by
+      let nextPos := ⟨String.Pos.Raw.next s.val.str «at», by
         apply String.valid_next «at».property
-        have := String.Pos.Valid.le_endPos s.property.stopValid
+        have := String.Pos.Raw.Valid.le_endPos s.property.stopValid
         exact Nat.lt_of_lt_of_le (Nat.lt_of_not_ge h) this⟩
-      have : s.val.stopPos.byteIdx - (s.val.str.next «at»).byteIdx
+      have : s.val.stopPos.byteIdx - (String.Pos.Raw.next s.val.str «at»).byteIdx
              < s.val.stopPos.byteIdx - at.val.byteIdx := by
-        have := String.lt_next s.val.str «at»
+        have := String.Pos.Raw.byteIdx_lt_byteIdx_next s.val.str «at»
         omega
       slotsWithUnanchoredPrefix s nextPos nfa logEnabled (init ++ msgs)
     else (init ++ msgs, slots)

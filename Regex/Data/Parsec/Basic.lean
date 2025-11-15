@@ -68,16 +68,16 @@ def peekChar : (SimpleParser Substring Char) Char :=
   peek
 
 def withPos (p : (SimpleParser Substring Char) α)
-    : (SimpleParser Substring Char) (String.Pos × String.Pos × α) := do
+    : (SimpleParser Substring Char) (String.Pos.Raw × String.Pos.Raw × α) := do
   let cap ← Char.captureStr p
   return (cap.2.startPos, cap.2.stopPos, cap.1)
 
 def withPosM (p : (ReaderT ρ $ StateT σ (SimpleParser Substring Char)) α)
-    : (ReaderT ρ $ StateT σ (SimpleParser Substring Char)) (String.Pos × String.Pos × α) := fun f s => do
+    : (ReaderT ρ $ StateT σ (SimpleParser Substring Char)) (String.Pos.Raw × String.Pos.Raw × α) := fun f s => do
   let cap ← Char.captureStr (p f s)
   return ((cap.2.startPos, cap.2.stopPos, cap.1.1), cap.1.2)
 
-def withPosSkip : (SimpleParser Substring Char) String.Pos := do
+def withPosSkip : (SimpleParser Substring Char) String.Pos.Raw := do
   let (_, t, _) ← withPos anyToken
   pure t
 
@@ -119,14 +119,14 @@ def trySkipChar (check : Char -> Bool) : (SimpleParser Substring Char) Bool := d
 
 /-- exec `check` on current char and then exec `p` on success -/
 def tryCharThenPWithPos (check : Char -> Bool) (p : (SimpleParser Substring Char) α)
-    : (SimpleParser Substring Char) $ Option (String.Pos × String.Pos × α) := do
+    : (SimpleParser Substring Char) $ Option (String.Pos.Raw × String.Pos.Raw × α) := do
   match ← peekChar? with
   | some c => if check c then pure $ some (← withPos p) else pure none
   | none => pure none
 
 /-- exec `check` on current char and then exec `p` on success -/
 def tryCharThenPWithPosM (check : Char -> Bool) (p : (ReaderT ρ $ StateT σ (SimpleParser Substring Char)) α)
-    : (ReaderT ρ $ StateT σ (SimpleParser Substring Char)) $ Option (String.Pos × String.Pos × α) := fun f s => do
+    : (ReaderT ρ $ StateT σ (SimpleParser Substring Char)) $ Option (String.Pos.Raw × String.Pos.Raw × α) := fun f s => do
   match ← peekChar? with
   | some c => if check c then
                 let x ← withPos (p f s)
@@ -135,10 +135,10 @@ def tryCharThenPWithPosM (check : Char -> Bool) (p : (ReaderT ρ $ StateT σ (Si
   | none => pure (none, s)
 
 def tryCharWithPos (check : Char -> Bool)
-    :  (SimpleParser Substring Char) $ Option (String.Pos × String.Pos × Char) := do
+    :  (SimpleParser Substring Char) $ Option (String.Pos.Raw × String.Pos.Raw × Char) := do
   tryCharThenPWithPos check anyToken
 
-def tryCharWithPosMap (check : Char -> Bool) (f : Char → String.Pos → String.Pos → α)
+def tryCharWithPosMap (check : Char -> Bool) (f : Char → String.Pos.Raw → String.Pos.Raw → α)
     :  (SimpleParser Substring Char) $ Option α := do
   if let some (p1, p2, c) ← tryCharWithPos check then pure $ f c p1 p2
   else pure none

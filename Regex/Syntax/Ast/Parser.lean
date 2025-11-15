@@ -47,16 +47,21 @@ private def extractNegated (arr : Array Syntax)
       | none => (false, ⟨arr, by simp⟩)
   | none => (false, ⟨arr, by simp⟩)
 
+private def firstChar (s : String) : ParserM Char :=
+  if s.length = 1
+  then return (String.Pos.Raw.get s 0)
+  else Except.error s!"ill-formed literal syntax {s}"
+
 private def parseLiteral (p : String) (x : Syntax) : ParserM Ast := do
   match x with
-  | Syntax.node _ `literal #[Lean.Syntax.atom (.synthetic f t) ⟨[c]⟩] =>
-      pure $ .Literal $ Literal.toLiteral c p f t
+  | Syntax.node _ `literal #[Lean.Syntax.atom (.synthetic f t) s] =>
+      pure $ .Literal $ Literal.toLiteral (← firstChar s) p f t
   | _ => Except.error s!"ill-formed literal syntax {x}"
 
 private def parseHyphen (p : String) (x : Syntax) : ParserM Ast := do
   match x with
-  | Syntax.node _ `hyphen #[Lean.Syntax.atom (.synthetic f t) ⟨[c]⟩] =>
-      pure $ .Literal $ Literal.toLiteral c p f t
+  | Syntax.node _ `hyphen #[Lean.Syntax.atom (.synthetic f t) s] =>
+      pure $ .Literal $ Literal.toLiteral (← firstChar s) p f t
   | _ => Except.error s!"ill-formed literal syntax {x}"
 
 private def nameToClassSetItems : List (String × ClassAsciiKind) :=
@@ -111,9 +116,9 @@ private def getPerlClass (c : Char) : ParserM $ Bool × ClassPerlKind := do
 
 private def parseGenericCharacterType (p : String) (x : Syntax) : ParserM Ast := do
   match valuesOfLitSyntax x with
-  | some (_, (.synthetic f t), ⟨[c]⟩) =>
+  | some (_, (.synthetic f t), s) =>
       -- ClassUnicodeKind.Named
-      let (negated, kind) ← getPerlClass c
+      let (negated, kind) ← getPerlClass (← firstChar s)
       pure $ Ast.ClassPerl ⟨⟨p, f, t⟩, kind, negated⟩
   | _ => Except.error s!"no GenericCharacterType values in {x}"
 
@@ -122,10 +127,10 @@ private def parseUnicodeCharacterProperty (p : String) (x : Syntax) : ParserM As
   | Syntax.node (.synthetic f t) kind arr =>
       let negated := kind = `unicodeCharacterPropertyNegated
       match arr.toList with
-      | [.atom _ ⟨[c]⟩] =>
-        pure $ Ast.ClassUnicode ⟨⟨p, f, t⟩ , negated, ClassUnicodeKind.OneLetter c⟩
-      | [.atom _ v] =>
-        pure $ Ast.ClassUnicode ⟨⟨p, f, t⟩ , negated, ClassUnicodeKind.Named v⟩
+      | [.atom _ s] =>
+        if s.length = 1
+        then pure $ Ast.ClassUnicode ⟨⟨p, f, t⟩ , negated, ClassUnicodeKind.OneLetter (← firstChar s)⟩
+        else pure $ Ast.ClassUnicode ⟨⟨p, f, t⟩ , negated, ClassUnicodeKind.Named s⟩
       | (.atom _ a) :: (.atom _ "=") :: [.atom _ b] =>
         pure $ Ast.ClassUnicode ⟨⟨p, f, t⟩ , negated, ClassUnicodeKind.NamedValue .Equal a b⟩
       | _ => Except.error s!"ill-formed UnicodeCharacterProperty array in {x}"
@@ -154,7 +159,7 @@ private def parseBackReferenceOrLiteral (p : String) (x : Syntax) : ParserM Ast 
   | Syntax.node (.synthetic f t) `backReferenceNumberOrLiteral #[b, l] =>
     let (b, c) ←
       match b, l with
-      | .atom .none b, .atom .none ⟨[c]⟩  => pure (b, c)
+      | .atom .none b, .atom .none s => pure (b, ← firstChar s)
       | _, _ => Except.error s!"ill-formed BackRefOrLiteral in {x}"
 
     match b.toNat? with
@@ -263,7 +268,7 @@ private def toRepetitionKind (p l r : String) : ParserM RepetitionKind := do
     pure $ RepetitionKind.Range  (RepetitionRange.Bounded 0 r)
   | _, _ => Except.error "invalid repetition kind {l} {r}"
 
-private def toRepetition (p : String) (f t : String.Pos) (l r m : String) (ast : Ast)
+private def toRepetition (p : String) (f t : String.Pos.Raw) (l r m : String) (ast : Ast)
     : ParserM Ast := do
   let (greedy, possessive) :=
     match m.toList with
@@ -407,7 +412,7 @@ private def fold (p : String) (arr : Array Syntax) : ParserM $ Array Ast := do
           parseVal p h.val)) #[]
 termination_by sizeOf arr
 
-private def parseGroup (p : String) (f t : String.Pos) (arr : Array Syntax) : ParserM Ast := do
+private def parseGroup (p : String) (f t : String.Pos.Raw) (arr : Array Syntax) : ParserM Ast := do
   match h : arr.head? with
   | some (kind, arr') =>
     have : sizeOf arr' < sizeOf arr := Array.sizeOf_head?_of_tail h
@@ -428,7 +433,7 @@ private def parseAlternatives (p : String) (arr : Array Syntax) : ParserM Ast :=
   pure (.Alternation ⟨⟨"", 0, 0⟩, asts⟩)
 termination_by sizeOf arr
 
-private def parseRepetition (p : String) (f t : String.Pos) (arr : Array Syntax) : ParserM Ast := do
+private def parseRepetition (p : String) (f t : String.Pos.Raw) (arr : Array Syntax) : ParserM Ast := do
   match hsize : arr.size, arr[0]?, arr[1]?, arr[2]?, hs : arr[3]? with
   | 4, some left, some right, some modifier, some s =>
     match valueOfLitSyntax left `repetitionLeft,

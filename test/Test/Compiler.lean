@@ -159,19 +159,22 @@ private def capturesOf (s : String) (startPos stopPos : ValidPos s) (h : startPo
 example : toString (Regex.captures "a" (regex% "a"))
           = toString (capturesOf "a"
                 ⟨⟨0⟩, by simp⟩
-                ⟨⟨1⟩, by exact ⟨['a'], ⟨[], by simp_all; rfl⟩⟩⟩ (by decide)) := by native_decide
+                ⟨⟨1⟩, String.Pos.Raw.Valid.intro (⟨['a'], ⟨[], And.symm ⟨rfl, rfl⟩⟩⟩)⟩
+                (by decide)) := by native_decide
 
 example : toString (Regex.captures "ab" (regex% "a(?=b)"))
           = toString (capturesOf "ab"
                 ⟨⟨0⟩, by simp⟩
-                ⟨⟨1⟩, by exact ⟨['a'], ⟨['b'], by simp_all; rfl⟩⟩⟩ (by decide)) := by native_decide
+                ⟨⟨1⟩, String.Pos.Raw.Valid.intro (⟨['a'], ⟨['b'], And.symm ⟨rfl, rfl⟩⟩⟩)⟩
+                (by decide)) := by native_decide
 
 example : regex% "a(?=b)" |> Regex.captures "ac" |>.isNone := by native_decide
 
 example : toString (Regex.captures "ac" (regex% "a(?!b)"))
           = toString (capturesOf "ac"
                 ⟨⟨0⟩, by simp⟩
-                ⟨⟨1⟩, by exact ⟨['a'], ⟨['c'], by simp_all;rfl⟩⟩⟩ (by decide)) := by native_decide
+                ⟨⟨1⟩, String.Pos.Raw.Valid.intro (⟨['a'], ⟨['c'], And.symm ⟨rfl, rfl⟩⟩⟩)⟩
+                (by decide)) := by native_decide
 
 example : regex% "a(?!b)" |> Regex.captures "ab" |>.isNone := by native_decide
 

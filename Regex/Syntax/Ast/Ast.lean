@@ -243,7 +243,7 @@ namespace Literal
 def toString (lit : Literal) : String :=
   s!"Literal {spanToString lit.span} {lit.kind} '{UInt32.intAsString lit.c.val}'"
 
-def toLiteral (c : Char) (p : String) (f t : String.Pos): Literal :=
+def toLiteral (c : Char) (p : String) (f t : String.Pos.Raw) : Literal :=
   ⟨⟨p, f, t⟩, .Verbatim, c⟩
 
 end Literal

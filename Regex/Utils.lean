@@ -92,8 +92,8 @@ def startsAtCodepoint (s m : String) (i : Nat) : Bool :=
   else false
 
 /-- compute the byte position of the codepoint position `p` in `s` -/
-def toBytePosition (s : String) (p : Nat) : String.Pos :=
-  ⟨String.utf8ByteSize ⟨s.data |> List.take p⟩⟩
+def toBytePosition (s : String) (p : Nat) : String.Pos.Raw :=
+  ⟨String.utf8ByteSize (s.take p)⟩
 
 /-- make Substring of String -/
 def toSpan (s : String) (startPos : Nat) (stopPos : Nat) : Substring :=

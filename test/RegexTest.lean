@@ -73,7 +73,7 @@ structure RegexTest where
   extended : Option Regex.Grammar.ExtendedKind := none
 
 def unescapeStr (s : String) : String :=
-  ⟨loop s.data⟩
+  String.mk (loop s.data)
 where
   toChar (a b : Char) : Char :=
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
@@ -118,7 +118,7 @@ def checkFlagIsTrue (f : Option Bool) : Bool :=
   match f with | some v => v | none => false
 
 private def escape (s : String) : String :=
-  s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace ⟨[⟨0, by simp +arith +decide⟩]⟩ r"\x00"
+  s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace [⟨0, by simp +arith +decide⟩].asString r"\x00"
 
 instance : ToString RegexTest where
   toString s :=

@@ -69,7 +69,7 @@ theorem Valid.forall : {captures : Array NFA.Capture} → (Valid captures)
       (∃ c' ∈ captures, c'.role = Capture.Role.Start ∧ c.val.group = c'.group)
   | _, .mk _ => by assumption
 
-@[grind] theorem Valid.iff {captures : Array NFA.Capture}
+@[grind =] theorem Valid.iff {captures : Array NFA.Capture}
     : Valid captures ↔ ∀ c : { c : NFA.Capture // c ∈ captures ∧ c.role = Capture.Role.End },
       (∃ c' ∈ captures, c'.role = Capture.Role.Start ∧ c.val.group = c'.group) :=
   Iff.intro (by intro h; exact Valid.forall h) (by apply Valid.mk)

@@ -25,7 +25,7 @@ Main api for Regex
 
 namespace Captures
 
-def end? (c : Captures s) : Option String.Pos :=
+def end? (c : Captures s) : Option String.Pos.Raw :=
   c.fullMatch.val.stopPos
 
 def «matches» (c : Captures s) : Array (Option Match) :=
@@ -58,7 +58,7 @@ def captures (s : ValidSubstring) (re : Regex) («at» : ValidPos s.val.str) (lo
     (msgs, some ⟨head.val, tail.val, head.property, tail.property⟩)
   | _ => (msgs, none)
 
-private def is_overlapping_empty_match (f t : String.Pos) (acc : Array (Captures s)) : Bool :=
+private def is_overlapping_empty_match (f t : String.Pos.Raw) (acc : Array (Captures s)) : Bool :=
   match acc.pop? with
   | some (last, _) =>
       match last.end? with
@@ -80,20 +80,22 @@ private def all_captures_loop (s : ValidSubstring) («at» : ValidPos s.val.str)
         let overlapping_empty_match := is_overlapping_empty_match startPos stopPos acc.2
         let next := if startPos = stopPos then cp.next.pos else stopPos
         if h : «at» < next ∧ «at» < s.val.stopPos then
-          have hNextValid : String.Pos.Valid s.val.str next := by
+          have hNextValid : String.Pos.Raw.Valid s.val.str next := by
             unfold next
             split
             · exact cp.next.isValidPos
             · exact stop_pos_valid_of captures
-          have : sizeOf (s.val.stopPos - next) < sizeOf (s.val.stopPos - «at») :=
-            String.Pos.sizeof_lt_of_lt (String.Pos.sub_lt_sub_left h.right h.left)
+          have : sizeOf (s.val.stopPos.byteIdx - next.byteIdx)
+                 < sizeOf (s.val.stopPos.byteIdx - «at».val.byteIdx) := by
+            have := String.Pos.sizeof_lt_of_lt (String.Pos.sub_lt_sub_left h.right h.left)
+            simp_all
           all_captures_loop s ⟨next, hNextValid⟩ re logEnabled
             (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
         else (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
       else (acc.1.append msgs, acc.2.push captures)
     else (acc.1.append msgs, acc.2.push captures)
   | (msgs, none) => (acc.1.append msgs, acc.2)
-termination_by s.val.stopPos - «at»
+termination_by s.val.stopPos.byteIdx - «at».val.byteIdx
 
 /-- Returns an array of log msgs and all successive non-overlapping matches in the given haystack. -/
 def all_captures (s : ValidSubstring) (re : Regex) (logEnabled : Bool)

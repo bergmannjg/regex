@@ -41,6 +41,6 @@ theorem NextOfLt.forall : {r : Array Unchecked.State} → NextOfLt r
     → ∀ (i : Nat) _, r[i].nextOf < r.size
   | _, NextOfLt.mk _ => by assumption
 
-@[grind] theorem NextOfLt.iff {r : Array Unchecked.State}
+@[grind =] theorem NextOfLt.iff {r : Array Unchecked.State}
     : NextOfLt r ↔ ∀ (i : Nat) _, r[i].nextOf < r.size :=
   Iff.intro (by intro h; exact NextOfLt.forall h) (by apply NextOfLt.mk)

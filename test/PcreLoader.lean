@@ -15,7 +15,7 @@ private def octDigitsToChar! (chars : List Char) : Char :=
 
 /-- unescape strings from pcre json file generated from perltest.sh via JSON::PP. -/
 private def unescapeStr (s : String) (isHaystack : Bool := false) : String :=
-  ⟨loop s.data⟩
+  String.mk (loop s.data)
 where
   toChar (a b : Char) : Char :=
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
@@ -58,23 +58,23 @@ where
       else '\\' :: c1 :: (loop tail)
     | head :: tail => head :: (loop tail)
 
-example : unescapeStr r"\x20" = ⟨[' ']⟩  := by native_decide
+example : unescapeStr r"\x20" = [' '].asString  := by native_decide
 
-example : unescapeStr r"\x20\x20" = ⟨[' ', ' ']⟩  := by native_decide
+example : unescapeStr r"\x20\x20" = [' ', ' '].asString  := by native_decide
 
-example : unescapeStr r"\0" = ⟨[cZero]⟩  := by native_decide
+example : unescapeStr r"\0" = [cZero].asString  := by native_decide
 
-example : unescapeStr r"\0\0" = ⟨[cZero, cZero]⟩  := by native_decide
+example : unescapeStr r"\0\0" = [cZero, cZero].asString  := by native_decide
 
-example : unescapeStr r"a\0" = ⟨['a', cZero]⟩  := by native_decide
+example : unescapeStr r"a\0" = ['a', cZero].asString  := by native_decide
 
-example : unescapeStr r"\0a" = ⟨[cZero, 'a']⟩  := by native_decide
+example : unescapeStr r"\0a" = [cZero, 'a'].asString  := by native_decide
 
-example : unescapeStr r"\12a" = ⟨['\n', 'a']⟩  := by native_decide
+example : unescapeStr r"\12a" = ['\n', 'a'].asString  := by native_decide
 
-example : unescapeStr r"\12" = ⟨['\n']⟩  := by native_decide
+example : unescapeStr r"\12" = ['\n'].asString  := by native_decide
 
-example : unescapeStr r"\123" = ⟨['S']⟩  := by native_decide
+example : unescapeStr r"\123" = ['S'].asString  := by native_decide
 
 /-- A pcre match describes outputs of a pcre regex match generated from perltest.sh. -/
 private structure PcreMatch where
@@ -138,20 +138,20 @@ private def toPattern (p : PcreTest) (t : RegexTest) : RegexTest :=
   let pattern := p.pattern.trim
   if pattern.endsWith "/xx" then
     { t with
-      regex :=  Sum.inl ⟨(pattern.data.drop 1).take (pattern.length - 4)⟩
+      regex :=  Sum.inl ((pattern.data.drop 1).take (pattern.length - 4)).asString
       extended := some .ExtendedMore }
   else
     match (pattern.data.head?, pattern.data.getLast?) with
     | (some '/', some '/') =>
-        { t with regex :=  Sum.inl ⟨(pattern.data.drop 1).dropLast⟩ }
+        { t with regex :=  Sum.inl (pattern.data.drop 1).dropLast.asString }
     | (some '/', some c1) =>
       let t := setOption c1 t
       let data := (pattern.data.drop 1).dropLast
       match data.getLast? with
-      | some '/' => { t with regex :=  Sum.inl ⟨data.dropLast⟩ }
+      | some '/' => { t with regex :=  Sum.inl data.dropLast.asString }
       | some c2 =>
         let t := setOption c2 t
-        { t with regex :=  Sum.inl ⟨data.dropLast.dropLast⟩ }
+        { t with regex :=  Sum.inl data.dropLast.dropLast.asString }
       | none => t
     | (_, _) => t
 

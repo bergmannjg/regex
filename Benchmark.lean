@@ -41,7 +41,7 @@ private def createText (c1 c2 : Char) (n : Nat): String :=
             if h : UInt32.isValidChar (c1.val + n.toUInt32)
             then (⟨c1.val + n.toUInt32, h⟩ :: content, generator)
             else (content, generator))
-    ⟨content⟩
+    String.mk content
   else ""
 
 def main (args : List String): IO Unit := do
@@ -51,7 +51,7 @@ def main (args : List String): IO Unit := do
         match n.toNat? with
         | some n =>
           let a? : String := List.replicateTR n "a?" |> String.join
-          let a : String := ⟨List.replicateTR n 'a'⟩
+          let a : String := (List.replicateTR n 'a').asString
           let re := a? ++ a
           let haystack := a
           IO.println s!"re {re} haystack {haystack}"
@@ -71,7 +71,7 @@ def main (args : List String): IO Unit := do
         match n.toNat?, m.toNat? with
         | some n, some m =>
           let a? : String := List.replicateTR n "a?" |> String.join
-          let a : String := ⟨List.replicateTR n 'a'⟩
+          let a : String := (List.replicateTR n 'a').asString
           let re := a? ++ a
           let haystack := a
           IO.println s!"re {re} haystack {haystack}"
@@ -113,7 +113,7 @@ def main (args : List String): IO Unit := do
     | ["randomfile", n, a, z, suffix] => -- create file with random content
         match n.toNat? with
         | some n  =>
-          let content := createText (a.get 0) (z.get 0) n |>.append suffix
+          let content := createText (String.Pos.Raw.get a 0) (String.Pos.Raw.get z 0) n |>.append suffix
           IO.println content
         | _ => IO.println "Nat expected"
     | _ => IO.println

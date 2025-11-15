@@ -107,7 +107,7 @@ OPTIONS:
 namespace regex
 
 private def unescapeString (s : String) : String :=
-  ⟨loop s.data []⟩
+  String.mk (loop s.data [])
 where
   toChar (a b : Char) : Char :=
     match Char.decodeHexDigit a, Char.decodeHexDigit b with

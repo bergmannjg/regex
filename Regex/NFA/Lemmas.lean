@@ -7,13 +7,13 @@ import Regex.NFA.Basic
 
 namespace NFA
 
-@[grind] theorem valid_sorted_of_valid (captures : Array NFA.Capture) (h : NFA.Capture.Valid captures)
+@[grind .] theorem valid_sorted_of_valid (captures : Array NFA.Capture) (h : NFA.Capture.Valid captures)
     : NFA.Capture.Valid (captures.mergeSort (fun a b => decide (a ≤ b))) := by
   apply NFA.Capture.Valid.mk
   have := NFA.Capture.Valid.forall h
   simp_all
 
-@[grind] theorem valid_unique_of_valid (captures : Array NFA.Capture) (h : NFA.Capture.Valid captures)
+@[grind .] theorem valid_unique_of_valid (captures : Array NFA.Capture) (h : NFA.Capture.Valid captures)
     : NFA.Capture.Valid (captures.unique) := by
   apply NFA.Capture.Valid.mk
   have := NFA.Capture.Valid.forall h

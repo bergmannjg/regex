@@ -39,7 +39,7 @@ macro_rules | `(tactic|inst_mvar) => `(tactic| simp; (try and_intros; rfl); try 
 syntax "inst_mvars" : tactic
 macro_rules | `(tactic|inst_mvars) => `(tactic| simp; and_intros; all_goals try rfl)
 
-@[grind] private theorem all_push {sid : Unchecked.State} (states : Array Unchecked.State)
+@[grind .] private theorem all_push {sid : Unchecked.State} (states : Array Unchecked.State)
   (h : Unchecked.State.nextOf sid ≤ states.size)
   (hlt : ∀ (i : Nat) _, states[i].nextOf < states.size)
     : ∀ (i : Nat) _, ((states.push sid)[i].nextOf < (states.push sid).size) := by
@@ -113,20 +113,19 @@ def cValidFunc (captures : Array NFA.Capture) : Array NFA.Capture → Prop :=
 def cMemAndValidFunc (captures : Array NFA.Capture) : Array NFA.Capture → Prop :=
     fun (curr : Array NFA.Capture) => curr = captures ∧ cMemAndValid captures curr
 
-@[grind] theorem cap_exists_of_cap_role_end_of_cValid (caps : Array NFA.Capture) (h : cValid caps)
+@[grind .] theorem cap_exists_of_cap_role_end_of_cValid (caps : Array NFA.Capture) (h : cValid caps)
   (a : NFA.Capture)  (h1 : a ∈ caps) (h2 : a.role = Capture.Role.End)
     : ∃ (a' : NFA.Capture), a' ∈ caps ∧ a'.role = Capture.Role.Start ∧ a.group = a'.group := by
   dsimp only [cValid] at h
   have := Capture.Valid.forall h
   simp_all
 
-@[grind] theorem cValid_of_empty (captures : Array NFA.Capture) (h : captures.size = 0)
+@[grind .] theorem cValid_of_empty (captures : Array NFA.Capture) (h : captures.size = 0)
     : cValid captures := by
   dsimp only [cValid]
-  apply Capture.Valid.mk
   grind
 
-@[grind] theorem cValid_of_cMemAndValid (prevs caps : Array NFA.Capture)
+@[grind .] theorem cValid_of_cMemAndValid (prevs caps : Array NFA.Capture)
   (h : cMemAndValid prevs caps)
     : cValid caps := by
   dsimp [cMemAndValid] at h
@@ -152,7 +151,7 @@ def cMemAndValidFunc (captures : Array NFA.Capture) : Array NFA.Capture → Prop
     have ⟨c', _⟩ := Capture.Valid.forall hc ⟨c, by grind⟩
     exact ⟨c', by grind⟩
 
-@[grind] theorem cMemAndValid_of_push_of_role_end (captures : Array NFA.Capture)
+@[grind .] theorem cMemAndValid_of_push_of_role_end (captures : Array NFA.Capture)
   (capture : NFA.Capture) (hc : cValid captures)
   (h : ∃ c ∈ captures, c.role = Capture.Role.Start ∧ c.group = capture.group)
     : cMemAndValid captures (captures.push capture) := by

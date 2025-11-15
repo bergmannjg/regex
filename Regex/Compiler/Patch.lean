@@ -64,7 +64,7 @@ end Code
 
 namespace Lemmas
 
-@[grind] theorem all_set_next_of_lt (n : Unchecked.StateID) (s : Unchecked.State)
+@[grind .] theorem all_set_next_of_lt (n : Unchecked.StateID) (s : Unchecked.State)
   (states : Array Unchecked.State)
   (h : n < states.size) (hn : Unchecked.State.nextOf s < states.size)
   (hlt : ∀ (i : Nat) _, states[i].nextOf < states.size)
@@ -93,7 +93,7 @@ private theorem maxD_of_union_reverse_lt («from» : Nat) (s : Array Unchecked.S
   split at hn
   all_goals grind
 
-@[grind] theorem nextOfLt_of_union («from» to : Nat) (s : Array Unchecked.State) (alternates : Array Unchecked.StateID)
+@[grind .] theorem nextOfLt_of_union («from» to : Nat) (s : Array Unchecked.State) (alternates : Array Unchecked.StateID)
   (h1 : «from» < s.size) (h2 : to < s.size) (h3 : NextOfLt s)
   (hm : s[«from»] = Unchecked.State.Union alternates)
     : NextOfLt (s.set «from» (Unchecked.State.Union (alternates.push to)) h1) := by
@@ -110,10 +110,9 @@ private theorem maxD_of_union_reverse_lt («from» : Nat) (s : Array Unchecked.S
         exact List.maxD_of_append_lt (maxD_of_union_lt «from» s alternates h1 h3 hm) (by grind)
       grind
     all_goals grind
-  · have := NextOfLt.forall h3
-    grind
+  · grind
 
-@[grind] theorem nextOfLt_of_union_reverse («from» to : Nat) (s : Array Unchecked.State) (alternates : Array Unchecked.StateID)
+@[grind .] theorem nextOfLt_of_union_reverse («from» to : Nat) (s : Array Unchecked.State) (alternates : Array Unchecked.StateID)
   (h1 : «from» < s.size) (h2 : to < s.size) (h3 : NextOfLt s)
   (hm : s[«from»] = Unchecked.State.UnionReverse alternates)
     : NextOfLt (s.set «from» (Unchecked.State.UnionReverse (alternates.push to)) h1) := by
@@ -130,7 +129,6 @@ private theorem maxD_of_union_reverse_lt («from» : Nat) (s : Array Unchecked.S
         exact List.maxD_of_append_lt (maxD_of_union_reverse_lt «from» s alternates h1 h3 hm) (by grind)
       grind
     all_goals grind
-  · have := NextOfLt.forall h3
-    grind
+  · grind
 
 end Lemmas
