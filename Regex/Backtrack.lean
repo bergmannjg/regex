@@ -14,6 +14,7 @@ import Regex.Data.Array.Lemmas
 import Regex.Data.String.Lemmas
 import Regex.Data.List.Lemmas
 import Regex.Data.Nat.Basic
+import Regex.Data.String.Basic
 
 
 /-!
@@ -63,88 +64,58 @@ instance {α β : Type} [Inhabited β] : Inhabited (ST.Ref β (Array α)) where
 
 end Array.Ref
 
-@[simp] def CharPos.posInRange (s : Substring) (pos : String.Pos.Raw) :=
-  s.startPos ≤ pos ∧ pos ≤ s.stopPos
-
-/-- Char position in a substring-/
-structure CharPos (s : Substring) where
+/-- Char position in a slice of some underlying string. -/
+structure CharPos (s : String.Slice) where
   /-- current position -/
-  pos : String.Pos.Raw := s.startPos
+  pos : String.Slice.Pos s := s.startPos
   /-- char at current position -/
   curr? : Option Char := none
   /-- char at previous position -/
   prev? : Option Char := none
-  /-- `pos` is in range of substring `s` -/
-  isPosInRange : CharPos.posInRange s pos
-  /-- `pos` is valid string position in `s.str` -/
-  isValidPos : String.Pos.Raw.Valid s.str pos
-  /-- `s` is a valid substring -/
-  isValidSubstring : Substring.Valid s
 
-abbrev CharPos.PosInRange s :=
-  { pos : String.Pos.Raw // CharPos.posInRange s pos ∧ String.Pos.Raw.Valid s.str pos}
-
-abbrev CharPos.Pair s := { p : (CharPos.PosInRange s) × (CharPos.PosInRange s)
-                           // p.1.val ≤ p.2.val }
+abbrev CharPos.Pair s := { p : (String.Slice.Pos s) × (String.Slice.Pos s) // p.1 ≤ p.2 }
 
 instance : Inhabited (CharPos default) :=
-  ⟨default, none, none, by simp; decide, String.Pos.Raw.valid_zero, Substring.Valid_default⟩
+  ⟨default, none, none⟩
 
 instance : ToString (CharPos s) where
-  toString s := s!"{s.pos} {s.curr?} {s.prev?}"
+  toString cp := s!"{cp.pos.offset} {cp.curr?} {cp.prev?}"
+
+instance : ToString (String.Slice.Pos s) where
+  toString pos := s!"{pos.offset}"
 
 namespace CharPos
 
-def toSlotEntry («at»: CharPos input) : CharPos.PosInRange input :=
-  ⟨«at».pos, And.intro «at».isPosInRange «at».isValidPos⟩
-
-def get? (s : Substring) («at» : String.Pos.Raw) : Option Char :=
-  if «at» < s.stopPos then s.get «at» else none
-
 /-- create a CharPos from `s` and position `«at»` -/
-def create (s : Regex.ValidSubstring)
-  («at» : Regex.ValidPos s.val.str) (h : s.val.startPos ≤ «at» ∧ «at» ≤ s.val.stopPos )
+def create (s : String.Slice) («at» : String.Slice.Pos s)
     : CharPos s :=
-  let prev? := if «at».val = 0 then none else get? s (s.val.prev «at»)
-  ⟨«at», get? s «at», prev?, h, «at».property, s.property⟩
-
-theorem valid_prev (cp : CharPos s) : String.Pos.Raw.Valid s.str (String.Pos.Raw.prev s.str cp.pos) := by
-  exact String.valid_prev cp.isValidPos
+  let prev? := if _ : «at» = s.startPos then none
+    else some ((«at».prev (by assumption)).get (by exact String.Slice.Pos.prev_ne_endPos))
+  if _ : «at» = s.endPos
+  then ⟨«at», none,  prev?⟩
+  else ⟨«at», «at».get (by assumption),  prev?⟩
 
 /-- to prev position of `cp` -/
 def prev (cp : CharPos s) : Option (CharPos s) :=
-  if 0 < cp.pos.byteIdx then
-    let pos := String.Pos.Raw.prev s.str cp.pos
-    if h : s.startPos ≤ pos ∧ pos ≤ s.stopPos
-    then some (create ⟨s, cp.isValidSubstring⟩ ⟨pos, valid_prev cp⟩  h)
-    else none
+  if h : cp.pos ≠ s.startPos
+  then some (create s (cp.pos.prev h))
   else none
 
 def prevn (offset : Nat) (cp : CharPos s) : Option (CharPos s) :=
-  if offset ≤ cp.pos.byteIdx then loop offset cp else none
+  if offset ≤ cp.pos.offset.byteIdx then loop offset cp else none
   where loop (offset : Nat) (cp : Option (CharPos s)) : Option (CharPos s) :=
     if 0 < offset
     then Option.bind cp (fun cp => Option.bind (prev cp) (loop (offset - 1) ·))
     else cp
 
-theorem valid_next (cp : CharPos s) (h : cp.pos < s.stopPos)
-    : String.Pos.Raw.Valid s.str (String.Pos.Raw.next s.str cp.pos) := by
-  simp_all [String.valid_next cp.isValidPos (by
-          have := String.Pos.Raw.Valid.le_endPos cp.isValidSubstring.stopValid
-          exact Nat.lt_of_lt_of_le h this)]
-
 /-- to next position of `cp` -/
 def next (cp : CharPos s) : CharPos s :=
-  if h : cp.pos >= s.stopPos then cp
+  if h : cp.pos = s.endPos then cp
   else
     match cp.curr? with
     | some _ =>
-      let nextPos := String.Pos.Raw.next s.str cp.pos
-      if hInRange : s.startPos ≤ nextPos ∧ nextPos ≤ s.stopPos
-      then {cp with pos := nextPos, prev? := cp.curr?, curr? := get? s nextPos,
-                    isPosInRange := hInRange
-                    isValidPos := valid_next cp (Nat.lt_of_not_ge h)}
-      else cp
+      let nextPos := cp.pos.next h
+      {cp with pos := nextPos, prev? := cp.curr?, curr? := nextPos.get?}
     | none => cp
 
 /-- is CharPos at start position -/
@@ -153,33 +124,36 @@ def atStart (cp : CharPos s) : Bool :=
 
 /-- is CharPos at stop position -/
 def atStop (cp : CharPos s) : Bool :=
-  cp.pos = s.stopPos
+  cp.pos = s.endPos
 
 end CharPos
 
 /-- Represents a stack frame on the heap while doing backtracking. -/
-inductive Frame (n : Nat) (s : Substring) where
+inductive Frame (n : Nat) (s : String.Slice) where
   /-- Look for a match starting at `sid` and the given position in the haystack. -/
   | Step (sid: Fin n) («at»: CharPos s) : Frame n s
   /-- Reset the given `slot` to the given `pos` (which might be `None`). -/
-  | RestoreCapture (role : Capture.Role) (slot: Nat) (pos: Option (CharPos.PosInRange s)) : Frame n s
+  | RestoreCapture (role : Capture.Role) (slot: Nat) (pos: Option (s.Pos)) : Frame n s
 
 instance : ToString $ Frame n s where
   toString frame :=
     match frame with
-    | .Step sid «at» => s!"Step({sid}, {«at».pos})"
-    | .RestoreCapture role _ offset => s!"Restore({role}, slot: {offset})"
+    | .Step sid «at» => s!"Step({sid}, {«at».pos.offset})"
+    | .RestoreCapture role _ offset =>
+        match offset with
+        | some pos => s!"Restore({role}, slot: {pos.offset.byteIdx})"
+        | none => s!"Restore({role}, slot: none)"
 
 /-- A representation of "half" of a match reported by a DFA. -/
-structure HalfMatch where
+structure HalfMatch (s :  String.Slice) where
     /-- The pattern ID. -/
     pattern: PatternID
     /-- The offset of the match. -/
-    offset: String.Pos.Raw
+    offset: s.Pos
 
-instance : Inhabited HalfMatch := ⟨0, 0⟩
+instance : Inhabited (HalfMatch s) := ⟨0, default⟩
 
-instance : ToString HalfMatch where
+instance : ToString (HalfMatch s) where
   toString a := s!"pattern {a.pattern}, offset {a.offset}"
 
 private def compare (a : Fin n × String.Pos.Raw) (b : Fin n × String.Pos.Raw) : Ordering :=
@@ -225,7 +199,7 @@ instance : Inhabited $ Stack default default := ⟨[]⟩
 abbrev Visited := Array UInt8
 
 /-- SlotEntry consists of slot, group and char pos in `s` -/
-abbrev SlotEntry s := Nat × Nat × (Option (CharPos.PosInRange s))
+abbrev SlotEntry s := Nat × Nat × (Option (String.Slice.Pos s))
 
 @[simp] def SearchState.Slots.Valid (slots : Array (SlotEntry s)) :=
   (∀ i : Fin slots.size, i.val = slots[i].1)
@@ -235,7 +209,7 @@ abbrev SlotEntry s := Nat × Nat × (Option (CharPos.PosInRange s))
 
 abbrev SlotsValid s := {slots : Array (SlotEntry s) // SearchState.Slots.Valid slots}
 
-theorem valid_of_range_map (s : Regex.ValidSubstring) (slots : Array (SlotEntry s))
+theorem valid_of_range_map (s : String.Slice) (slots : Array (SlotEntry s))
   (f : Nat → SlotEntry s) (hf : f = (fun i => (i, i.div 2, none)))
   (h : (List.range slots.size).map f = slots.toList)
     : SearchState.Slots.Valid slots := by
@@ -289,7 +263,7 @@ end Capture
 def toSlotEntry (c : Capture) : SlotEntry s :=
   (Capture.toSlot c, c.group, none)
 
-theorem valid_map_of_valid (s : Substring)
+theorem valid_map_of_valid (s : String.Slice)
   (captures : Array Capture) (h : NFA.Capture.Valid captures)
   (slots : Array (SlotEntry s)) (hs : slots = captures.map (@toSlotEntry s))
     : ∀ slot : { slot : SlotEntry s // slot ∈ slots ∧ slot.1 = slot.2.1 * 2 + 1},
@@ -369,7 +343,7 @@ theorem mem_range_map_of_mem (captures : Array Capture)
   grind
 
 /-- State of the backtracking search -/
-@[ext] structure SearchState (n : Nat) (input : Substring) where
+@[ext] structure SearchState (n : Nat) (input : String.Slice) where
   /-- Stack used on the heap for doing backtracking -/
   stack: Stack n input
   /-- The encoded set of (Fin n, HaystackOffset) pairs that have been visited
@@ -386,28 +360,27 @@ theorem mem_range_map_of_mem (captures : Array Capture)
   /-- slots are valid -/
   slotsValid: SearchState.Slots.Valid slots
   /-- recent captures of capture groups -/
-  recentCaptures: Array (Option (String.Pos.Raw × String.Pos.Raw))
+  recentCaptures: Array (Option (String.Slice.Pos input × String.Slice.Pos input))
   /-- is logging enabled -/
   logEnabled : Bool
   /-- log msgs -/
   msgs: Array String
   /-- HalfMatch -/
-  halfMatch: Option HalfMatch
+  halfMatch: Option (HalfMatch input)
   /-- count of backtracks -/
   backtracks : Nat
 
 namespace SearchState
 
 /-- create the SearchState from an NFA -/
-def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
-  («at» :  Regex.ValidPos input.val.str) (logEnabled : Bool)
-  (h : 0 < nfa.n ∧ input.val.startPos ≤ «at» ∧ «at» ≤ input.val.stopPos)
+def fromNfa (nfa : Checked.NFA) (input : String.Slice)
+  («at» : String.Slice.Pos input) (logEnabled : Bool) (h : 0 < nfa.n)
     : SearchState nfa.n input :=
   let max := match (nfa.captures.map Capture.toSlot).max? with | some max => max + 1 | none => 0
   let f : Nat → SlotEntry input := (fun i => (i, i.div 2, none))
   let slots := Array.range max |> Array.map f
   have hSlotsValid := valid_of_range_map input slots f (by simp +zetaDelta) (by simp +zetaDelta)
-  let recentCaptures : Array $ Option (String.Pos.Raw × String.Pos.Raw) :=
+  let recentCaptures : Array $ Option (String.Slice.Pos input × String.Slice.Pos input) :=
     slots |> Array.map (fun (_, g, _) => g) |> Array.unique |> Array.map (fun _ => none)
 
   -- toSlotEntry of nfa.captures is a member of slots
@@ -419,10 +392,10 @@ def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
     stack := default
     visited := Array.Ref.mkRef <|
       Array.replicate ((nfa.states.size + 1)
-                      * (input.val.stopPos.byteIdx - input.val.startPos.byteIdx + 1)) 0
+                      * (input.endPos.offset.byteIdx - input.startPos.offset.byteIdx + 1)) 0
     countVisited := 0
-    sid := ⟨0, h.left⟩
-    «at» := CharPos.create input «at» h.right
+    sid := ⟨0, h⟩
+    «at» := CharPos.create input «at»
     slots := slots
     slotsValid := hSlotsValid,
     recentCaptures := recentCaptures
@@ -433,7 +406,7 @@ def fromNfa (nfa : Checked.NFA) (input :  Regex.ValidSubstring)
   }
 
 theorem slots_of_modify_valid (slots : Array (SlotEntry s)) (h : Slots.Valid slots) (slot: Nat)
-  (f : Option (CharPos.PosInRange s) → Option (CharPos.PosInRange s))
+  (f : Option (String.Slice.Pos s) → Option (String.Slice.Pos s))
     : Slots.Valid (slots.modify slot (Prod.map id (Prod.map id f))) := by
   let mf : SlotEntry s → SlotEntry s := fun (i, g , v) => (i, g, if i = slot then f v else v)
   have : slots.map mf = slots.modify slot (Prod.map id (Prod.map id f)) := by
@@ -483,8 +456,8 @@ namespace Visited
 
 /-- get encoded index of Fin n and CharPos in visited array -/
 def index (sid : Fin n) (cp : CharPos s) : Nat :=
-  sid * (s.stopPos.byteIdx - s.startPos.byteIdx + 1)
-  + cp.pos.byteIdx - s.startPos.byteIdx
+  sid * (s.endPos.offset.byteIdx - s.startPos.offset.byteIdx + 1)
+  + cp.pos.offset.byteIdx - s.startPos.offset.byteIdx
 
 theorem eq_of_linear_eq {a1 b1 a2 b2 x : Nat} (hb1 : b1 < x) (hb2 : b2 < x)
   (h : a1 * x + b1 = a2 * x + b2) : a1 = a2 ∧ b1 = b2 := by
@@ -532,32 +505,40 @@ theorem eq_of_linear_eq {a1 b1 a2 b2 x : Nat} (hb1 : b1 < x) (hb2 : b2 < x)
 /-- `index` is injective. -/
 theorem index_injective (sid1 sid2 : Fin n) (cp1 cp2 : CharPos s)
   (heq : index sid1 cp1 = index sid2 cp2)
-    : sid1.val = sid2.val ∧ cp1.pos.byteIdx = cp2.pos.byteIdx := by
+    : sid1.val = sid2.val ∧ cp1.pos.offset.byteIdx = cp2.pos.offset.byteIdx := by
   unfold index at heq
 
-  have hp1 := cp1.isPosInRange
-  have hp2 := cp2.isPosInRange
-  have : s.startPos.byteIdx ≤ s.stopPos.byteIdx := Nat.le_trans hp1.left hp1.right
-  have : s.startPos.byteIdx ≤ s.stopPos.byteIdx := Nat.le_trans hp2.left hp2.right
-  have : s.startPos.byteIdx ≤ cp1.pos.byteIdx := hp1.left
-  have : s.startPos.byteIdx ≤ cp2.pos.byteIdx := hp2.left
-  generalize hx : (s.stopPos.byteIdx - s.startPos.byteIdx + 1) = x at heq
-  have hlt1 : cp1.pos.byteIdx - s.startPos.byteIdx < x := by
+  have hp1 : s.startPos.offset.byteIdx ≤ cp1.pos.offset.byteIdx
+              ∧ cp1.pos.offset.byteIdx ≤ s.endPos.offset.byteIdx := by
+    and_intros
+    · simp
+    · apply cp1.pos.isValidForSlice.le_utf8ByteSize
+  have hp2 : s.startPos.offset.byteIdx ≤ cp2.pos.offset.byteIdx
+              ∧ cp2.pos.offset.byteIdx ≤ s.endPos.offset.byteIdx := by
+    and_intros
+    · simp
+    · apply cp2.pos.isValidForSlice.le_utf8ByteSize
+  have : s.startPos.offset.byteIdx ≤ s.endPos.offset.byteIdx := Nat.le_trans hp1.left hp1.right
+  have : s.startPos.offset.byteIdx ≤ s.endPos.offset.byteIdx := Nat.le_trans hp2.left hp2.right
+  have : s.startPos.offset.byteIdx ≤ cp1.pos.offset.byteIdx := hp1.left
+  have : s.startPos.offset.byteIdx ≤ cp2.pos.offset.byteIdx := hp2.left
+  generalize hx : (s.endPos.offset.byteIdx - s.startPos.offset.byteIdx + 1) = x at heq
+  have hlt1 : cp1.pos.offset.byteIdx - s.startPos.offset.byteIdx < x := by
     simp [← hx]
-    suffices cp1.pos.byteIdx - s.startPos.byteIdx
-             ≤ s.stopPos.byteIdx - s.startPos.byteIdx by
+    suffices cp1.pos.offset.byteIdx - s.startPos.offset.byteIdx
+             ≤ s.endPos.offset.byteIdx - s.startPos.offset.byteIdx by
       exact Nat.lt_add_one_of_le this
-    exact Nat.sub_le_sub_right hp1.right s.startPos.byteIdx
-  have hlt2 : cp2.pos.byteIdx - s.startPos.byteIdx < x := by
+    exact Nat.sub_le_sub_right hp1.right s.startPos.offset.byteIdx
+  have hlt2 : cp2.pos.offset.byteIdx - s.startPos.offset.byteIdx < x := by
     simp [← hx]
-    suffices cp2.pos.byteIdx - s.startPos.byteIdx
-             ≤ s.stopPos.byteIdx - s.startPos.byteIdx by
+    suffices cp2.pos.offset.byteIdx - s.startPos.offset.byteIdx
+             ≤ s.endPos.offset.byteIdx - s.startPos.offset.byteIdx by
       exact Nat.lt_add_one_of_le this
-    exact Nat.sub_le_sub_right hp2.right s.startPos.byteIdx
-  have h : sid1.val * x + (cp1.pos.byteIdx - s.startPos.byteIdx)
-           = sid2.val * x + (cp2.pos.byteIdx - s.startPos.byteIdx) := by omega
-  have := @eq_of_linear_eq sid1.val (cp1.pos.byteIdx - s.startPos.byteIdx)
-            sid2.val (cp2.pos.byteIdx - s.startPos.byteIdx) x
+    exact Nat.sub_le_sub_right hp2.right s.startPos.offset.byteIdx
+  have h : sid1.val * x + (cp1.pos.offset.byteIdx - s.startPos.offset.byteIdx)
+           = sid2.val * x + (cp2.pos.offset.byteIdx - s.startPos.offset.byteIdx) := by omega
+  have := @eq_of_linear_eq sid1.val (cp1.pos.offset.byteIdx - s.startPos.offset.byteIdx)
+            sid2.val (cp2.pos.offset.byteIdx - s.startPos.offset.byteIdx) x
             hlt1 hlt2 h
   omega
 
@@ -608,19 +589,25 @@ end Visited
 private def toPairs (slots : Array (SlotEntry s)) (groups : Array Nat)
   (h : SearchState.Slots.Valid slots) : Array (Option (CharPos.Pair s)) :=
   slots.attach.foldl (init := #[]) (fun acc slot =>
-    let ⟨sv, sp⟩ := slot
-    if h'' : sv.1 % 2 = 1
+    if _ : slot.val.1 % 2 = 1 -- has Capture.Role.End
     then
-      let idx := slots.findIdx (fun s => sv.2.1 = s.2.1 ∧ s.1 = s.2.1 * 2)
+      let g1 := slot.val.2.1
+      let p := fun (e : SlotEntry s) => g1 = e.2.1 ∧ e.1 = e.2.1 * 2
+      let idx := slots.findIdx p
       have : idx < slots.size := by simp at h; grind
       let slot' := slots[idx]
-      match h0 : slot', slot.val with
-      | (_, g0, some v0), (_, g1, some v1) =>
+      match _ : slot', slot.val.2.2 with
+      | (_, g0, some v0), some v1 =>
+          have : g0 = g1 := by
+            have heq : slot.val.2.1 = g1 := rfl
+            have := @Array.findIdx_getElem (SlotEntry s) p slots (by grind)
+            simp at this
+            grind
           let v0 := if groups.contains g0 then v1 else v0
-          if hle : v0.val ≤ v1.val -- todo: prove it
+          if hle : v0.offset ≤ v1.offset -- todo: prove it
           then acc.push (some ⟨(v0, v1), hle⟩)
           else acc.push none
-      | (_, _, none), (_, _, none) => acc.push none
+      | (_, _, none), none => acc.push none
       | _, _ => acc
     else
       acc)
@@ -843,7 +830,7 @@ private def encodeChar? (c: Option Char) : String :=
     if state.at.atStop
         || state.at.curr?.any (· = '\r')
         || state.at.curr?.any (· = '\n')
-            && (state.at.pos.byteIdx = 0 || state.at.prev?.any (· != '\r'))
+            && (state.at.pos.offset.byteIdx = 0 || state.at.prev?.any (· != '\r'))
     then
       (withMsg (fun _ => s!"{state.sid}: Look.EndCRLF -> {next}") {state with sid := next})
     else state
@@ -899,7 +886,7 @@ private def encodeChar? (c: Option Char) : String :=
       let stack := Stack.push state.stack frame
 
       let f := fun (s, g, _) =>
-        if s = 0 then (s, g, CharPos.toSlotEntry state.at) else (s, g, none)
+        if s = 0 then (s, g, state.at.pos) else (s, g, none)
       let slots := state.slots.map f
       (withMsg (fun _ => s!"{state.sid}: Look.ClearMatches stack {stack} slots {slots} -> {next}")
                           {state with stack := stack, slots := slots, sid := next,
@@ -931,12 +918,12 @@ private def encodeChar? (c: Option Char) : String :=
             s!"{state.sid}: ByteRange failed match '{t}' at charpos {state.at}")
       state)
 
-@[inline] private def step_backreference_loop (s : String) (i : Nat) (case_insensitive : Bool)
+@[inline] private def step_backreference_loop (s : String.Slice) (pos : s.Pos) (case_insensitive : Bool)
   (cp : CharPos input) : Option (CharPos input) :=
-  if i < s.length
+  if h : pos ≠ s.endPos
   then
     if cp.atStop then none else
-    let c := String.Pos.Raw.get s ⟨i⟩
+    let c := pos.get h
     let cf := if case_insensitive
       then
         match Unicode.case_fold_char c with
@@ -944,25 +931,32 @@ private def encodeChar? (c: Option Char) : String :=
         | _ => c
       else c
     if cp.curr?.any (fun x => x = c || x = cf)
-    then step_backreference_loop s (i + 1) case_insensitive cp.next
+    then step_backreference_loop s (pos.next h) case_insensitive cp.next
     else none
   else some cp
+termination_by pos.offset.byteDistance s.endPos.offset
 
 @[inline] private def step_backreference (b : Nat) (case_insensitive : Bool) (next : Fin n)
   (state : SearchState n s) : SearchState n s :=
   if h : b < state.recentCaptures.size then
     match state.recentCaptures[b]'h with
     | some (f, t) =>
-        let s' := s.extract f t |>.toString
-        match step_backreference_loop s' 0 case_insensitive state.«at» with
-        | some cp =>
-            (withMsg (fun _ => s!"{state.sid}: Backreference {b} '{s'}' matched from charpos"
-                                  ++ "{state.at} to {cp} -> {next}")
-                {state with sid := next, «at» := cp })
-        | none =>
-          (withMsg (fun _ =>
-            s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, no match with '{s}'")
-            state)
+        if h : f.offset ≤ t.offset then
+          let slice := s.replaceStartEnd f t h
+          match step_backreference_loop slice slice.startPos case_insensitive state.«at» with
+          | some cp =>
+              (withMsg (fun _ => s!"{state.sid}: Backreference {b} '{slice}' matched from charpos"
+                                    ++ "{state.at} to {cp} -> {next}")
+                  {state with sid := next, «at» := cp })
+          | none =>
+            (withMsg (fun _ =>
+              s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, no match with '{s.startPos},{s.endPos}'")
+              state)
+        else
+            (withMsg (fun _ =>
+              s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, '{f} > {t}'")
+              state)
+
     | _ =>
       (withMsg (fun _ =>
         s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, recentCapture empty")
@@ -1037,7 +1031,7 @@ private def encodeChar? (c: Option Char) : String :=
      (state : SearchState n s) : SearchState n s :=
   if slot < state.slots.size
   then
-    let f := fun _ => some $ CharPos.toSlotEntry state.at
+    let f := fun _ => some $ state.at.pos
     let slots := state.slots.modify slot ((Prod.map id (Prod.map id f)))
     (withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} slots {slots} -> {next}")
                 {state with sid := next, slots := slots,
@@ -1053,13 +1047,13 @@ private def encodeChar? (c: Option Char) : String :=
     if h : slot < state.slots.size
     then
       let frame := Frame.RestoreCapture role slot (state.slots[slot]'h).2.2
-      let f := fun _ => some $ CharPos.toSlotEntry state.at
+      let f := fun _ => some $ state.at.pos
       let slots := state.slots.modify slot ((Prod.map id (Prod.map id f)))
       have hLength := @Array.size_modify _ _ _ (Prod.map id (Prod.map id f))
       let slots : SlotsValid s := ⟨slots, SearchState.slots_of_modify_valid state.slots
                                             state.slotsValid slot f⟩
       let recentCaptures :=
-        if hne : ¬slot % 2 = 0 then
+        if _ : slot % 2 = 1 then -- has Capture.Role.End
           have := Nat.lt_of_lt_of_eq h (Eq.symm hLength)
           match _ : slots.val[slot] with
           | (s1, g1, v1) =>
@@ -1347,7 +1341,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   omega
 
 @[inline] private def toNextFrameRestoreCapture (slot : Nat)
-  (offset : Option (CharPos.PosInRange s))
+  (offset : Option (String.Slice.Pos s))
   (stack : Stack n s) (state : SearchState n s) : Bool × SearchState n s :=
   if slot < state.slots.size
   then
@@ -1362,7 +1356,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   else (false, state)
 
 theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat)
-  (offset :Option (CharPos.PosInRange s))
+  (offset :Option (String.Slice.Pos s))
   (stack : Stack n s) (s : SearchState n s)
     (h : toNextFrameRestoreCapture slot offset stack s = (true, s1))
     : s.countVisited = s1.countVisited ∧ stack = s1.stack := by
@@ -1474,10 +1468,10 @@ private def dropLastWhile (arr : Array  α) (p :  α -> Bool) : Array α :=
     else ⟨a :: acc.toList⟩
 
 /-- Search for the first match of this regex in the haystack. -/
-private def toSlots (s : Regex.ValidSubstring) («at» : Regex.ValidPos s.val.str)
+private def toSlots (s : String.Slice) («at» : String.Slice.Pos s)
   (nfa : Checked.NFA) (logEnabled : Bool)
     : (Array String) × (Array (Option (CharPos.Pair s))) :=
-  if h : 0 < nfa.n ∧ s.val.startPos ≤ «at» ∧ «at» ≤ s.val.stopPos then
+  if h : 0 < nfa.n then
     let state := backtrack nfa (SearchState.fromNfa nfa s «at» logEnabled h)
     let pairs := toPairs state.slots nfa.groups state.slotsValid
     (state.msgs, dropLastWhile pairs (·.isNone))
@@ -1485,45 +1479,47 @@ private def toSlots (s : Regex.ValidSubstring) («at» : Regex.ValidPos s.val.st
 
 /-- Search for the first match of this regex in the haystack and
     simulate the unanchored prefix with looping. -/
-private def slotsWithUnanchoredPrefix (s : Regex.ValidSubstring)
-  («at» : Regex.ValidPos s.val.str) (nfa : Checked.NFA) (logEnabled : Bool) (init : Array String)
+private def slotsWithUnanchoredPrefix (s : String.Slice)
+  («at» : String.Slice.Pos s) (nfa : Checked.NFA) (logEnabled : Bool) (init : Array String)
     : (Array String) × (Array (Option (CharPos.Pair s))) :=
-  if h : s.val.stopPos.byteIdx <= «at».val.byteIdx then
+  if h : s.endPos.offset.byteIdx <= «at».offset.byteIdx then
     let (msgs, slots) := toSlots s «at» nfa logEnabled
     (init ++ msgs, slots)
   else
     let (msgs, slots) := toSlots s «at» nfa logEnabled
     if slots.size = 0 then
-      let nextPos := ⟨String.Pos.Raw.next s.val.str «at», by
-        apply String.valid_next «at».property
-        have := String.Pos.Raw.Valid.le_endPos s.property.stopValid
-        exact Nat.lt_of_lt_of_le (Nat.lt_of_not_ge h) this⟩
-      have : s.val.stopPos.byteIdx - (String.Pos.Raw.next s.val.str «at»).byteIdx
-             < s.val.stopPos.byteIdx - at.val.byteIdx := by
-        have := String.Pos.Raw.byteIdx_lt_byteIdx_next s.val.str «at»
-        omega
+      let nextPos := «at».next (by grind)
+      have hne : «at» ≠ s.endPos := by
+        have : s.endPos.offset.byteIdx ≠ «at».offset.byteIdx := by
+          have : s.endPos.offset.byteIdx > «at».offset.byteIdx := by grind
+          exact Ne.symm (Nat.ne_of_lt this)
+        simp [String.Slice.endPos]
+        exact fun a =>
+          this (congrArg String.Pos.Raw.byteIdx (congrArg String.Slice.Pos.offset (id (Eq.symm a))))
+      have : s.utf8ByteSize - («at».offset.byteIdx + («at».get hne).utf8Size)
+             < s.utf8ByteSize - «at».offset.byteIdx := by
+        have : «at».offset.byteIdx < s.utf8ByteSize := Nat.lt_of_not_le h
+        have : 0 < («at».get hne).utf8Size := by simp [Char.utf8Size]; grind
+        grind
       slotsWithUnanchoredPrefix s nextPos nfa logEnabled (init ++ msgs)
     else (init ++ msgs, slots)
-termination_by s.val.stopPos.byteIdx - «at».val.byteIdx
+termination_by s.endPos.offset.byteIdx - «at».offset.byteIdx
 
-private def toMatches (s : Regex.ValidSubstring) (slots : Array (Option (CharPos.Pair s)))
-    : Array (Option { m : Regex.ValidSubstring // m.val.str = s.val.str }) :=
+private def toMatches (s : String.Slice) (slots : Array (Option (CharPos.Pair s)))
+    : Array (Option { m : String.Slice // String.Slice.isSubslice m s}) :=
   slots
   |> Array.map (fun pair =>
       match pair with
-      | some ⟨(p0, p1), h⟩ =>
-            some ⟨⟨⟨s.val.str, p0.val, p1.val⟩,
-                  ⟨p0.property.right, p1.property.right, h⟩⟩,
-                  by rfl⟩
+      | some ⟨(p0, p1), h⟩ => some ⟨String.Slice.replaceStartEnd s p0 p1 h, by simp⟩
       | none => none)
 
 /-- Search for the first match of this regex in the haystack given and return log msgs and
     the matches of each capture group. -/
-def «matches» (s : Regex.ValidSubstring) («at» : Regex.ValidPos s.val.str)
+def «matches» (s : String.Slice) («at» : String.Slice.Pos s)
   (nfa : Checked.NFA) (logEnabled : Bool)
-    : (Array String) × (Array (Option { m : Regex.ValidSubstring // m.val.str = s.val.str })) :=
+    : (Array String) × (Array (Option { m : String.Slice // String.Slice.isSubslice m  s})) :=
   let (msgs, slots) :=
     if nfa.unanchored_prefix_in_backtrack
     then slotsWithUnanchoredPrefix s «at» nfa logEnabled #[]
     else toSlots s «at» nfa logEnabled
-(msgs.push s!"groups: {nfa.groups}", toMatches s slots)
+  (msgs.push s!"groups: {nfa.groups}", toMatches s slots)

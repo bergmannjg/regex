@@ -176,9 +176,9 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
         Array.all idx (fun (i, v) =>
           match t_matches[i]?, v with
           | some (some span), some v =>
-              span.start = v.val.startPos.byteIdx && span.end = v.val.stopPos.byteIdx
+              span.start = v.startInclusive.offset.byteIdx && span.end = v.endExclusive.offset.byteIdx
               || -- ignore maybe wrong string pos caused by pcreloader
-              (Substring.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v
+              (Substring.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v.copy
           | some none, none => true
           | _, _ => (Option.getD t.«only-full-match» false) && 0 < i)
       else false)
@@ -186,7 +186,7 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
 private def captureToString (r : Regex.Captures s) : String :=
   r.matches |> Array.map (fun m =>
     match m with
-    | some m => s!"({m.val.startPos}, {m.val.stopPos}), "
+    | some m => s!"({m.startInclusive.offset}, {m.endExclusive.offset}), "
     | none => "none")
   |> Array.toList
   |> String.join
@@ -239,13 +239,15 @@ def ignoredTests : List String :=
    "t1488", "t1489" -- empty quote
   ]
 
-def testItem (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
+def testItem (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
   if checkFlagIsFalse t.compiles
   then
     if checkCompiles flavor t
     then pure (0, 0, 1)
     else pure (1, 0, 0)
-  else if ignoreTest t then pure (0, 0, 1)
+  else if ignoreTest t then
+    if verbose then IO.println s!"RegexTest({filename}, {t.name}) ignored: '{t.regex}' '{t.haystack}'"
+    pure (0, 0, 1)
   else if List.contains ignoredTests t.name then pure (0, 0, 1)
   else
     match captures flavor t with
@@ -254,7 +256,7 @@ def testItem (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (
       then
         if RegexTest.isMatch t
         then
-          IO.println s!"RegexTest({filename}): {t}"
+          IO.println s!"RegexTest({filename}) failed: {t}"
           IO.println s!"  no match found, expected {t.matches}"
           pure (0, 1, 0)
         else
@@ -262,22 +264,23 @@ def testItem (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (
       else
         if checkMatches result t
         then
+            if verbose then IO.println s!"RegexTest({filename}, {t.name}) ok: '{t.regex}' '{t.haystack}' {capturesToString result}"
             pure (1, 0, 0)
         else
-          IO.println s!"RegexTest({filename}): {t}"
+          IO.println s!"RegexTest({filename}) failed: {t}"
           IO.println s!"  expected size {t.matches.size}, actual {result.size} "
           IO.println s!"  match different, expected {t.matches}, actual {capturesToString result}"
           pure (0, 1, 0)
       | Except.error e =>
           if t.matches.size = 0 then pure (0, 0, 1) else
           if (ignoredErrors |> List.find? (fun m => (e.splitOn m).length > 1)).isSome then pure (0, 0, 1) else
-          IO.println s!"RegexTest{filename}: {t}"
+          IO.println s!"RegexTest{filename} failed: {t}"
           IO.println s!"  error {e}"
           pure (0, 1, 0)
 
-def testItems (flavor : Syntax.Flavor) (filename : String) (items : Array RegexTest) : IO (Nat × Nat× Nat) := do
+def testItems (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (items : Array RegexTest) : IO (Nat × Nat× Nat) := do
   items |> Array.foldlM (init := (0, 0, 0)) (fun (succeeds, failures, ignored) RegexTest => do
-    let (succeed, failure, ignore) ← testItem flavor filename RegexTest
+    let (succeed, failure, ignore) ← testItem verbose flavor filename RegexTest
     pure (succeeds + succeed, failures + failure, ignore + ignored))
 
 end RegexTest

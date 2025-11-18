@@ -25,10 +25,13 @@ Main api for Regex
 
 namespace Captures
 
-def end? (c : Captures s) : Option String.Pos.Raw :=
-  c.fullMatch.val.stopPos
+def startPosOfMatch (c : Captures s) : s.Pos :=
+  String.Slice.startPosOfSubslice c.isSubsliceOf
 
-def «matches» (c : Captures s) : Array (Option Match) :=
+def endPosOfMatch (c : Captures s) : s.Pos :=
+  String.Slice.endPosOfSubslice c.isSubsliceOf
+
+def «matches» (c : Captures s) : Array (Option String.Slice) :=
   #[(some c.fullMatch)] ++ c.groups
 
 end Captures
@@ -49,57 +52,56 @@ namespace Log
 
 /-- This routine searches for the first match of this regex in the haystack given,
     returns an array of log msgs, the overall match and the matches of each capture group -/
-def captures (s : ValidSubstring) (re : Regex) («at» : ValidPos s.val.str) (logEnabled : Bool)
-    : Array String × Option (Captures s.val.str) :=
+def captures (s : String.Slice) (re : Regex) («at» : String.Slice.Pos s) (logEnabled : Bool)
+    : Array String × Option (Captures s) :=
   let (msgs, «matches») := BoundedBacktracker.«matches» s «at» re.nfa logEnabled
   match «matches».head? with
   | some (some head, tail) =>
-    let tail := tail.map_option_subtype
-    (msgs, some ⟨head.val, tail.val, head.property, tail.property⟩)
+    (msgs, some ⟨head.val, tail.map (Option.map (·.val)), head.property, by
+      intro g hg
+      have ⟨_, hf⟩ := Array.mem_filterMap.mp hg
+      have ⟨v, _⟩ := Array.mem_map.mp hf.left
+      cases v <;> grind⟩)
   | _ => (msgs, none)
 
-private def is_overlapping_empty_match (f t : String.Pos.Raw) (acc : Array (Captures s)) : Bool :=
+private def is_overlapping_empty_match (f t : String.Slice.Pos s) (acc : Array (Captures s)) : Bool :=
   match acc.pop? with
   | some (last, _) =>
-      match last.end? with
-      | some previous_end => f = t && previous_end = t
-      | none => false
+      let previous_end := last.endPosOfMatch
+      f = t && previous_end = t
   | none => false
 
-private def all_captures_loop (s : ValidSubstring) («at» : ValidPos s.val.str) (re : Regex)
-  (logEnabled : Bool) (acc : Array String × Array (Captures s.val.str))
-    : Array String × Array (Captures s.val.str) :=
+open BoundedBacktracker CharPos in
+private def all_captures_loop (s : String.Slice) («at» : String.Slice.Pos s) (re : Regex)
+  (logEnabled : Bool) (acc : Array String × Array (Captures s))
+    : Array String × Array (Captures s) :=
   match captures s re «at» logEnabled with
   | (msgs, some captures) =>
-    let startPos := captures.fullMatch.val.startPos
-    let stopPos := captures.fullMatch.val.stopPos
-    if h : s.val.startPos ≤ stopPos ∧ stopPos ≤ s.val.stopPos
+    let startPos : String.Slice.Pos s := captures.startPosOfMatch
+    let stopPos : String.Slice.Pos s := captures.endPosOfMatch
+    if h : s.startPos.offset ≤ stopPos.offset ∧ stopPos.offset ≤ s.endPos.offset
     then
-      let cp := BoundedBacktracker.CharPos.create s ⟨stopPos, stop_pos_valid_of captures⟩ h
+      let cp := create s stopPos
       if cp.curr?.isSome then
         let overlapping_empty_match := is_overlapping_empty_match startPos stopPos acc.2
         let next := if startPos = stopPos then cp.next.pos else stopPos
-        if h : «at» < next ∧ «at» < s.val.stopPos then
-          have hNextValid : String.Pos.Raw.Valid s.val.str next := by
-            unfold next
-            split
-            · exact cp.next.isValidPos
-            · exact stop_pos_valid_of captures
-          have : sizeOf (s.val.stopPos.byteIdx - next.byteIdx)
-                 < sizeOf (s.val.stopPos.byteIdx - «at».val.byteIdx) := by
-            have := String.Pos.sizeof_lt_of_lt (String.Pos.sub_lt_sub_left h.right h.left)
-            simp_all
-          all_captures_loop s ⟨next, hNextValid⟩ re logEnabled
+        if h : «at» < next ∧ «at» < s.endPos then
+          have : s.utf8ByteSize - next.offset.byteIdx < s.utf8ByteSize - «at».offset.byteIdx := by
+              have : next.offset.byteIdx ≤ s.utf8ByteSize := next.isValidForSlice.le_utf8ByteSize
+              have : «at».offset.byteIdx < next.offset.byteIdx := Nat.lt_of_lt_of_eq h.left
+                    (congrArg String.Pos.Raw.byteIdx (congrArg String.Slice.Pos.offset rfl))
+              grind
+          all_captures_loop s next re logEnabled
             (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
         else (acc.1.append msgs, (if overlapping_empty_match then acc.2 else acc.2.push captures))
       else (acc.1.append msgs, acc.2.push captures)
     else (acc.1.append msgs, acc.2.push captures)
   | (msgs, none) => (acc.1.append msgs, acc.2)
-termination_by s.val.stopPos.byteIdx - «at».val.byteIdx
+termination_by s.endPos.offset.byteIdx - «at».offset.byteIdx
 
 /-- Returns an array of log msgs and all successive non-overlapping matches in the given haystack. -/
-def all_captures (s : ValidSubstring) (re : Regex) (logEnabled : Bool)
-    : Array String × Array (Captures s.val.str) :=
+def all_captures (s : String.Slice) (re : Regex) (logEnabled : Bool)
+    : Array String × Array (Captures s) :=
   all_captures_loop s default re logEnabled (#[], #[])
 
 end Log
@@ -107,10 +109,10 @@ end Log
 /-- This routine searches for the first match of this regex in the haystack given, and if found,
     returns not only the overall match but also the matches of each capture group in the regex.
     If no match is found, then None is returned. -/
-def captures (s : ValidSubstring) (re : Regex) («at» : ValidPos s.val.str := default)
-    : Option (Captures s.val.str) :=
+def captures (s : String.Slice) (re : Regex) («at» : String.Slice.Pos s := default)
+    : Option (Captures s) :=
   Log.captures s re «at» false |> (·.2)
 
 /-- Returns all successive non-overlapping matches in the given haystack. -/
-def all_captures (s : ValidSubstring) (re : Regex) : Array (Captures s.val.str) :=
+def all_captures (s : String.Slice) (re : Regex) : Array (Captures s) :=
   Log.all_captures s re false |> (·.2)

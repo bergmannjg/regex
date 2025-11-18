@@ -218,7 +218,7 @@ def captures : CliM PUnit := do
       IO.println s!"captures found: {arr.size}"
       arr |> Array.forM (fun captures => IO.println s!"{captures}")
   else
-    match Regex.Log.captures haystack regex (instSubstringValid haystack).default (isVerbose) with
+    match Regex.Log.captures haystack regex haystack.toSlice.startPos (isVerbose) with
     | (msgs, none) =>
       if msgs.size > 0 then IO.println s!"msgs {msgs |> Array.map (· ++ nl)}"
       IO.println s!"captures: none"
@@ -227,7 +227,7 @@ def captures : CliM PUnit := do
       IO.println s!"{captures}"
 
       if isVerbose then
-        IO.println s!"fullMatch chars {captures.fullMatch.val.toString.asHex} utf8ByteSize {captures.fullMatch.val.toString.utf8ByteSize}"
+        IO.println s!"fullMatch chars {captures.fullMatch.copy.asHex} utf8ByteSize {captures.fullMatch.copy.utf8ByteSize}"
 
 end regex
 

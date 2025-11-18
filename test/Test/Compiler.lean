@@ -151,21 +151,20 @@ example : toString (regex% "(a)").nfa.states = toString «nfaOf'(a)'».states :=
 
 example : toString (regex% "[a]{0,2}").nfa.states = toString «nfaOf'[a]{0,2}'».states := by native_decide
 
-private def capturesOf (s : String) (startPos stopPos : ValidPos s) (h : startPos.val ≤ stopPos.val)
+private def capturesOf (s : String.Slice) (startPos stopPos : String.Slice.Pos s) (h : startPos ≤ stopPos)
     : Option (Captures s) :=
-  some ⟨⟨⟨s, startPos.val, stopPos.val⟩,
-        by exact ⟨startPos.property, stopPos.property, h⟩⟩, #[], by simp, by simp⟩
+  some ⟨String.Slice.replaceStartEnd s startPos stopPos h, #[], by simp, by simp⟩
 
 example : toString (Regex.captures "a" (regex% "a"))
           = toString (capturesOf "a"
                 ⟨⟨0⟩, by simp⟩
-                ⟨⟨1⟩, String.Pos.Raw.Valid.intro (⟨['a'], ⟨[], And.symm ⟨rfl, rfl⟩⟩⟩)⟩
+                ⟨⟨1⟩, String.Pos.Raw.isValidForSlice_eq_true_iff.mp rfl⟩
                 (by decide)) := by native_decide
 
 example : toString (Regex.captures "ab" (regex% "a(?=b)"))
           = toString (capturesOf "ab"
                 ⟨⟨0⟩, by simp⟩
-                ⟨⟨1⟩, String.Pos.Raw.Valid.intro (⟨['a'], ⟨['b'], And.symm ⟨rfl, rfl⟩⟩⟩)⟩
+                ⟨⟨1⟩, String.Pos.Raw.isValidForSlice_eq_true_iff.mp rfl⟩
                 (by decide)) := by native_decide
 
 example : regex% "a(?=b)" |> Regex.captures "ac" |>.isNone := by native_decide
@@ -173,13 +172,13 @@ example : regex% "a(?=b)" |> Regex.captures "ac" |>.isNone := by native_decide
 example : toString (Regex.captures "ac" (regex% "a(?!b)"))
           = toString (capturesOf "ac"
                 ⟨⟨0⟩, by simp⟩
-                ⟨⟨1⟩, String.Pos.Raw.Valid.intro (⟨['a'], ⟨['c'], And.symm ⟨rfl, rfl⟩⟩⟩)⟩
+                ⟨⟨1⟩, String.Pos.Raw.isValidForSlice_eq_true_iff.mp rfl⟩
                 (by decide)) := by native_decide
 
 example : regex% "a(?!b)" |> Regex.captures "ab" |>.isNone := by native_decide
 
-private def fullMatch (s : String) (captures : Option (Captures s)) : String :=
-  match captures with | some captures => captures.fullMatch.val.toString | none => ""
+private def fullMatch (s : String.Slice) (captures : Option (Captures s)) : String :=
+  match captures with | some captures => captures.fullMatch.copy | none => ""
 
 example : (fullMatch "∀ (n : Nat), 0 ≤ n" <| Regex.captures
             "∀ (n : Nat), 0 ≤ n"
