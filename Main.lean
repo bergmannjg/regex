@@ -107,7 +107,7 @@ OPTIONS:
 namespace regex
 
 private def unescapeString (s : String) : String :=
-  String.mk (loop s.data [])
+  String.ofList (loop s.toList [])
 where
   toChar (a b : Char) : Char :=
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
@@ -194,7 +194,7 @@ def captures : CliM PUnit := do
   let haystack := if opts.unescape then unescapeString haystack else haystack
   let isVerbose := opts.verbosity == Lake.Verbosity.verbose
   if isVerbose then
-    let chars := haystack.data |> List.map (fun (c : Char) => (UInt32.intAsString c.val))
+    let chars := haystack.toList |> List.map (fun (c : Char) => (UInt32.intAsString c.val))
     IO.println s!"re '{re}' haystack chars '{chars}'"
 
   let flags : Syntax.Flags := default

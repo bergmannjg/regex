@@ -6,12 +6,12 @@ defaultTargets = ["inspect", "benchmark"]
 [[require]]
 name = "UnicodeBasic"
 git = "https://github.com/fgdorais/lean4-unicode-basic"
-rev = "v1.2.4"
+rev = "main"
 
 [[require]]
 name = "batteries"
 git = "https://github.com/leanprover-community/batteries"
-rev = "v4.25.1"
+rev = "v4.26.0"
 
 [[require]]
 name = "Parser"

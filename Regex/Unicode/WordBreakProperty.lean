@@ -18,7 +18,7 @@ instance : ToString WordBreakProperty where
 
 protected def WordBreakProperty.txt := include_str "./data/auxiliary/WordBreakProperty.txt"
 
-private def transform (data : Array (Array Substring)) : Array WordBreakProperty :=
+private def transform (data : Array (Array Substring.Raw)) : Array WordBreakProperty :=
   let init : Array WordBreakProperty := #[]
   extract data |> Array.foldl (init := init) (fun acc (name, val) =>
     match acc.findIdx? (·.name = name) with
@@ -31,9 +31,9 @@ private def transform (data : Array (Array Substring)) : Array WordBreakProperty
 
 private unsafe def WordBreakProperty.init : IO $ Array WordBreakProperty := do
   let stream := UCDStream.ofString WordBreakProperty.txt
-  let mut records : Array (Array Substring) := #[]
+  let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do
-    records := records.push record
+    records := records.push (record.map (·.copy))
 
   return transform records
 

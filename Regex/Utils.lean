@@ -61,7 +61,7 @@ def intAsString (val : Nat) : String :=
         else
           let digits := (Nat.toDigits 16 n)
           let zeroes := List.replicate (if digits.length = 1 then 1 else 0) '0'
-          "0x" ++ String.mk (zeroes ++ digits)
+          "0x" ++ String.ofList (zeroes ++ digits)
     else s!"invalid char {val}"
   else s!"invalid uint32 {val}"
 
@@ -76,12 +76,12 @@ end UInt32
 
 namespace String
 
-instance : Coe String Substring where
+instance : Coe String Substring.Raw where
   coe s := s.toSubstring
 
 /-- get `i` char in `s`, tood: switch to String.Pos logic -/
 def getAtCodepoint (s : String) (i : Nat) : Char :=
-  if h : i < s.length then s.data.get ⟨i, h⟩ else default
+  if h : i < s.length then s.toList.get ⟨i, h⟩ else default
 
 /-- starts string `m` at codepoint `i` in `s` -/
 def startsAtCodepoint (s m : String) (i : Nat) : Bool :=
@@ -96,12 +96,12 @@ def toBytePosition (s : String) (p : Nat) : String.Pos.Raw :=
   ⟨String.utf8ByteSize (s.take p)⟩
 
 /-- make Substring of String -/
-def toSpan (s : String) (startPos : Nat) (stopPos : Nat) : Substring :=
+def toSpan (s : String) (startPos : Nat) (stopPos : Nat) : Substring.Raw :=
   ⟨s, toBytePosition s startPos, toBytePosition s stopPos⟩
 
 def decodeHex (s : String) : Except String UInt32 :=
   let s := if s.startsWith "0x" then s.replace "0x" "" else s
-  Char.decodeHexDigits s.data
+  Char.decodeHexDigits s.toList
 
 def asHex (s : String) : String :=
   let toHexDigit (c : Nat) : String := String.singleton c.digitChar

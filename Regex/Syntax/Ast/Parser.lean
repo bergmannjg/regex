@@ -85,7 +85,7 @@ private def parsePosixCharacterClass (p : String) (x : Syntax) : ParserM ClassSe
   | Syntax.node _ `posixCharacterClass #[Lean.Syntax.atom (.synthetic f t) name] =>
     let (negated, name) :=
       match name.toList with
-      | '^' :: tail => (true, String.mk tail)
+      | '^' :: tail => (true, String.ofList tail)
       | _ => (false, name)
     match nameToClassSetItems |> List.find? (fun (n, _) => n = name) with
     | some (_, cls) => pure $ ClassSetItem.Ascii ⟨⟨p, f, t⟩ , cls, negated⟩
@@ -140,7 +140,7 @@ private def parseBackReference (p : String) (x : Syntax) : ParserM Ast := do
   let state ← get
   match valuesOfLitSyntax x with
   | some (_, (.synthetic f t), v) =>
-      let (minus, v) := match v.toList with | '-' :: tail => (true, String.mk tail) | _ => (false, v)
+      let (minus, v) := match v.toList with | '-' :: tail => (true, String.ofList tail) | _ => (false, v)
       match v.toNat? with
       | some n =>
         if n > state.max_backreference then set {state with max_backreference := n}

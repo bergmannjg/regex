@@ -338,7 +338,7 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
       Code.add_backrefence case_insensitive b
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝⟩⦄ := by
   mvcgen [Code.add_backrefence]
-  and_intros <;> grind
+  with grind
 
 @[spec] theorem add_backrefence_lift_spec (case_insensitive : Bool) (b : Nat) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
@@ -717,15 +717,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_0_post compiled plus greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_0_post]
-  case vc11 =>
-    and_intros
-    rfl
-    all_goals grind
-  case vc25 =>
-    and_intros
-    rfl
-    all_goals grind
-  all_goals grind
+  with grind
 
 @[spec] theorem c_at_least_0_post_lift_spec (compiled : ThompsonRef) (plus : Unchecked.StateID) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
@@ -762,14 +754,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_1_post compiled union possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_1_post]
-  case vc5.post.success =>
-    and_intros
-    rfl
-    grind
-    grind
-    apply NextOfLt.mk
-    grind
-  all_goals grind
+  with grind
 
 @[spec] theorem c_at_least_1_post_lift_spec (compiled : ThompsonRef) (union : Unchecked.StateID)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
@@ -792,15 +777,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_at_least_2 «prefix» last greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_at_least_2]
-  case vc9 =>
-    and_intros
-    rfl
-    all_goals grind
-  case vc21 =>
-    and_intros
-    rfl
-    all_goals grind
-  all_goals grind
+  with grind
 
 @[spec] theorem c_at_least_2_lift_spec («prefix» last : ThompsonRef) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
@@ -817,7 +794,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_bounded.fold.patch.pre compiled prev_end greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch.pre]
-  all_goals grind
+  with grind
 
 @[spec] theorem c_bounded.fold.patch.possessive_spec (compiled: ThompsonRef) (empty : Unchecked.StateID)
   (states : Array Unchecked.State)
@@ -843,14 +820,7 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       Code.c_bounded.fold.patch compiled prev_end empty greedy possessive
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s⌝, fun _ => ⌜True⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch]
-  case vc3 =>
-    inst_mvar
-    all_goals grind
-  case vc6 =>
-    and_intros
-    rfl
-    all_goals grind
-  all_goals grind
+  with grind
 
 @[spec] theorem c_bounded.fold.patch_lift_spec  (compiled: ThompsonRef) (prev_end empty : Unchecked.StateID)
   (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
@@ -903,25 +873,27 @@ mutual
   unfold Code.c_bounded
   split
   mspec c_exactly_spec
-  split
-  case isTrue.post.success.isTrue =>
+  case isTrue.pre =>
+    inst_mvars
+    all_goals grind
+  case isTrue.post.success =>
     split
-    · mspec c_possessive_le_lift_spec
+    · split
+      mspec c_possessive_le_lift_spec
       inst_mvars
-      case post.success => mvcgen with grind
+      case isTrue.isTrue.post.success => simp; grind
+      case isTrue.isFalse => simp_all
       all_goals grind
-    · simp_all
-  case isTrue.post.success.isFalse =>
-      mspec add_empty_lift'_spec
+    · mspec add_empty_lift'_spec
       inst_mvars
-      case post.success =>
+      case isFalse.post.success =>
         mspec c_bounded_fold_spec
         inst_mvars
         case post.success =>
           mspec patch_lift_spec
-          · inst_mvars
-            all_goals grind
-          · mvcgen with grind [= cValid, = cMemAndValid]
+          inst_mvars
+          case post.success => simp; all_goals grind [= cMemAndValid]
+          all_goals grind
         all_goals grind
       all_goals grind
   case isFalse =>
@@ -941,10 +913,13 @@ termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
   split
   case h_1 | h_2 =>
     mspec c_spec
-    mspec
     inst_mvars
+    case post.success =>
+      mspec
+      inst_mvars
+      case post.success => simp; grind [= cMemAndValid]
+      all_goals grind
     all_goals simp_all
-    all_goals grind
   case h_3 | h_4 =>
     mspec add_next_char_lift_spec
     inst_mvars
@@ -990,7 +965,7 @@ termination_by sizeOf look
         mspec c_spec
         inst_mvars
         case post.success =>
-          mspec
+          mspec c_repetition_0_none_lift_spec
           inst_mvars
           case post.success => mvcgen with grind
           all_goals grind
@@ -1014,9 +989,12 @@ termination_by sizeOf rep
   unfold Code.c_exactly
   split
   · mspec c_spec
-    mspec c_exactly_fold_spec
     inst_mvars
-    case isTrue.post.success.post.success => mvcgen with grind [= cValid, = cMemAndValid]
+    case isTrue.post.success =>
+      mspec c_exactly_fold_spec
+      inst_mvars
+      case post.success => mvcgen with grind [= cValid, = cMemAndValid]
+      all_goals grind
     all_goals grind
   · mspec c_empty_lift_spec
     inst_mvars
@@ -1068,11 +1046,13 @@ termination_by sizeOf tail
   case h_1.post.success =>
     mspec c_concat_fold_spec
     inst_mvars
-    case post.success =>
-      mvcgen with grind [= cValid, = cMemAndValid]
+    case post.success => mvcgen with grind [= cValid, = cMemAndValid]
     all_goals grind
   case h_2 =>
     mvcgen with grind
+    inst_mvars
+    case vc2.post.success => grind [= cValid, = cMemAndValid]
+    all_goals grind
   all_goals grind
 termination_by sizeOf hirs
 
@@ -1128,17 +1108,20 @@ termination_by sizeOf hirs
     case h_1 =>
       expose_names
       mspec c_spec
-      have := Array.sizeOf_head?_of_mem heq_1
-      have := Array.sizeOf_head?_of_tail heq_1
-      mspec c_spec
       inst_mvars
-      case post.success.post.success =>
-        mspec c_alt_iter_step_lift_spec
+      case post.success =>
+        have := Array.sizeOf_head?_of_mem heq_1
+        have := Array.sizeOf_head?_of_tail heq_1
+        mspec c_spec
         inst_mvars
         case post.success =>
-          mspec c_alt_iter_fold_spec
+          mspec
           inst_mvars
-          case post.success => mvcgen with grind [= cMemAndValid]
+          case post.success =>
+            mspec c_alt_iter_fold_spec
+            inst_mvars
+            case post.success => mvcgen with grind [= cMemAndValid]
+            all_goals grind
           all_goals grind
         all_goals grind
       all_goals grind
@@ -1185,32 +1168,43 @@ termination_by sizeOf hir + sizeOf n
   split
   case isTrue =>
     mspec c_spec
-    mspec c_at_least_0_spec
+    --mspec c_at_least_0_spec
     inst_mvars
-    case post.success.post.success =>
-      mspec c_at_least_0_post_lift_spec
+    case post.success =>
+      mspec --c_at_least_0_post_lift_spec
       inst_mvars
-      case post.success => mvcgen with grind
+      case post.success =>
+        mspec c_at_least_0_post_lift_spec
+        inst_mvars
+        case post.success => mvcgen with grind
+        all_goals grind
       all_goals grind
     all_goals grind
   case isFalse =>
     split
     mspec c_spec
-    mspec c_at_least_1_spec
     inst_mvars
-    case isTrue.post.success.post.success =>
-      mspec c_at_least_1_post_lift_spec
+    case isTrue.post.success =>
+      mspec c_at_least_1_spec
       inst_mvars
-      case post.success => simp; intros; grind
+      case post.success =>
+        mspec c_at_least_1_post_lift_spec
+        inst_mvars
+        case post.success => simp; grind
+        all_goals grind
       all_goals grind
     case isFalse =>
       mspec c_exactly_spec
-      mspec c_spec
+      --mspec c_spec
       inst_mvars
-      case post.success.post.success =>
-        mspec c_at_least_2_lift_spec
+      case post.success =>
+        mspec c_spec
         inst_mvars
-        case post.success => simp; intros; grind [= cMemAndValid]
+        case post.success =>
+          mspec c_at_least_2_lift_spec
+          inst_mvars
+          case post.success => simp; grind [= cMemAndValid]
+          all_goals grind
         all_goals grind
       all_goals grind
     all_goals grind
@@ -1260,21 +1254,25 @@ termination_by sizeOf hir + sizeOf n
   unfold Code.c_cap
   split
   mspec c_cap'_start_spec
-  mspec c_spec
+  --mspec c_spec
   inst_mvars
-  case h_1.post.success.post.success =>
+  case h_1.post.success =>
     intros
-    mspec c_cap'_end_spec
+    mspec c_spec
     inst_mvars
     case post.success =>
-      mspec patch_lift_spec
+      mspec --patch_lift_spec
       inst_mvars
       case post.success =>
         mspec patch_lift_spec
         inst_mvars
-        case post.success => mvcgen with grind [= cValid, = cMemAndValid]
+        case post.success =>
+          mspec
+          inst_mvars
+          case post.success => mvcgen with grind [= cValid, = cMemAndValid]
+          all_goals grind
         all_goals grind
-      all_goals grind
+      all_goals grind [= cMemAndValid]
     simp_all
     all_goals grind [= cMemAndValid]
   all_goals grind
@@ -1343,9 +1341,10 @@ end
       inst_mvars
       case post.success =>
         mvcgen [patch_lift_spec]
-        and_intros; rfl
-        apply NextOfLt.mk
-        all_goals (try rfl) <;> grind
+        and_intros
+        case vc1.pre.refine_2.refine_1 => rfl
+        case vc1.pre.refine_1.refine_2.refine_1 => apply NextOfLt.mk; grind
+        all_goals grind
       all_goals grind
     all_goals grind
   all_goals grind

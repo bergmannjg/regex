@@ -40,16 +40,19 @@ namespace Array.Ref
 /-- make reference of array -/
 def mkRef {α β : Type} [Inhabited β] (arr : Array α) : ST.Ref β (Array α) :=
   let st : ST β (ST.Ref β (Array α)) := ST.Prim.mkRef arr
-  match st default with | EStateM.Result.ok r _ => r
+  st (Void.mk default) |>.val
+
+instance {α β : Type} [Inhabited β] : Inhabited (ST.Ref β (Array α)) where
+  default := mkRef #[]
 
 /-- get array of reference -/
-def getRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) : (Array α) :=
+def getRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) : Array α :=
   let st := ST.Prim.Ref.get ref
-  match st default with | EStateM.Result.ok r _ => r
+  st (Void.mk default) |>.val
 
 /-- modify array, try to perform the update destructively -/
-def modifyRefValue {α β : Type} [Inhabited β] [DecidableEq β]
-    (ref : ST.Ref β (Array α)) (index : Nat) (value : α)
+def modifyRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) (index : Nat) (value : α)
+  (f : ST.Out β Unit → Bool := fun _ => True)
     : ST.Ref β (Array α)  :=
   let st := ST.Prim.Ref.modify ref (fun arr =>
     let arr := dbgTraceIfShared "array" arr
@@ -57,10 +60,7 @@ def modifyRefValue {α β : Type} [Inhabited β] [DecidableEq β]
     then arr.set index value h
     else arr)
 
-  match st default with | EStateM.Result.ok _ n => if n = default then ref else mkRef #[]
-
-instance {α β : Type} [Inhabited β] : Inhabited (ST.Ref β (Array α)) where
-  default := mkRef #[]
+  if f (st (Void.mk default)) then ref else default -- force to run `st`
 
 end Array.Ref
 

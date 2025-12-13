@@ -13,7 +13,7 @@ instance : ToString Emoji where
 
 protected def Emojis.txt := include_str "./data/emoji/emoji-data.txt"
 
-private def transform (data : Array (Array Substring)) : Array Emoji :=
+private def transform (data : Array (Array Substring.Raw)) : Array Emoji :=
   let init : Array Emoji := #[]
   extract data |> Array.foldl (init := init) (fun acc (name, val) =>
     match acc.findIdx? (·.name = name) with
@@ -26,9 +26,9 @@ private def transform (data : Array (Array Substring)) : Array Emoji :=
 
 private unsafe def Emoji.init : IO $ Array Emoji := do
   let stream := UCDStream.ofString Emojis.txt
-  let mut records : Array (Array Substring) := #[]
+  let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do
-    records := records.push record
+    records := records.push (record.map (·.copy))
 
   return transform records
 

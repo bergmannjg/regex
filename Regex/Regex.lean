@@ -61,7 +61,7 @@ def captures (s : String.Slice) (re : Regex) («at» : String.Slice.Pos s) (logE
       intro g hg
       have ⟨_, hf⟩ := Array.mem_filterMap.mp hg
       have ⟨v, _⟩ := Array.mem_map.mp hf.left
-      cases v <;> grind⟩)
+      cases v <;> simp_all; grind⟩)
   | _ => (msgs, none)
 
 private def is_overlapping_empty_match (f t : String.Slice.Pos s) (acc : Array (Captures s)) : Bool :=

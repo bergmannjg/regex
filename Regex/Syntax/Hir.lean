@@ -270,7 +270,7 @@ def toString (hir : Hir) (col : Nat): String :=
       let hirs := Array.mapFinIdx items.attach (fun i s _ => (i, s))
       have : sizeOf items < sizeOf hir.kind := by simp [hk]
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
-          let iv := String.mk (Nat.toDigits 0 i)
+          let iv := String.ofList (Nat.toDigits 0 i)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toString ast.val col)))
       s!"Concat {hirs}"
@@ -278,7 +278,7 @@ def toString (hir : Hir) (col : Nat): String :=
       let hirs := Array.mapFinIdx items.attach (fun i s _ => (i, s))
       have : sizeOf items < sizeOf hir.kind := by simp [hk]
       let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
-          let iv := String.mk (Nat.toDigits 0 i)
+          let iv := String.ofList (Nat.toDigits 0 i)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toString ast col)))
       s!"Alternation {hirs}"

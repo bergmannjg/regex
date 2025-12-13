@@ -19,7 +19,7 @@ instance : ToString SentenceBreakProperty where
 
 protected def SentenceBreakProperty.txt := include_str "./data/auxiliary/SentenceBreakProperty.txt"
 
-private def transform (data : Array (Array Substring)) : Array SentenceBreakProperty :=
+private def transform (data : Array (Array Substring.Raw)) : Array SentenceBreakProperty :=
   let init : Array SentenceBreakProperty := #[]
   extract data |> Array.foldl (init := init) (fun acc (name, val) =>
     match acc.findIdx? (·.name = name) with
@@ -32,9 +32,9 @@ private def transform (data : Array (Array Substring)) : Array SentenceBreakProp
 
 private unsafe def SentenceBreakProperty.init : IO $ Array SentenceBreakProperty := do
   let stream := UCDStream.ofString SentenceBreakProperty.txt
-  let mut records : Array (Array Substring) := #[]
+  let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do
-    records := records.push record
+    records := records.push (record.map (·.copy))
 
   return transform records
 

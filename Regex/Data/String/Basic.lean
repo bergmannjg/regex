@@ -30,7 +30,7 @@ def castPosOfSubslice {s t : String.Slice} (p: s.Pos) (h : isSubslice s t) : t.P
       simp_all only [Nat.sub_add_cancel]
 
       have := p.isValidForSlice.le_utf8ByteSize
-      simp [Slice.rawEndPos, Slice.utf8ByteSize, Pos.Raw.byteDistance, String.Pos.Raw.le_iff] at this
+      simp [Slice.utf8ByteSize, Pos.Raw.byteDistance] at this
 
       have := s.startInclusive_le_endExclusive
       simp [String.ValidPos.le_iff, String.Pos.Raw.le_iff] at this
@@ -44,7 +44,7 @@ def castPosOfSubslice {s t : String.Slice} (p: s.Pos) (h : isSubslice s t) : t.P
       have := p.isValidForSlice.isValid_offsetBy
       simp [Pos.Raw.offsetBy] at this
       grind
-    exact { le_utf8ByteSize := le, isValid_offsetBy := isValid }⟩
+    exact { le_rawEndPos := le, isValid_offsetBy := isValid }⟩
 
 /-- `s.startPos : s.Pos` as `t.Pos` -/
 def startPosOfSubslice {s t : String.Slice} (h : isSubslice s t) : t.Pos :=

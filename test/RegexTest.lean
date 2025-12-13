@@ -1,3 +1,5 @@
+import Std.Time
+
 import Regex
 
 namespace RegexTest
@@ -73,7 +75,7 @@ structure RegexTest where
   extended : Option Regex.Grammar.ExtendedKind := none
 
 def unescapeStr (s : String) : String :=
-  String.mk (loop s.data)
+  String.ofList (loop s.toList)
 where
   toChar (a b : Char) : Char :=
     match Char.decodeHexDigit a, Char.decodeHexDigit b with
@@ -118,7 +120,7 @@ def checkFlagIsTrue (f : Option Bool) : Bool :=
   match f with | some v => v | none => false
 
 private def escape (s : String) : String :=
-  s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace [⟨0, by simp +arith +decide⟩].asString r"\x00"
+  s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace (String.ofList [⟨0, by simp +arith +decide⟩]) r"\x00"
 
 instance : ToString RegexTest where
   toString s :=
@@ -178,7 +180,7 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
           | some (some span), some v =>
               span.start = v.startInclusive.offset.byteIdx && span.end = v.endExclusive.offset.byteIdx
               || -- ignore maybe wrong string pos caused by pcreloader
-              (Substring.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v.copy
+              (Substring.Raw.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v.copy
           | some none, none => true
           | _, _ => (Option.getD t.«only-full-match» false) && 0 < i)
       else false)
@@ -250,6 +252,7 @@ def testItem (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (t : 
     pure (0, 0, 1)
   else if List.contains ignoredTests t.name then pure (0, 0, 1)
   else
+    let start ← Std.Time.Timestamp.now
     match captures flavor t with
     | Except.ok result =>
       if result.size = 0
@@ -262,9 +265,11 @@ def testItem (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (t : 
         else
           pure (1, 0, 0)
       else
+        let stop ← Std.Time.Timestamp.now
         if checkMatches result t
         then
-            if verbose then IO.println s!"RegexTest({filename}, {t.name}) ok: '{t.regex}' '{t.haystack}' {capturesToString result}"
+            let dur := stop - start
+            if verbose then IO.println s!"RegexTest({filename}, {t.name}) ok: '{t.regex}' '{t.haystack}' {capturesToString result}, duration {dur.toMilliseconds} msecs"
             pure (1, 0, 0)
         else
           IO.println s!"RegexTest({filename}) failed: {t}"

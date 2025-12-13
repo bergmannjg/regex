@@ -19,7 +19,7 @@ instance : ToString GraphemeBreakProperty where
 
 protected def GraphemeBreakProperty.txt := include_str "./data/auxiliary/GraphemeBreakProperty.txt"
 
-private def transform (data : Array (Array Substring)) : Array GraphemeBreakProperty :=
+private def transform (data : Array (Array Substring.Raw)) : Array GraphemeBreakProperty :=
   let init : Array GraphemeBreakProperty := #[]
   extract data |> Array.foldl (init := init) (fun acc (name, val) =>
     match acc.findIdx? (·.name = name) with
@@ -32,9 +32,9 @@ private def transform (data : Array (Array Substring)) : Array GraphemeBreakProp
 
 private unsafe def GraphemeBreakProperty.init : IO $ Array GraphemeBreakProperty := do
   let stream := UCDStream.ofString GraphemeBreakProperty.txt
-  let mut records : Array (Array Substring) := #[]
+  let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do
-    records := records.push record
+    records := records.push (record.map (·.copy))
 
   return transform records
 

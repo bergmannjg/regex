@@ -19,7 +19,7 @@ instance : ToString DerivedCoreProperty where
 
 protected def DerivedCoreProperties.txt := include_str "./data/DerivedCoreProperties.txt"
 
-private def transform (data : Array (Array Substring)) : Array DerivedCoreProperty :=
+private def transform (data : Array (Array Substring.Raw)) : Array DerivedCoreProperty :=
   let init : Array DerivedCoreProperty := #[]
   extract data |> Array.foldl (init := init) (fun acc (name, val) =>
     match acc.findIdx? (·.name = name) with
@@ -32,9 +32,9 @@ private def transform (data : Array (Array Substring)) : Array DerivedCoreProper
 
 private unsafe def DerivedCoreProperty.init : IO $ Array DerivedCoreProperty := do
   let stream := UCDStream.ofString DerivedCoreProperties.txt
-  let mut records : Array (Array Substring) := #[]
+  let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do
-    records := records.push record
+    records := records.push (record.map (·.copy))
 
   return transform records
 

@@ -19,7 +19,7 @@ instance : ToString Script where
 
 protected def ScriptProperties.txt := include_str "./data/Scripts.txt"
 
-private def transform (data : Array (Array Substring)) : Array Script :=
+private def transform (data : Array (Array Substring.Raw)) : Array Script :=
   let init : Array Script := #[]
   extract data |> Array.foldl (init := init) (fun acc (name, val) =>
     match acc.findIdx? (·.name = name) with
@@ -32,9 +32,9 @@ private def transform (data : Array (Array Substring)) : Array Script :=
 
 private unsafe def Script.init : IO $ Array Script := do
   let stream := UCDStream.ofString ScriptProperties.txt
-  let mut records : Array (Array Substring) := #[]
+  let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do
-    records := records.push record
+    records := records.push (record.map (·.copy))
 
   return transform records
 

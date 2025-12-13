@@ -229,13 +229,13 @@ instance : ToString LiteralKind where
 /-- A single character literal, which includes escape sequences. -/
 structure Literal where
   /-- The span of this literal. -/
-  span: Substring
+  span: Substring.Raw
   /-- The kind of this literal. -/
   kind: LiteralKind
   /-- The Unicode scalar value corresponding to this literal. -/
   c: Char
 
-def spanToString (span : Substring) : String :=
+def spanToString (span : Substring.Raw) : String :=
   s!"({span.str},{span.startPos},{span.stopPos})"
 
 namespace Literal
@@ -254,7 +254,7 @@ instance : ToString Literal where
 /-- A backrefence to a capturung group. -/
 structure BackRef where
   /-- The span of this backrefence. -/
-  span: Substring
+  span: Substring.Raw
   /-- number of the capturung group. -/
   n: Nat
 
@@ -315,7 +315,7 @@ instance : ToString RepetitionKind where
 /-- The repetition operator itself. -/
 structure RepetitionOp where
   /-- The span of this Repetition . -/
-  span: Substring
+  span: Substring.Raw
   /-- The kind of this Repetition . -/
   kind: RepetitionKind
 
@@ -332,7 +332,7 @@ instance : ToString RepetitionOp where
 /-- A single character class range in a set. -/
 structure ClassSetRange where
     /-- The span of this range. -/
-    span: Substring
+    span: Substring.Raw
     /-- The start of this range. -/
     start: Literal
     /-- The end of this range. -/
@@ -392,7 +392,7 @@ instance : ToString FlagsItemKind where
 /-- A single item in a group of flags. -/
 structure FlagsItem where
     /-- The span of this item. -/
-    span: Substring
+    span: Substring.Raw
     /-- The kind of this item. -/
     kind: FlagsItemKind
 
@@ -404,7 +404,7 @@ instance : ToString FlagsItem where
 /-- A group of flags.-/
 structure Flags where
     /-- The span of this item. -/
-    span: Substring
+    span: Substring.Raw
     /-- The kind of this item. -/
     items: Array FlagsItem
 
@@ -476,7 +476,7 @@ instance : ToString ClassUnicodeKind where
 /-- A Unicode character class. -/
 structure ClassUnicode where
   /-- The span of this class. -/
-  span : Substring
+  span : Substring.Raw
   /-- is class negated. -/
   negated : Bool
   /-- The kind of Unicode class. -/
@@ -542,7 +542,7 @@ instance : ToString AssertionKind where
 /-- A single zero-width assertion. -/
 structure Assertion where
   /-- The span of this assertion. -/
-  span : Substring
+  span : Substring.Raw
   /-- The assertion kind. -/
   kind : AssertionKind
 
@@ -623,7 +623,7 @@ end ClassAsciiKind
 /-- An ASCII character class. -/
 structure ClassAscii where
   /-- The span of this assertion. -/
-  span : Substring
+  span : Substring.Raw
   /-- The kind of ASCII class. -/
   kind : ClassAsciiKind
   /-- Whether the class is negated or not -/
@@ -662,7 +662,7 @@ instance : ToString ClassPerlKind where
 /--A Perl character class.-/
 structure ClassPerl where
   /-- The span of this assertion. -/
-  span : Substring
+  span : Substring.Raw
   /-- The kind of Perl class. -/
   kind : ClassPerlKind
   /-- Whether the class is negated or not -/
@@ -677,33 +677,33 @@ mutual
 
 /-- A repetition operation applied to a regular expression. -/
 inductive Repetition where
-  | mk (span: Substring) (op: RepetitionOp) (greedy : Bool) (possessive : Bool) (ast: Ast) : Repetition
+  | mk (span: Substring.Raw) (op: RepetitionOp) (greedy : Bool) (possessive : Bool) (ast: Ast) : Repetition
 
 /-- A grouped regular expression. -/
 inductive Group where
-  | mk (span: Substring) (kind: GroupKind) (ast: Ast) : Group
+  | mk (span: Substring.Raw) (kind: GroupKind) (ast: Ast) : Group
 
 /-- A group of flags that is not applied to a particular regular expression. -/
 inductive SetFlags where
-  | mk (span: Substring) (flags: Flags) : SetFlags
+  | mk (span: Substring.Raw) (flags: Flags) : SetFlags
 
 /-- A primitive is an expression with no sub-expressions. -/
 inductive Primitive where
   | Literal : AstItems.Literal -> Primitive
   | BackRef : AstItems.BackRef -> Primitive
-  | Dot : Substring -> Primitive
+  | Dot : Substring.Raw -> Primitive
   | Assertion : Assertion -> Primitive
   | Unicode : ClassUnicode -> Primitive
   | Perl : ClassPerl -> Primitive
 
 /-- A union of items inside a character class set. -/
 inductive ClassSetUnion where
-  | mk (span : Substring) (items : Array ClassSetItem) : ClassSetUnion
+  | mk (span : Substring.Raw) (items : Array ClassSetItem) : ClassSetUnion
 
 /-- A single component of a character class set. -/
 inductive ClassSetItem where
   /-- An empty item. -/
-  | Empty : Substring -> ClassSetItem
+  | Empty : Substring.Raw -> ClassSetItem
   /-- A single literal. -/
   | Literal : Literal -> ClassSetItem
   /-- A range between two literals. -/
@@ -732,7 +732,7 @@ inductive ClassSetBinaryOpKind where
 
 /-- A Unicode character class set operation. -/
 inductive ClassSetBinaryOp where
-  | mk (span : Substring) (kind: ClassSetBinaryOpKind) (lhs: ClassSet) (rhs: ClassSet)
+  | mk (span : Substring.Raw) (kind: ClassSetBinaryOpKind) (lhs: ClassSet) (rhs: ClassSet)
     : ClassSetBinaryOp
 
 /-- A character class set. -/
@@ -744,15 +744,15 @@ inductive ClassSet where
 
 /-- A bracketed character class, e.g., `[a-z0-9]`.-/
 inductive ClassBracketed where
-  | mk : (span: Substring) -> (negated : Bool) -> (kind: ClassSet) -> ClassBracketed
+  | mk : (span: Substring.Raw) -> (negated : Bool) -> (kind: ClassSet) -> ClassBracketed
 
 /-- An alternation of regular expressions. -/
 inductive Alternation where
-  | mk (span: Substring) (asts: Array Ast) : Alternation
+  | mk (span: Substring.Raw) (asts: Array Ast) : Alternation
 
 /-- A concatenation of regular expressions. -/
 inductive Concat where
-  | mk (span: Substring) (asts: Array Ast) : Concat
+  | mk (span: Substring.Raw) (asts: Array Ast) : Concat
 
 /-- An abstract syntax tree for a single regular expression. -/
 inductive Ast where
@@ -765,7 +765,7 @@ inductive Ast where
   /-- A backrefence to a capturung group. -/
   | BackRef : BackRef -> Ast
   /-- The "any character" class. -/
-  | Dot : Substring -> Ast
+  | Dot : Substring.Raw -> Ast
   /-- A single zero-width assertion. -/
   | Assertion : Assertion -> Ast
   /-- A single Unicode character class, e.g., `\pL` or `\p{Greek}`. -/
@@ -805,7 +805,7 @@ end ClassSetUnion
 
 namespace ClassBracketed
 
-def span (cls : ClassBracketed) : Substring := match cls with | .mk span _ _ => span
+def span (cls : ClassBracketed) : Substring.Raw := match cls with | .mk span _ _ => span
 
 def negate (cls : ClassBracketed) : Bool := match cls with | .mk _ negate _ => negate
 
@@ -813,7 +813,7 @@ end ClassBracketed
 
 namespace Concat
 
-def span (concat : Concat) : Substring := match concat with | .mk span _ => span
+def span (concat : Concat) : Substring.Raw := match concat with | .mk span _ => span
 
 def asts (concat : Concat) : Array Ast := match concat with | .mk _ asts => asts
 
@@ -907,7 +907,7 @@ def toStringClassSetUnion (r : ClassSetUnion) (col : Nat) : String :=
   let lines :=
       let asts := Array.mapFinIdx items.attach (fun i s _ => (i, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
-          let iv := String.mk (Nat.toDigits 0 i)
+          let iv := String.ofList (Nat.toDigits 0 i)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toStringClassSetItem ast col)))
       s!"ClassSetUnion {asts}"
@@ -991,7 +991,7 @@ theorem sizeOfAstOfRepetition (rep : Repetition) : sizeOf rep.ast < sizeOf rep :
 
 end Repetition
 
-def span (ast : Ast) : Substring :=
+def span (ast : Ast) : Substring.Raw :=
   match ast with
   | .Empty => default
   | .Flags ⟨span, _⟩  => span
@@ -1030,7 +1030,7 @@ def toString (ast : Ast) (col : Nat) : String :=
       let asts : Array (Fin items.attach.size ×  { x // x ∈ items }) :=
         Array.mapFinIdx items.attach (fun i s h => (⟨i, h⟩, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
-          let iv := String.mk (Nat.toDigits 0 i.val)
+          let iv := String.ofList (Nat.toDigits 0 i.val)
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toString ast col)))
       s!"Alternation {asts}"
@@ -1041,7 +1041,7 @@ def toString (ast : Ast) (col : Nat) : String :=
       let asts : Array (Fin concat.asts.attach.size ×  { x // x ∈ concat.asts })
         := Array.mapFinIdx concat.asts.attach (fun i s h => (⟨i, h⟩, s))
       let asts := String.join (asts.toList |> List.map (fun (i, ast) =>
-          let iv := String.mk (Nat.toDigits 0 i.val)
+          let iv := String.ofList (Nat.toDigits 0 i.val)
           have : sizeOf ast.val < sizeOf concat :=
             Nat.lt_trans (Array.sizeOf_lt_of_mem ast.property) (Concat.sizeOfAstsOfConcat concat)
           pre ++ iv ++ ": " ++ (toString ast col)))

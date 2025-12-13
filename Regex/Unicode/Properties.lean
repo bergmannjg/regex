@@ -153,7 +153,7 @@ def ofName? (s : String) : Option PropertyName :=
   | none => none
 
 /-- get GeneralCategory of long property value `s` -/
-def GeneralCategory.ofLong? (s : Substring) : Option GC :=
+def GeneralCategory.ofLong? (s : Substring.Raw) : Option GC :=
   match s with
   | "Uppercase_Letter" => some GC.Lu
   | "Lowercase_Letter" => some GC.Ll
@@ -196,8 +196,8 @@ def GeneralCategory.ofLong? (s : Substring) : Option GC :=
   | _ => none
 
 /-- get GeneralCategory of property value `s` -/
-def GeneralCategory.ofValue? (s : Substring) : Option GC :=
-  GC.ofAbbrev? s <|> GeneralCategory.ofLong? s
+def GeneralCategory.ofValue? (s : Substring.Raw) : Option GC :=
+  GC.ofAbbrev? s.toString.toSlice <|> GeneralCategory.ofLong? s
 
 /-- get PropertyName of property  value -/
 def ofValue? (s : String) : Option PropertyName :=

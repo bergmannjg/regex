@@ -40,7 +40,7 @@ private def createText (c1 c2 : Char) (n : Nat): String :=
             if h : UInt32.isValidChar (c1.val + n.toUInt32)
             then (⟨c1.val + n.toUInt32, h⟩ :: content, generator)
             else (content, generator))
-    String.mk content
+    String.ofList content
   else ""
 
 def main (args : List String): IO Unit := do
@@ -50,7 +50,7 @@ def main (args : List String): IO Unit := do
         match n.toNat? with
         | some n =>
           let a? : String := List.replicateTR n "a?" |> String.join
-          let a : String := (List.replicateTR n 'a').asString
+          let a := String.ofList (List.replicateTR n 'a')
           let re := a? ++ a
           let haystack := a
           IO.println s!"re {re} haystack {haystack}"
@@ -70,7 +70,7 @@ def main (args : List String): IO Unit := do
         match n.toNat?, m.toNat? with
         | some n, some m =>
           let a? : String := List.replicateTR n "a?" |> String.join
-          let a : String := (List.replicateTR n 'a').asString
+          let a := String.ofList (List.replicateTR n 'a')
           let re := a? ++ a
           let haystack := a
           IO.println s!"re {re} haystack {haystack}"
