@@ -1,6 +1,9 @@
 import Regex.Compiler.Basic
 import Regex.Compiler.Compile
-import Regex.Compiler.Lemmas
+import Regex.Compiler.Lemmas.Basic
+import Regex.Compiler.Lemmas.Patch
+import Regex.Compiler.Lemmas.AddState
+import Regex.Compiler.Lemmas.Compile
 
 namespace Compiler
 
@@ -16,16 +19,16 @@ private def startsWithStart (hir : Hir) : Bool :=
   | _ => false
 
 /-- Compile the HIR expression given. -/
-def compile (config : Config := default) (flavor : Syntax.Flavor) (expr : Hir)
-    : Except String Checked.NFA := do
+def compile (config : Config := default) (flavor : Syntax.Flavor) (expr : Hir) : Checked.NFA :=
   let unanchored_prefix_simulation := expr.containsLookaround || config.unanchored_prefix_simulation
   let anchored := !config.unanchored_prefix || startsWithStart expr || unanchored_prefix_simulation
-  match hm : Code.compile anchored expr (#[], #[], #[]) with
-  | EStateM.Result.ok _ (states, captures, groups) =>
+  let res := Code.compile anchored expr (#[], #[], #[])
+  have : ∃ s, res = EStateM.Result.ok () s := Lemmas.compile_eq_ok
+  match hm : res with
+  | EStateM.Result.ok () (states, captures, groups) =>
     let nfa := NFA.toCkecked ⟨states, 0, 0⟩ captures.mergeSort.unique
                 (match flavor with | Syntax.Flavor.Pcre => groups | _ => #[])
                 (NextOfLt.forall (Lemmas.compile_nextOf_lt hm))
                 (by have := Lemmas.compile_captures_valid hm; grind)
-    Except.ok {nfa with unanchored_prefix_in_backtrack :=
+    {nfa with unanchored_prefix_in_backtrack :=
                     !startsWithStart expr && unanchored_prefix_simulation}
-  | EStateM.Result.error e _ => Except.error e

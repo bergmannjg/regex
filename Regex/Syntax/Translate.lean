@@ -438,9 +438,12 @@ def visit_post (ast: Ast) : StateT Translator (Except String) PUnit := do
   | .Alternation _ =>
     match pop_alt_exprs t.stack #[] with
     | Except.ok (stack, exprs) =>
-        set {t with
-          stack := stack.push
-            (HirFrame.Expr (Hir.mk (Syntax.HirKind.Alternation exprs.reverse) default))}
+        match exprs.reverse.toList with
+        | fst :: snd :: tail =>
+          set {t with
+            stack := stack.push
+              (HirFrame.Expr (Hir.mk (Syntax.HirKind.Alternation (.mk fst snd ⟨tail⟩)) default))}
+        | _ => Except.error s!"Alternations shold have at least 2 elements"
     | Except.error e => Except.error e
 
 /-- This method is called on every [`ClassSetItem`] before descending into child nodes. -/

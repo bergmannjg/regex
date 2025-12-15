@@ -45,7 +45,7 @@
    "rev": "3ab4379b2b92448717de66b7d3e254ac1487aede",
    "name": "BibtexQuery",
    "manifestFile": "lake-manifest.json",
-   "inputRev": "master",
+   "inputRev": "nightly-testing",
    "inherited": true,
    "configFile": "lakefile.toml"},
   {"url": "https://github.com/acmepjz/md4lean",

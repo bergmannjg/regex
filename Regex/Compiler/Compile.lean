@@ -129,8 +129,7 @@ def c_possessive (tref : ThompsonRef) : PatchM ThompsonRef := do
   Code.patch union tref.start
   Code.patch tref.«end» eat
   Code.patch union fail
-  Code.patch eat fail
-  Code.patch eat empty
+  Code.patch2 eat fail empty
   pure (ThompsonRef.mk union empty)
 
 def is_possible_empty_repetition (hir : Hir) : Bool :=
@@ -152,8 +151,10 @@ def get_possible_empty_capture_group (hir : Hir) : Option Nat :=
     match kind with
     | .Repetition ⟨0, _, _, _, _⟩ => some g
     | .Concat hirs => if hirs.all is_possible_empty_repetition then some g else none
-    | .Alternation hirs => if (hirs.any is_empty_concat) || (hirs.any is_possible_empty_repetition)
-                           then some g else none
+    | .Alternation (Syntax.Alternation.mk fst snd tail) =>
+        let hirs := tail.push fst |>.push snd
+        if (hirs.any is_empty_concat) || (hirs.any is_possible_empty_repetition)
+        then some g else none
     | _ => none
   | _ => none
 
@@ -207,8 +208,7 @@ def c_lookaround_PositiveLookahead (compiled : ThompsonRef) : PatchM ThompsonRef
 
   Code.patch compiled.end change_state
   Code.patch union compiled.start
-  Code.patch change_state fail
-  Code.patch change_state «end»
+  Code.patch2 change_state fail «end»
   Code.patch union fail
 
   pure (ThompsonRef.mk union «end»)
@@ -267,8 +267,7 @@ def c_repetition_0_some_1_true (union : Unchecked.StateID) (compiled : ThompsonR
   Code.patch union compiled.start
   Code.patch union empty
   Code.patch compiled.end eat
-  Code.patch eat empty
-  Code.patch eat empty
+  Code.patch2 eat empty empty
   pure (ThompsonRef.mk union empty)
 
 def c_repetition_0_none (union : Unchecked.StateID) (compiled : ThompsonRef)
@@ -350,8 +349,7 @@ def c_bounded.fold.patch.possessive (compiled: ThompsonRef) (empty : Unchecked.S
   let eat ← add_eat (Unchecked.EatMode.ToLast 0)
 
   Code.patch union fail
-  Code.patch eat fail
-  Code.patch eat empty
+  Code.patch2 eat fail empty
 
   pure compiled.end
 
@@ -422,23 +420,18 @@ def c_alt_iter.fold (hirs : Array Hir) (union «end» : Unchecked.StateID)
       pure s)
 termination_by sizeOf hirs
 
-def c_alt_iter (hirs : Array Hir) : CompilerM ThompsonRef := do
-  match hHead : hirs.head? with
-  | some (first, tail) =>
-    have : sizeOf tail < sizeOf hirs := Array.sizeOf_head?_of_tail hHead
-    match hTail : tail.head? with
-    | some (second, tail') =>
-      have : sizeOf first < sizeOf hirs := Array.sizeOf_head?_of_mem hHead
-      let first ← c first
-      have : sizeOf second < sizeOf tail := Array.sizeOf_head?_of_mem hTail
-      let second ← c second
-      let (union, «end») ← c_alt_iter_step first second
-      have : sizeOf tail' < sizeOf tail := Array.sizeOf_head?_of_tail hTail
-      c_alt_iter.fold tail' union «end»
-      pure (ThompsonRef.mk union «end»)
-    | none => .error "c_alt_iter, size > 1 expected"
-  | none => .error "c_alt_iter, size > 0 expected"
-termination_by sizeOf hirs
+def c_alt_iter (alt : Syntax.Alternation) : CompilerM ThompsonRef := do
+  match hm : alt with
+  | Syntax.Alternation.mk first second tail =>
+    have : sizeOf first < sizeOf alt := by simp +arith [*]
+    have : sizeOf second < sizeOf alt := by simp +arith [*]
+    have : sizeOf tail < sizeOf alt := by simp +arith [*]
+    let first ← c first
+    let second ← c second
+    let (union, «end») ← c_alt_iter_step first second
+    c_alt_iter.fold tail union «end»
+    pure (ThompsonRef.mk union «end»)
+termination_by sizeOf alt
 
 def c_exactly.fold (hir : Hir) (n : Nat) («end» : Unchecked.StateID)
     : CompilerM Unchecked.StateID := do

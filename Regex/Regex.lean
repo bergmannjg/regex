@@ -44,9 +44,8 @@ def build (s : String) (flavor : Syntax.Flavor := default)
     (flags : Syntax.Flags := default) (config : Compiler.Config := default)
     (extended : Regex.Grammar.ExtendedKind := .None)
     : Except String Regex := do
-  let nfa ← Syntax.AstItems.parse s flavor extended
-              >>= Syntax.translate flags >>= Compiler.compile config flavor
-  Except.ok ⟨nfa⟩
+  let hir ← Syntax.AstItems.parse s flavor extended >>= Syntax.translate flags
+  Except.ok ⟨Compiler.compile config flavor hir⟩
 
 namespace Log
 

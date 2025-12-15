@@ -18,24 +18,12 @@ def patch («from» «to» : Unchecked.StateID) : PatchM Unit := do
     | .Empty _ => set (states.set «from» (Unchecked.State.Empty «to») h)
     | .NextChar offset _ => set (states.set «from» (Unchecked.State.NextChar offset «to») h)
     | .Fail =>  EStateM.Result.error s!"patch states .Fail unexpected"
-    | .Eat (.Until s) n =>
-        if s = 0
-        then set (states.set «from» (Unchecked.State.Eat (.Until «to») n) h)
-        else if n = 0
-        then set (states.set «from» (Unchecked.State.Eat (.Until s) «to») h)
-        else EStateM.Result.error "patch states, .Eat s and n not null"
+    | .Eat (.Until _) _ =>
+        EStateM.Result.error "patch states, .Eat.Until unexpected"
     | .Eat (.ToLast s) n =>
-        if s = 0
-        then set (states.set «from» (Unchecked.State.Eat (.ToLast «to») n) h)
-        else if n = 0 then
-        set (states.set «from» (Unchecked.State.Eat (.ToLast s) «to») h)
-        else EStateM.Result.error "patch states, .Eat s and n not null"
+        EStateM.Result.error "patch states, .Eat.ToLast unexpected"
     | .ChangeFrameStep f t =>
-        if f = 0
-        then set (states.set «from» (Unchecked.State.ChangeFrameStep «to» t) h)
-        else if t = 0
-        then set (states.set «from» (Unchecked.State.ChangeFrameStep f «to»))
-        else EStateM.Result.error "patch states, .ChangeFrameStep from and to not null"
+       EStateM.Result.error "patch states, .ChangeFrameStep unexpected"
     | .RemoveFrameStep _ =>
       set (states.set «from» (Unchecked.State.RemoveFrameStep «to») h)
     | .Look look _ =>
@@ -47,17 +35,28 @@ def patch («from» «to» : Unchecked.StateID) : PatchM Unit := do
     | .Capture role _ pattern_id group_index =>
         set (states.set «from» (Unchecked.State.Capture role «to» pattern_id group_index))
     | .BinaryUnion alt1 alt2 =>
-        if alt1 = 0
-        then set (states.set «from» (Unchecked.State.BinaryUnion «to» alt2) h)
-        else if alt2 = 0
-        then set (states.set «from» (Unchecked.State.BinaryUnion alt1 «to») h)
-        else EStateM.Result.error "patch states, .BinaryUnion alt1 and alt2 not null"
+        EStateM.Result.error "patch states, .BinaryUnion unexpected"
     | .SparseTransitions _ => set states
     | .Union alternates =>
         set (states.set «from» (Unchecked.State.Union (alternates.push «to»)) h)
     | .UnionReverse alternates =>
         set (states.set «from» (Unchecked.State.UnionReverse (alternates.push «to»)) h)
     | .Match _ => EStateM.Result.error s!"patch states .Match unexpected"
+  else EStateM.Result.error s!"patch index error"
+
+def patch2 («from» to₁ to₂ : Unchecked.StateID) : PatchM Unit := do
+  let states ← get
+  if h : «from» < states.size then
+    match states[«from»]'h with
+    | .Eat (.Until _) _ =>
+        set (states.set «from» (Unchecked.State.Eat (.Until to₁) to₂) h)
+    | .Eat (.ToLast _) _ =>
+        set (states.set «from» (Unchecked.State.Eat (.ToLast to₁) to₂) h)
+    | .ChangeFrameStep _ _ =>
+        set (states.set «from» (Unchecked.State.ChangeFrameStep to₁ to₂) h)
+    | .BinaryUnion _ _ =>
+        set (states.set «from» (Unchecked.State.BinaryUnion to₁ to₂) h)
+    | s => EStateM.Result.error s!"unexpected state {s} at patch2"
   else EStateM.Result.error s!"patch index error"
 
 end Code

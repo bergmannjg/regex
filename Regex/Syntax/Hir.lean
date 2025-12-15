@@ -178,6 +178,9 @@ inductive Repetition where
 inductive Capture where
   | mk (index: Nat) (name: Option String) (sub: Hir) : Capture
 
+inductive Alternation where
+  | mk (fst : Hir) (snd : Hir) (tail : Array Hir)
+
 /-- The underlying kind of an arbitrary [`Hir`] expression. -/
 inductive HirKind where
   /-- The empty regular expression, which matches everything, including the empty string. -/
@@ -199,7 +202,7 @@ inductive HirKind where
   /-- A concatenation of expressions. -/
   | Concat : Array Hir -> HirKind
   /-- An alternation of expressions. -/
-  | Alternation : Array Hir -> HirKind
+  | Alternation : Alternation -> HirKind
 
 /-- A high-level intermediate representation (HIR) for a regular expression. -/
 inductive Hir where
@@ -274,14 +277,21 @@ def toString (hir : Hir) (col : Nat): String :=
           have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
           pre ++ iv ++ ": " ++ (toString ast.val col)))
       s!"Concat {hirs}"
-  | .Alternation items =>
-      let hirs := Array.mapFinIdx items.attach (fun i s _ => (i, s))
-      have : sizeOf items < sizeOf hir.kind := by simp [hk]
-      let hirs := String.join (hirs.toList |> List.map (fun (i, ast) =>
-          let iv := String.ofList (Nat.toDigits 0 i)
-          have : sizeOf ast.val < sizeOf items := Array.sizeOf_lt_of_mem ast.property
-          pre ++ iv ++ ": " ++ (toString ast col)))
-      s!"Alternation {hirs}"
+  | .Alternation alt =>
+    match ha : alt with
+    | (.mk fst snd tail) =>
+        have : sizeOf alt < sizeOf hir.kind := by simp [hk, ha]
+        have : sizeOf fst < sizeOf hir.kind := by simp +arith [*]
+        let fst := pre ++ (String.ofList (Nat.toDigits 0 0)) ++ ": " ++ toString fst col
+        have : sizeOf snd < sizeOf hir.kind := by simp +arith [*]
+        let snd := pre ++ (String.ofList (Nat.toDigits 0 1)) ++ ": " ++ toString snd col
+        let hirs := Array.mapFinIdx tail.attach (fun i s _ => (i, s))
+        have : sizeOf tail < sizeOf hir.kind := by simp [hk]; simp +arith
+        let hirs := fst ++ snd ++ String.join (hirs.toList |> List.map (fun (i, ast) =>
+            let iv := String.ofList (Nat.toDigits 0 (i + 2))
+            have : sizeOf ast.val < sizeOf tail := Array.sizeOf_lt_of_mem ast.property
+            pre ++ iv ++ ": " ++ (toString ast col)))
+        s!"Alternation {hirs}"
 termination_by sizeOf hir
 
 def fold [Inhabited α] [ToString α] (hir : Hir) (f : α -> Hir -> α) (init :  α): α :=
@@ -305,9 +315,9 @@ def fold [Inhabited α] [ToString α] (hir : Hir) (f : α -> Hir -> α) (init : 
       (fun a (h : { x // x ∈ hirs}) =>
         have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
         fold h.val f a)
-  | .Alternation hirs => hirs.attach |> Array.foldl (init := init)
-      (fun a (h : { x // x ∈ hirs}) =>
-        have : sizeOf h.val < sizeOf hirs := Array.sizeOf_lt_of_mem h.property
+  | .Alternation (.mk fst snd tail) => tail.attach |> Array.foldl (init := f (f init fst) snd)
+      (fun a (h : { x // x ∈ tail}) =>
+        have : sizeOf h.val < sizeOf tail := Array.sizeOf_lt_of_mem h.property
         fold h.val f a)
 termination_by sizeOf hir
 
