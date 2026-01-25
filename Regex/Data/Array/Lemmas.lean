@@ -291,7 +291,7 @@ private theorem nodup.nodup_of_foldl [DecidableEq α] [LE α] [LT α] [Std.IsPre
     by_cases l = []
     · simp_all
     · expose_names
-      have ih := ih (unique.acc init a) (by grind) (by simp_all) (by grind) (by
+      have ih := ih (unique.acc init a) (by grind) (by simp_all) (by solve_by_elim) (by
         intros
         simp_all
         grind)

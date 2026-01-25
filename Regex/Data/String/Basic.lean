@@ -9,12 +9,11 @@ def isSubslice (s t : String.Slice) := s.str = t.str
                   ∧ s.endExclusive.offset ≤ t.endExclusive.offset
 
 @[simp] theorem replaceStartEnd_is_subslice_of {s : String.Slice} {p0 p1 : s.Pos} {h : p0 ≤ p1}
-    : isSubslice (String.Slice.replaceStartEnd s p0 p1 h) s := by
+    : isSubslice (String.Slice.slice s p0 p1 h) s := by
   and_intros
   · rfl
   · simp [String.Pos.Raw.offsetBy, String.Pos.Raw.le_iff]
-  · rw [@String.Slice.endExclusive_replaceStartEnd s p0 p1 h]
-    exact String.Slice.Pos.offset_str_le_offset_endExclusive
+  · exact String.Slice.Pos.offset_str_le_offset_endExclusive
 
 /-- cast `p : s.Pos` to `t.Pos` -/
 def castPosOfSubslice {s t : String.Slice} (p: s.Pos) (h : isSubslice s t) : t.Pos :=
@@ -26,14 +25,14 @@ def castPosOfSubslice {s t : String.Slice} (p: s.Pos) (h : isSubslice s t) : t.P
       simp [String.Slice.rawEndPos, String.Slice.utf8ByteSize_eq]
 
       have := t.startInclusive_le_endExclusive
-      rw [String.ValidPos.le_iff, String.Pos.Raw.le_iff] at this
+      rw [String.Pos.le_iff, String.Pos.Raw.le_iff] at this
       simp_all only [Nat.sub_add_cancel]
 
       have := p.isValidForSlice.le_utf8ByteSize
       simp [Slice.utf8ByteSize, Pos.Raw.byteDistance] at this
 
       have := s.startInclusive_le_endExclusive
-      simp [String.ValidPos.le_iff, String.Pos.Raw.le_iff] at this
+      simp [String.Pos.le_iff, String.Pos.Raw.le_iff] at this
 
       exact Nat.le_trans (by grind) h.right.right
     have isValid : ((⟨byteIdx⟩ : String.Pos.Raw).offsetBy t.startInclusive.offset).IsValid t.str := by

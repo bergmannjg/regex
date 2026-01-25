@@ -135,7 +135,7 @@ private def setOption (c : Char) (t : RegexTest) : RegexTest :=
   | _ => t
 
 private def toPattern (p : PcreTest) (t : RegexTest) : RegexTest :=
-  let pattern := p.pattern.trim
+  let pattern := p.pattern.trimAscii.toString
   if pattern.endsWith "/xx" then
     { t with
       regex :=  Sum.inl $ String.ofList ((pattern.toList.drop 1).take (pattern.length - 4))

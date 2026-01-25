@@ -99,7 +99,7 @@ def main (args : List String): IO Unit := do
         | _, _ => IO.println "Nat expected"
     | ["split", sep, "-f", path] => -- check performance of Substring.splitOn
         let haystack ← IO.FS.readFile path
-        let splits := haystack.toSubstring.splitOn sep
+        let splits := haystack.toRawSubstring.splitOn sep
                       |> List.map (fun s => (s.startPos, s.stopPos))
         IO.println s!"splits {splits}"
     | ["stack", n] => -- check performance of Stack

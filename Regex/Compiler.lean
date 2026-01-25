@@ -23,12 +23,14 @@ def compile (config : Config := default) (flavor : Syntax.Flavor) (expr : Hir) :
   let unanchored_prefix_simulation := expr.containsLookaround || config.unanchored_prefix_simulation
   let anchored := !config.unanchored_prefix || startsWithStart expr || unanchored_prefix_simulation
   let res := Code.compile anchored expr (#[], #[], #[])
-  have : ∃ s, res = EStateM.Result.ok () s := Lemmas.compile_eq_ok
+  have : ∃ _, res = EStateM.Result.ok () _ := Lemmas.compile_eq_ok
   match hm : res with
   | EStateM.Result.ok () (states, captures, groups) =>
     let nfa := NFA.toCkecked ⟨states, 0, 0⟩ captures.mergeSort.unique
                 (match flavor with | Syntax.Flavor.Pcre => groups | _ => #[])
                 (NextOfLt.forall (Lemmas.compile_nextOf_lt hm))
-                (by have := Lemmas.compile_captures_valid hm; grind)
+                (by
+                  have := Lemmas.compile_captures_valid hm
+                  grind only [valid_sorted_of_valid, valid_unique_of_valid])
     {nfa with unanchored_prefix_in_backtrack :=
                     !startsWithStart expr && unanchored_prefix_simulation}

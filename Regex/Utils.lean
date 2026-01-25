@@ -77,7 +77,7 @@ end UInt32
 namespace String
 
 instance : Coe String Substring.Raw where
-  coe s := s.toSubstring
+  coe s := s.toRawSubstring
 
 /-- get `i` char in `s`, tood: switch to String.Pos logic -/
 def getAtCodepoint (s : String) (i : Nat) : Char :=
@@ -87,13 +87,13 @@ def getAtCodepoint (s : String) (i : Nat) : Char :=
 def startsAtCodepoint (s m : String) (i : Nat) : Bool :=
   if i + m.length ≤ s.length
   then
-    let s := (s.toSubstring).drop i
+    let s := (s.toRawSubstring).drop i
     s.toString.startsWith m
   else false
 
 /-- compute the byte position of the codepoint position `p` in `s` -/
 def toBytePosition (s : String) (p : Nat) : String.Pos.Raw :=
-  ⟨String.utf8ByteSize (s.take p)⟩
+  ⟨String.utf8ByteSize (s.take p).toString⟩
 
 /-- make Substring of String -/
 def toSpan (s : String) (startPos : Nat) (stopPos : Nat) : Substring.Raw :=

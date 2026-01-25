@@ -153,7 +153,7 @@ example : toString (regex% "[a]{0,2}").nfa.states = toString «nfaOf'[a]{0,2}'»
 
 private def capturesOf (s : String.Slice) (startPos stopPos : String.Slice.Pos s) (h : startPos ≤ stopPos)
     : Option (Captures s) :=
-  some ⟨String.Slice.replaceStartEnd s startPos stopPos h, #[], by simp, by simp⟩
+  some ⟨String.Slice.slice s startPos stopPos h, #[], by simp, by simp⟩
 
 example : toString (Regex.captures "a" (regex% "a"))
           = toString (capturesOf "a"

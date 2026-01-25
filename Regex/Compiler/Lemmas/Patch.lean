@@ -263,7 +263,10 @@ theorem patch_spec_assignable («from»: Unchecked.StateID) («to»: Unchecked.S
   have hpatch := hpatch h f t
   simp [wp] at hpatch
   split
-  all_goals grind
+  · intros
+    and_intros
+    all_goals grind
+  · grind
 
 @[spec] theorem patch_lift_spec («from»: Unchecked.StateID) {«to»: Unchecked.StateID}
   {states : Array Unchecked.State}
@@ -343,4 +346,7 @@ theorem patch2_spec_assignable («from»: Unchecked.StateID) (to₁ to₂ : Unch
   have hpatch := hpatch h f t
   simp [wp] at hpatch
   split
-  all_goals grind
+  · intros
+    and_intros
+    all_goals grind
+  · grind

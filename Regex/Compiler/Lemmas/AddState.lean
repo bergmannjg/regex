@@ -107,16 +107,14 @@ set_option mvcgen.warning false
   mvcgen [Code.push'] with grind
 
 @[simp, grind .]theorem append_of_push (s s_1 : Array Unchecked.State)
-  (r : Unchecked.StateID) (h_2 : r < s_1.size) (hs : State.patchAssignable state)
-  (h_4 : s_1 = s.push state)
-  (h_5 : s_1[r]? = some state) (h_6 : r = s.size)
+  (r : Unchecked.StateID) (h_1 : r < s_1.size)
+  (h_2 : s_1 = s.push state) (h_3 : s_1[r]? = some state)
     : ∃ state, s_1 = s.push state ∧ s_1[r]? = some state := by
   exact ⟨s_1[r], by grind⟩
 
 @[simp, grind .]theorem assignableIfP_of_push (s s_1 : Array Unchecked.State)
-  (r : Unchecked.StateID) (h_2 : r < s_1.size) (hs : State.patchAssignable state)
-  (h_4 : s_1 = s.push state)
-  (h_5 : s_1[r]? = some state) (h_6 : r = s.size)
+  (r : Unchecked.StateID) (h_1 : r < s_1.size) (hs : State.patchAssignable state)
+  (h_2 : s_1 = s.push state) (h_3 : s_1[r]? = some state)
     : (∃ state, s_1 = s.push state ∧ s_1[r]? = some state) ∧
        (∀ (sid : Fin s_1.size), patchAssignable s ↑sid → patchAssignable s_1 ↑sid) ∧
         ∀ (sid : Fin s_1.size), ¬↑sid = s.size
@@ -125,13 +123,12 @@ set_option mvcgen.warning false
 
 @[simp, grind .]theorem assignableIfP_of_push' (s s_1 : Array Unchecked.State)
   (r : ThompsonRef) (h_2 : r.end < s_1.size) (hs : State.patchAssignable state)
-  (h_4 : s_1 = s.push state)
-  (h_5 : s_1[r.end]? = some state) (h_6 : r.end = s.size)
+  (h_4 : s_1 = s.push state) (h_5 : s_1[r.end]? = some state)
     : (∃ state, s_1 = s.push state ∧ s_1[r.end]? = some state) ∧
        (∀ (sid : Fin s_1.size), patchAssignable s ↑sid → patchAssignable s_1 ↑sid) ∧
         ∀ (sid : Fin s_1.size), ¬↑sid = s.size
             → patch2Assignable s ↑sid → patch2Assignable s_1 ↑sid := by
-  exact assignableIfP_of_push s s_1 r.end h_2 hs h_4 h_5 h_6
+  exact assignableIfP_of_push s s_1 r.end h_2 hs h_4 h_5
 
 @[spec] theorem add_match_spec (pattern_id : PatternID) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄

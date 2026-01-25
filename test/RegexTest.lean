@@ -180,7 +180,7 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
           | some (some span), some v =>
               span.start = v.startInclusive.offset.byteIdx && span.end = v.endExclusive.offset.byteIdx
               || -- ignore maybe wrong string pos caused by pcreloader
-              (Substring.Raw.extract t.haystack.toSubstring ⟨span.start⟩ ⟨span.end⟩) == v.copy
+              (Substring.Raw.extract t.haystack.toRawSubstring ⟨span.start⟩ ⟨span.end⟩) == v.copy
           | some none, none => true
           | _, _ => (Option.getD t.«only-full-match» false) && 0 < i)
       else false)
@@ -194,7 +194,7 @@ private def captureToString (r : Regex.Captures s) : String :=
   |> String.join
   |> fun s =>
     let s := if s.endsWith ", "
-             then ((String.toSubstring s).dropRight 2).toString
+             then ((String.toRawSubstring s).dropRight 2).toString
              else s
     "[" ++ s ++ "]"
 
@@ -205,7 +205,7 @@ private def capturesToString (arr : Array (Regex.Captures s)) : String :=
   |> String.join
   |> fun s =>
     let s := if s.endsWith ", "
-             then ((String.toSubstring s).dropRight 2).toString
+             then ((String.toRawSubstring s).dropRight 2).toString
              else s
     "[" ++ s ++ "]"
 

@@ -942,7 +942,7 @@ termination_by pos.offset.byteDistance s.endPos.offset
     match state.recentCaptures[b]'h with
     | some (f, t) =>
         if h : f.offset ≤ t.offset then
-          let slice := s.replaceStartEnd f t h
+          let slice := s.slice f t h
           match step_backreference_loop slice slice.startPos case_insensitive state.«at» with
           | some cp =>
               (withMsg (fun _ => s!"{state.sid}: Backreference {b} '{slice}' matched from charpos"
@@ -1510,7 +1510,7 @@ private def toMatches (s : String.Slice) (slots : Array (Option (CharPos.Pair s)
   slots
   |> Array.map (fun pair =>
       match pair with
-      | some ⟨(p0, p1), h⟩ => some ⟨String.Slice.replaceStartEnd s p0 p1 h, by simp⟩
+      | some ⟨(p0, p1), h⟩ => some ⟨String.Slice.slice s p0 p1 h, by simp⟩
       | none => none)
 
 /-- Search for the first match of this regex in the haystack given and return log msgs and

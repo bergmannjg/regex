@@ -30,8 +30,13 @@ The main documentation is in [Regex.lean](https://bergmannjg.github.io/regex/Reg
 
 ## Verification
 
-Prove some [lemmas](https://bergmannjg.github.io/regex/Regex/Compiler/Lemmas.html)
-for [Compiler.Code.compile](https://bergmannjg.github.io/regex/Regex/Compiler/Compile.html#Compiler.Code.compile) with Std.Do.
+Some parts of the regex compilation and execution are verified.
+
+* The [compilation](https://bergmannjg.github.io/regex/Regex/Compiler.html#Compiler.compile)
+throws [no exceptions](https://bergmannjg.github.io/regex/Regex/Compiler/Lemmas/Compile.html#Compiler.Lemmas.compile_eq_ok).
+* All transitions in the resulting [NFA](https://bergmannjg.github.io/regex/Regex/NFA/Basic.html#NFA.Checked.NFA) are valid (i.e. every transition maps to a valid state).
+* Executing the NFA with the [bounded backtracker](https://bergmannjg.github.io/regex/Regex/Backtrack.html#BoundedBacktracker.backtrack.loop) always terminates.
+* The matches of the regex are [slices](https://bergmannjg.github.io/regex/Regex/Backtrack.html#BoundedBacktracker.matches) of the original string.
 
 ## Example
 

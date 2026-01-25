@@ -18,7 +18,8 @@ namespace Lemmas
 /-!
 ## Lemmas
 
-Proof that `Compiler.Code.compile` gives an array with the `Compiler.NextOfLt` and `NFA.Capture.valid` property
+Proof that `Compiler.Code.compile` gives an array with the `Compiler.NextOfLt` and `Capture.Valid` property
+and has no exceptions
 
 - `c_compile_spec`: main result
 -/
