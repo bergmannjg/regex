@@ -254,7 +254,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.add_eat mode
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s⌝⟩⦄ := by
   mvcgen [Code.add_eat]
-  with grind
+  with try grind
   simp_all [@eat_next_of_le mode states (by simp_all)]
 
 @[spec] theorem add_eat_lift_spec (mode : Unchecked.EatMode) (states : Array Unchecked.State)
@@ -335,7 +335,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ ∀ (i : Nat) _, trans[i].next ≤ states.size⌝⦄
       Code.add_sparse trans
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝⟩⦄ := by
-  mvcgen [Code.add_sparse] with grind
+  mvcgen [Code.add_sparse] with try grind
   and_intros; grind; grind
   exact nextOf_transition_le_of_le _ trans (by grind)
 
@@ -386,7 +386,21 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
                       ∧ patchAssignable states tref.end⌝⦄
       Code.c_possessive tref
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_possessive] with grind
+  -- mvcgen [Code.c_possessive] removed
+  dsimp [Code.c_possessive]
+  mintro _
+  mspec add_union_lift_spec; grind
+  mspec add_fail_lift_spec; grind
+  mspec add_eat_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch2_spec; grind
+  simp only [WP.pure, SPred.entails, SPred.down_pure]
+  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
+    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
 
 @[spec] theorem c_possessive_lift_spec (tref : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -441,7 +455,13 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.c_back_ref case_insensitive n
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_back_ref] with grind
+  -- mvcgen [Code.c_back_ref] removed
+  dsimp [Code.c_back_ref]
+  mintro _
+  mspec add_backrefence_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mvcgen with grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP,
+    = stateIdNextOfEqLt.eq_1, patchAssignable_of_assignableIf, patch2Assignable_of_assignableIf]
 
 @[spec] theorem c_back_ref_lift_spec (case_insensitive : Bool) (n : Nat)  (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -455,7 +475,21 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_PositiveLookahead compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_lookaround_PositiveLookahead] with grind
+  -- mvcgen [Code.c_lookaround_PositiveLookahead] removed
+  dsimp [Code.c_lookaround_PositiveLookahead]
+  mintro _
+  mspec add_change_state_lift_spec; grind
+  mspec add_fail_lift_spec; grind
+  mspec add_union_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch2_spec; grind
+  mspec patch_spec; grind
+  simp only [WP.pure, SPred.entails, SPred.down_pure]
+  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
+    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
 
 @[spec] theorem c_lookaround_PositiveLookahead_lift_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -469,7 +503,24 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_NegativeLookahead compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_lookaround_NegativeLookahead] with grind
+  -- mvcgen [Code.c_lookaround_NegativeLookahead] removed
+  dsimp [Code.c_lookaround_NegativeLookahead]
+  mintro _
+  mspec add_remove_state_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mspec add_union_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  simp only [WP.pure, SPred.entails, SPred.down_pure]
+  intros
+  and_intros
+  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
+    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
 
 @[spec] theorem c_lookaround_NegativeLookahead_lift_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -485,7 +536,13 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                    ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_PositiveLookbehind next_char compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s  ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_lookaround_PositiveLookbehind] with grind
+  -- mvcgen [Code.c_lookaround_PositiveLookbehind] removed
+  dsimp [Code.c_lookaround_PositiveLookbehind]
+  mintro _
+  mspec add_empty_lift_spec
+  grind
+  mvcgen
+  all_goals grind
 
 @[spec] theorem c_lookaround_PositiveLookbehind_lift_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -495,18 +552,36 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1  ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   exact coe_spec_EStateM_to_CompilerM (c_lookaround_PositiveLookbehind_spec _ _ _)
 
-set_option maxHeartbeats 500000 in
 @[spec] theorem c_lookaround_NegativeLookbehind_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
                   ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_NegativeLookbehind next_char compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_lookaround_NegativeLookbehind] with grind
+  -- mvcgen [Code.c_lookaround_NegativeLookbehind] removed
+  dsimp [Code.c_lookaround_NegativeLookbehind]
+  mintro _
+  mspec add_remove_state_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mspec add_union_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec; grind
+  mspec patch_spec
+  · simp
+    all_goals grind only [assignableP, patchAssignable_of_assignableIf,
+      = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
+  mspec patch_spec
+  · simp
+    all_goals grind only [assignableP, patchAssignable_of_assignableIf,
+      = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
+  simp only [WP.pure, SPred.entails, SPred.down_pure]
+  intros
   and_intros
-  all_goals grind only [→ isAppend_of_assignableP, assignableP, → patchAssignable_of_append,
-      patchAssignable_of_assignableIf, assignableIf_trans,
-      = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-      patch2Assignable_of_assignableIf]
+  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
+    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
 
 @[spec] theorem c_lookaround_NegativeLookbehind_lift_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -522,7 +597,12 @@ set_option maxHeartbeats 500000 in
                     ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
       Code.c_repetition_0_some_1_false union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_repetition_0_some_1_false] with grind
+  -- mvcgen [Code.c_repetition_0_some_1_false] removed
+  dsimp [Code.c_repetition_0_some_1_false]
+  mintro _
+  mspec add_empty_lift_spec
+  grind
+  mvcgen with grind
 
 @[spec] theorem c_repetition_0_some_1_false_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -538,7 +618,13 @@ set_option maxHeartbeats 500000 in
                   ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
       Code.c_repetition_0_some_1_true union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_repetition_0_some_1_true] with grind
+  -- mvcgen [Code.c_repetition_0_some_1_true] removed
+  dsimp [Code.c_repetition_0_some_1_true]
+  mintro _
+  mspec add_eat_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mvcgen
+  all_goals grind
 
 @[spec] theorem c_repetition_0_some_1_true_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -578,9 +664,12 @@ set_option maxHeartbeats 500000 in
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
       Code.c_at_least_0_pre compiled greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_0_pre]
-  case vc12 => and_intros; all_goals grind
-  all_goals grind
+  -- mvcgen [Code.c_at_least_0_pre] removed
+  dsimp [Code.c_at_least_0_pre]
+  mintro _
+  mspec greedy_union_spec
+  grind
+  mvcgen with grind
 
 @[spec] theorem c_at_least_0_pre_lift_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -595,8 +684,7 @@ set_option maxHeartbeats 500000 in
     : ⦃fun s => ⌜s.1 = states ∧ s.2.1 = captures ∧ s.2.2 = groups⌝⦄
       Code.c_at_least_set possible_empty_capture_group greedy
       ⦃post⟨fun _ s => ⌜states = s.1 ∧ s.2.1 = captures ∧ groups.size ≤ s.2.2.size ∧ assignableIf states s.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_set]
-  with grind
+  mvcgen [Code.c_at_least_set] with grind
 
 @[spec] theorem c_at_least_0_post_spec (compiled : ThompsonRef) (plus : Unchecked.StateID) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State)
@@ -604,10 +692,12 @@ set_option maxHeartbeats 500000 in
                  ∧ patchAssignable states compiled.end  ∧ patchAssignable states plus⌝⦄
       Code.c_at_least_0_post compiled plus greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_0_post]
-  case vc23 => intros; and_intros; all_goals grind
-  case vc24 => and_intros; all_goals grind
-  all_goals grind
+  -- mvcgen [Code.c_at_least_0_post] removed
+  dsimp [Code.c_at_least_0_post]
+  mintro _
+  mspec greedy_union_spec; grind
+  mspec add_empty_lift_spec; grind
+  mvcgen with grind
 
 @[spec] theorem c_at_least_0_post_lift_spec (compiled : ThompsonRef) (plus : Unchecked.StateID) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
@@ -623,8 +713,7 @@ set_option maxHeartbeats 500000 in
     : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_at_least_0 compiled possible_empty_capture_group greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_0]
-  with grind
+  mvcgen [Code.c_at_least_0] with grind
 
 @[spec] theorem c_at_least_1_pre_spec (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
@@ -664,8 +753,7 @@ set_option maxHeartbeats 500000 in
     : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_at_least_1 possible_empty_capture_group greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_1]
-  with grind
+  mvcgen [Code.c_at_least_1] with grind
 
 @[spec] theorem c_at_least_2_spec («prefix» last : ThompsonRef) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State)
@@ -673,10 +761,12 @@ set_option maxHeartbeats 500000 in
                 ∧ patchAssignable states «prefix».end ∧ patchAssignable states last.end⌝⦄
       Code.c_at_least_2 «prefix» last greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_2]
-  case vc17 => intros; and_intros; all_goals grind
-  case vc18 => and_intros; all_goals grind
-  all_goals grind
+  -- mvcgen [Code.c_at_least_2] removed
+  dsimp [Code.c_at_least_2]
+  mintro _
+  mspec greedy_union_spec
+  grind
+  mvcgen with grind
 
 @[spec] theorem c_at_least_2_lift_spec («prefix» last : ThompsonRef) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)

@@ -819,7 +819,7 @@ def asts (concat : Concat) : Array Ast := match concat with | .mk _ asts => asts
 
 theorem sizeOfAstsOfConcat (concat : Concat) : sizeOf concat.asts < sizeOf concat := by
   unfold Syntax.AstItems.Concat.asts
-  split <;> simp_all; omega
+  split ; simp_all; omega
 
 def into_ast (concat : Concat) : Ast :=
   match concat.asts.size with
@@ -835,7 +835,7 @@ def asts (concat : Alternation) : Array Ast := match concat with | .mk _ asts =>
 
 theorem sizeOfAstsOfAlternation (alt : Alternation) : sizeOf alt.asts < sizeOf alt := by
   unfold Syntax.AstItems.Alternation.asts
-  split <;> simp_all; omega
+  split ; simp_all; omega
 
 def into_ast (alt : Alternation) : Ast :=
   let ⟨_, asts⟩ := alt
@@ -880,7 +880,7 @@ def ast (g : Group) : Ast := match g with | .mk _ _ ast => ast
 
 theorem sizeOfAstOfGroup (g : Group) : sizeOf g.ast < sizeOf g := by
   unfold Syntax.AstItems.Group.ast
-  split <;> simp_all; omega
+  split ; simp_all; omega
 
 end Group
 
@@ -987,7 +987,7 @@ def ast (rep : Repetition) : Ast := match rep with | .mk _ _ _ _ ast => ast
 
 theorem sizeOfAstOfRepetition (rep : Repetition) : sizeOf rep.ast < sizeOf rep := by
   unfold Syntax.AstItems.Repetition.ast
-  split <;> simp_all
+  split ; simp_all
 
 end Repetition
 

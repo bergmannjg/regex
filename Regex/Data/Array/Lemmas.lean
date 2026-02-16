@@ -145,7 +145,7 @@ private theorem unique.acc_mem_snd [DecidableEq α]
     intros
     and_intros
     · simp [List.head?]; split <;> rename_i heq <;> split at heq <;> split <;> simp_all
-    all_goals simp_all <;> split <;> simp_all
+    all_goals simp_all ; split <;> simp_all
 
 private theorem unique.mem_foldl [DecidableEq α]
   (l : List α) (a head : α) (init : α × Array α) (ha : a ∈ l || a ∈ init.snd.toList)

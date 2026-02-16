@@ -92,7 +92,7 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
     : State.patchAssignable (Unchecked.State.BackRef b case_insensitive 0) := by
   simp
 
-@[simp, grind] def assignableIf (s1 s2 : Array Unchecked.State) :=
+@[simp, grind .] def assignableIf (s1 s2 : Array Unchecked.State) :=
   (∀ sid : Fin s1.size, patchAssignable s1 sid → patchAssignable s2 sid)
   ∧ (∀ sid : Fin s1.size, patch2Assignable s1 sid → patch2Assignable s2 sid)
 

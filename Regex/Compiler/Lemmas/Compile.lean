@@ -35,9 +35,10 @@ set_option mvcgen.warning false
                       ∧ patchAssignable states prev_end⌝⦄
       Code.c_bounded.fold.patch.pre compiled prev_end greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_bounded.fold.patch.pre] with grind
-  and_intros
-  all_goals grind
+  dsimp [Code.c_bounded.fold.patch.pre]
+  mintro _
+  mspec greedy_union_spec; grind
+  mvcgen with grind
 
 @[spec] theorem c_bounded.fold.patch.possessive_spec (compiled: ThompsonRef) (empty : Unchecked.StateID)
   (states : Array Unchecked.State)
@@ -45,7 +46,12 @@ set_option mvcgen.warning false
                       ∧ empty < states.size ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
       Code.c_bounded.fold.patch.possessive compiled empty
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_bounded.fold.patch.possessive] with grind
+  dsimp [Code.c_bounded.fold.patch.possessive]
+  mintro _
+  mspec add_union_lift_spec; grind
+  mspec add_fail_lift_spec; grind
+  mspec add_eat_lift_spec; grind
+  mvcgen with grind
 
 @[spec] theorem c_bounded.fold.patch.post_spec (compiled: ThompsonRef) (union empty : Unchecked.StateID) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ compiled.end < states.size
@@ -80,7 +86,11 @@ set_option mvcgen.warning false
                       ∧ patchAssignable states first.end ∧ patchAssignable states second.end⌝⦄
       Code.c_alt_iter_step first second
       ⦃post⟨fun r s => ⌜tRefNextOfLt states ⟨r.1, r.2⟩ s ∧ assignableIf states s ∧ patchAssignable s r.1 ∧ patchAssignable s r.2⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_alt_iter_step] with grind
+  dsimp [Code.c_alt_iter_step]
+  mintro _
+  mspec add_union_lift_spec; grind
+  mspec add_empty_lift_spec; grind
+  mvcgen with grind
 
 @[spec] theorem c_alt_iter_step_lift_spec (first second: ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -279,7 +289,6 @@ termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
         mspec
         inst_mvars
         case post.success => simp; intros; grind
-        all_goals simp_all
         all_goals grind
       all_goals grind
     all_goals grind
@@ -565,9 +574,9 @@ end
     : ⦃fun s => ⌜s.1.size = 0 ∧ s.2.1.size = 0⌝⦄
       Code.init anchored
       ⦃post⟨fun r s => ⌜tRefLt r s.1 ∧ NextOfLt s.1 ∧ patchAssignable s.1 r.end ∧ cValid s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
+  dsimp [Code.init]
   mintro _
-  mvcgen [Code.init] with exact #[]
-  all_goals grind
+  split <;> (mspec; simp; and_intros; grind; rfl; grind; simp; grind)
 
 @[spec] theorem c_compile_spec (anchored : Bool) (hir : Hir)
     : ⦃fun s => ⌜s.1.size = 0 ∧ s.2.1.size = 0⌝⦄
