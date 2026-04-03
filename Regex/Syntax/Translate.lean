@@ -464,7 +464,7 @@ def visit_class_set_item_post (ast : ClassSetItem)
     match t.stack.pop? with
     | some (frame, stack) =>
       let cls ← frame.unwrap_class_unicode
-      let ranges := cls.set.intervals.push ⟨⟨lit.c, lit.c⟩ , by simp [Char.eq_le _]⟩
+      let ranges := cls.set.intervals.push ⟨⟨lit.c, lit.c⟩ , by simp⟩
       let cls := ⟨ClassUnicode.set ⟨IntervalSet.canonicalize ranges⟩⟩
       set {t with stack := stack.push (HirFrame.ClassUnicode cls)}
     | none => Except.error "visit_class_set_item_post .Literal in stack expected"

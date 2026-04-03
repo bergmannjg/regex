@@ -248,8 +248,11 @@ theorem valid_of_range_map (s : String.Slice) (slots : Array (SlotEntry s))
       · grind⟩⟩
 
 private theorem mem_le_max (xs : Array Nat) (h : xs.max? = some m)
-    : ∀ a ∈ xs, (Ord.toLE instOrdNat).le a m := by
-  exact Array.mem_le_max xs h Nat.toLT_iff Nat.toLT_notLt
+    : ∀ a ∈ xs, a ≤ m := by
+  unfold Array.max? at h
+  intro a ha
+  have := Array.le_max_of_mem ha
+  grind
 
 namespace Capture
 
@@ -307,7 +310,6 @@ theorem mem_range_map_of_mem (captures : Array Capture)
           · expose_names
             have : ∀ a ∈ (Array.map Capture.toSlot captures), a ≤ m := by
               intro a ha
-              apply (Nat.toLE_iff_le a m).mp
               exact mem_le_max (Array.map Capture.toSlot captures) heq_2 a ha
             have := Array.forall_mem_map.mp this capture hMem
             simp [Capture.toSlot] at this
@@ -315,7 +317,7 @@ theorem mem_range_map_of_mem (captures : Array Capture)
           · simp_all
             exact Nat.mul_div_cancel capture.group (by simp)
         · rename_i heq
-          unfold Array.max? Array.min? at heq
+          unfold Array.max? at heq
           simp_all⟩
     · exact ⟨capture.group * 2 + 1, by
         split at hsize
@@ -323,7 +325,6 @@ theorem mem_range_map_of_mem (captures : Array Capture)
           · expose_names
             have : ∀ a ∈ (Array.map Capture.toSlot captures), a ≤ m := by
               intro a ha
-              apply (Nat.toLE_iff_le a m).mp
               exact mem_le_max (Array.map Capture.toSlot captures) heq_2 a ha
             have := Array.forall_mem_map.mp this capture hMem
             simp [Capture.toSlot] at this
@@ -338,7 +339,7 @@ theorem mem_range_map_of_mem (captures : Array Capture)
             simp_all
             assumption
         · rename_i heq
-          unfold Array.max? Array.min? at heq
+          unfold Array.max? at heq
           simp_all⟩
   grind
 

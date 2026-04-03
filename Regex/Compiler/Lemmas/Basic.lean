@@ -31,7 +31,7 @@ macro_rules | `(tactic|inst_mvars) => `(tactic| simp; and_intros; all_goals try 
     : isAppend s1 s3 := by
   grind
 
-@[grind .] private theorem all_push {sid : Unchecked.State} (states : Array Unchecked.State)
+@[grind .] theorem all_push {sid : Unchecked.State} (states : Array Unchecked.State)
   (h : Unchecked.State.nextOf sid ≤ states.size)
   (hlt : ∀ (i : Nat) _, states[i].nextOf < states.size)
     : ∀ (i : Nat) _, ((states.push sid)[i].nextOf < (states.push sid).size) := by
@@ -131,6 +131,14 @@ def cMemAndValidFunc (captures : Array NFA.Capture) : Array NFA.Capture → Prop
   rw [h.left]
   simp_all
 
+@[simp, grind .] theorem valid_of_push_of_role_start (captures : Array NFA.Capture)
+  (capture : NFA.Capture) (hr : capture.role = Capture.Role.Start) (hc :  NFA.Capture.Valid  captures)
+    :  NFA.Capture.Valid (captures.push capture) := by
+  apply Capture.Valid.mk
+  intro c
+  have ⟨c', _⟩ := Capture.Valid.forall hc ⟨c, by grind⟩
+  exact ⟨c', by grind⟩
+
 @[simp] theorem cMemAndValid_of_push_of_role_start (captures : Array NFA.Capture)
   (capture : NFA.Capture) (hr : capture.role = Capture.Role.Start) (hc : cValid captures)
     : cMemAndValid captures (captures.push capture) := by
@@ -179,7 +187,13 @@ theorem coe_spec_EStateM_to_EStateM_Prod
       (v₁ : EStateM ε (σ₁ × σ₂ × σ₃) α)
       ⦃post⟨fun r s => ⌜Q₁ r s.1 ∧ Q₂ s.2.1⌝, fun _ _ => ⌜False⌝ ⟩⦄ := by
   simp_all [Triple, wp, liftM, monadLift, SPred.entails, EStateM.run]
-  grind
+  intros
+  simp [PredTrans.apply] at hspec₁
+  simp [PredTrans.apply]
+  split <;>
+    (rename_i heq
+     split at heq
+     all_goals grind)
 
 theorem coe_spec_EStateM_to_CompilerM
   {captures : Array NFA.Capture}
@@ -213,7 +227,7 @@ theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 
     : ⦃fun s => ⌜P1 x s⌝⦄
       (EStateM.pure x : EStateM ε σ α)
       ⦃post⟨fun r s => ⌜P2 r s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  simp [Triple, wp, EStateM.pure]
+  simp [Triple, wp, PredTrans.apply, EStateM.run, EStateM.pure]
   grind
 
 @[grind .] theorem nextOf_look_eq : (Unchecked.State.Look look 0).nextOf = 0 := by

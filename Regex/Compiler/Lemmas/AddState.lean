@@ -55,7 +55,10 @@ set_option mvcgen.warning false
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
       Code.push sid
       ⦃post⟨fun r s => ⌜pushPostCond sid states r s⌝⟩⦄ := by
-  mvcgen [Code.push] with grind
+  mvcgen [Code.push]
+  simp
+  and_intros
+  all_goals grind only [= NextOfLt.iff, all_push]
 
 @[spec] theorem push_lift_spec (sid : Unchecked.State) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
@@ -75,9 +78,11 @@ set_option mvcgen.warning false
   split
   rename_i heq
   dsimp only [MonadStateOf.get, StateT.get, pure] at heq
-  dsimp only [set, StateT.set, StateT.pure, pure,stateIdNextOfLt, PredTrans.pure_apply,
-    Array.size_push, Nat.lt_add_one, true_and, SPred.down_pure]
-  simp
+  simp only [set, StateT.set, StateT.pure, pure,stateIdNextOfLt,
+    assignableIf, getElem?_pos, Option.some.injEq, assignableP,
+    isAppendOfStateID, isAppendOfState, Array.append_singleton, PredTrans.apply_pure,
+    Array.size_push, Nat.lt_add_one, true_and, Array.getElem_push_eq, exists_eq_right',
+    SPred.down_pure]
   and_intros
   case h_1.refine_2.refine_2.refine_1 => simp_all
   all_goals grind
@@ -104,7 +109,9 @@ set_option mvcgen.warning false
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
       Code.push' sid
       ⦃post⟨fun r s => ⌜pushPostCond' sid states r s⌝⟩⦄ := by
-  mvcgen [Code.push'] with grind
+  mvcgen [Code.push']
+  simp
+  grind
 
 @[simp, grind .]theorem append_of_push (s s_1 : Array Unchecked.State)
   (r : Unchecked.StateID) (h_1 : r < s_1.size)
@@ -135,7 +142,10 @@ set_option mvcgen.warning false
       Code.add_match pattern_id
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s⌝⟩⦄ := by
   mvcgen [Code.add_match]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_16]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, isAppendOfState,
+    patchAssignable_of_eq, patchAssignable_of_some, = Array.getElem?_append, = getElem?_pos,
+    patch2Assignable_of_eq, = Array.getElem_append]
 
 @[spec] theorem add_match_lift_spec (pattern_id : PatternID) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -149,7 +159,11 @@ set_option mvcgen.warning false
       Code.add_union
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
   mvcgen [Code.add_union]
-  with grind
+  grind only [nextOf_union_eq]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
+    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_union,
+    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
+    = Array.getElem_append]
 
 @[spec] theorem add_union_lift_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
@@ -181,7 +195,11 @@ set_option mvcgen.warning false
       Code.add_backrefence case_insensitive b
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
   mvcgen [Code.add_backrefence]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_8]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
+    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_backRef,
+    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
+    = Array.getElem_append]
 
 @[spec] theorem add_backrefence_lift_spec (case_insensitive : Bool) (b : Nat) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
@@ -194,14 +212,22 @@ set_option mvcgen.warning false
       Code.c_range start «end»
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ assignableP r.end states s⌝⟩⦄ := by
   mvcgen [Code.c_range]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_9]
+  grind only [pushPostCond', = tRefNextOfLt.eq_1, = assignableIf.eq_1, assignableP, isAppendOfState,
+    = tRefLt.eq_1, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_byte_range,
+    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
+    = Array.getElem_append]
 
 @[spec] theorem add_empty_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.add_empty
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
   mvcgen [Code.add_empty]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_1]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
+    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_empty,
+    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
+    = Array.getElem_append]
 
 @[spec] theorem add_empty_lift_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
@@ -221,7 +247,10 @@ theorem add_empty_lift_spec' (states : Array Unchecked.State) (captures : Array 
       Code.add_fail
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ isAppendOfStateID r states s⌝⟩⦄ := by
   mvcgen [Code.add_fail]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_3]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, isAppendOfStateID,
+    isAppendOfState, patchAssignable_of_eq, patchAssignable_of_some, = Array.getElem?_append,
+    = getElem?_pos, patch2Assignable_of_eq, = Array.getElem_append]
 
 @[spec] theorem add_fail_lift_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
@@ -254,8 +283,10 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.add_eat mode
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s⌝⟩⦄ := by
   mvcgen [Code.add_eat]
-  with try grind
   simp_all [@eat_next_of_le mode states (by simp_all)]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP2,
+    isAppendOfState, isAppendOfStateID, patch2Assignable_of_eat_state, patchAssignable_of_eq,
+    = Array.getElem_append, patch2Assignable_of_eq]
 
 @[spec] theorem add_eat_lift_spec (mode : Unchecked.EatMode) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ (mode.nextOf < states.size)⌝⦄
@@ -281,7 +312,10 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.add_change_state
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s⌝⟩⦄ := by
   mvcgen [Code.add_change_state]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_6]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP2,
+    isAppendOfState, patch2Assignable_of_add_change_state, isAppendOfStateID, patchAssignable_of_eq,
+    = Array.getElem_append, patch2Assignable_of_eq]
 
 @[spec] theorem add_change_state_lift_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ 0 < states.size⌝⦄
@@ -294,7 +328,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.add_remove_state
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
   mvcgen [Code.add_remove_state]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_7]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
+    isAppendOfState, isAppendOfStateID, patchAssignable_of_some,
+    State.patchAssignable_of_remove_frame_step, patchAssignable_of_eq, = Array.getElem?_append,
+    = getElem?_pos, patch2Assignable_of_add_change_state, patch2Assignable_of_eq]
 
 @[spec] theorem add_remove_state_lift_spec (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
@@ -307,7 +345,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       Code.add_next_char offset
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
   mvcgen [Code.add_next_char]
-  with grind
+  grind only [= Unchecked.State.nextOf.eq_2]
+  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
+    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_next_char,
+    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos,
+    patch2Assignable_of_add_change_state, patch2Assignable_of_eq]
 
 @[spec] theorem add_next_char_lift_spec (offset : Nat) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -335,15 +377,26 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ ∀ (i : Nat) _, trans[i].next ≤ states.size⌝⦄
       Code.add_sparse trans
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝⟩⦄ := by
-  mvcgen [Code.add_sparse] with try grind
-  and_intros; grind; grind
-  exact nextOf_transition_le_of_le _ trans (by grind)
+  mvcgen [Code.add_sparse]
+  . and_intros
+    grind only
+    grind only
+    exact nextOf_transition_le_of_le _ trans (by grind only)
+  · intros
+    grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, isAppendOfState,
+      patchAssignable_of_some, State.patchAssignable_of_sparse_transistions, patchAssignable_of_eq,
+      = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_add_change_state,
+      patch2Assignable_of_eq]
 
 @[spec] theorem c_unicode_class_spec (cls : ClassUnicode) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.c_unicode_class cls
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝⟩⦄ := by
-  mvcgen [Code.c_unicode_class] with grind
+  mvcgen [Code.c_unicode_class]
+  grind only
+  grind only [= stateIdNextOfLt.eq_1, = Array.getElem_map]
+  grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP, = tRefNextOfLt.eq_1,
+    patchAssignable_of_assignableIf, = tRefLt.eq_1]
 
 @[spec] theorem c_unicode_class_lift_spec (cls : ClassUnicode) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -370,7 +423,11 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.c_look look
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableP r.end states s⌝ ⟩⦄ := by
-  cases look <;> (mvcgen [Code.c_look]; and_intros; grind; grind; grind; simp; all_goals grind)
+  cases look <;>
+    (mvcgen [Code.c_look];
+     grind only [= Unchecked.State.nextOf.eq_11];
+     grind only [pushPostCond', = tRefNextOfLt.eq_1, assignableP, isAppendOfState, = tRefLt.eq_1,
+                  isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_look])
 
 @[spec] theorem c_look_lift_spec (look : Syntax.Look) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -386,17 +443,23 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
                       ∧ patchAssignable states tref.end⌝⦄
       Code.c_possessive tref
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_possessive] removed
   dsimp [Code.c_possessive]
   mintro _
-  mspec add_union_lift_spec; grind
-  mspec add_fail_lift_spec; grind
-  mspec add_eat_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch2_spec; grind
+  mspec add_union_lift_spec; grind only [← SPred.entails.refl]
+  mspec add_fail_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_eat_lift_spec; grind only [= stateIdNextOfLt.eq_1, ← SPred.pure_mono,
+    = Unchecked.EatMode.nextOf.eq_2]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableP, → isAppend_of_isAppendOfState,
+    → isAppend_of_assignableP2, ← SPred.pure_mono, → patchAssignable_of_append,
+    patchAssignable_of_assignableIf]
+  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
+    assignableIf_trans, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP,
+    → isAppend_of_isAppendOfState, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
+  mspec patch2_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP2,
+    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, patch2Assignable_of_assignableIf]
   simp only [WP.pure, SPred.entails, SPred.down_pure]
   all_goals grind only [assignableP, patchAssignable_of_assignableIf,
     = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
@@ -440,7 +503,20 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                         ∧ cMemAndValid captures s.2.1
                         ∧ (NFA.Capture.mk Capture.Role.Start group) ∈ s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   mvcgen [Code.c_cap']
-  and_intros; all_goals grind
+  grind
+  and_intros
+  grind only [= stateIdNextOfLt.eq_1]
+  grind only [= stateIdNextOfLt.eq_1]
+  grind only [= stateIdNextOfLt.eq_1]
+  grind only [patchAssignable_of_assignableIf]
+  grind only [patch2Assignable_of_assignableIf]
+  grind only [assignableP]
+  grind only [assignableP]
+  grind only [= Array.mem_push]
+  expose_names
+  have : Capture.Valid s.2.fst := by simp only [cValid] at h; grind only
+  grind only [valid_of_push_of_role_start]
+  grind only [= Array.mem_push]
 
 @[spec] theorem c_cap'_end_spec (group : Nat) (states : Array Unchecked.State)
   (captures : Array NFA.Capture) (h : ∃ c ∈ captures, c.role = Capture.Role.Start ∧ c.group = group)
@@ -455,7 +531,6 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.c_back_ref case_insensitive n
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_back_ref] removed
   dsimp [Code.c_back_ref]
   mintro _
   mspec add_backrefence_lift_spec; grind
@@ -475,19 +550,24 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_PositiveLookahead compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_lookaround_PositiveLookahead] removed
   dsimp [Code.c_lookaround_PositiveLookahead]
   mintro _
-  mspec add_change_state_lift_spec; grind
-  mspec add_fail_lift_spec; grind
-  mspec add_union_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch2_spec; grind
-  mspec patch_spec; grind
+  mspec add_change_state_lift_spec; grind only [← SPred.pure_mono]
+  mspec add_fail_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_union_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
+    ← SPred.pure_mono, assignableIf_trans]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, → isAppend_of_assignableP, assignableP,
+    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, → patchAssignable_of_append,
+    patchAssignable_of_assignableIf]
+  mspec patch2_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP2,
+    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, patch2Assignable_of_assignableIf]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
+    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
   simp only [WP.pure, SPred.entails, SPred.down_pure]
-  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
+  grind only [assignableP, patchAssignable_of_assignableIf,
     = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
     patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
 
@@ -503,18 +583,26 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_NegativeLookahead compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_lookaround_NegativeLookahead] removed
   dsimp [Code.c_lookaround_NegativeLookahead]
   mintro _
-  mspec add_remove_state_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mspec add_union_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
+  mspec add_remove_state_lift_spec; grind only [← SPred.entails.refl]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_union_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
+    ← SPred.pure_mono, assignableIf_trans]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
+    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, → isAppend_of_assignableP, assignableP,
+    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, → patchAssignable_of_append,
+    patchAssignable_of_assignableIf, assignableIf_trans]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
+    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
+    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
   simp only [WP.pure, SPred.entails, SPred.down_pure]
   intros
   and_intros
@@ -536,7 +624,6 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                    ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_PositiveLookbehind next_char compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s  ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_lookaround_PositiveLookbehind] removed
   dsimp [Code.c_lookaround_PositiveLookbehind]
   mintro _
   mspec add_empty_lift_spec
@@ -557,28 +644,37 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                   ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⌝⦄
       Code.c_lookaround_NegativeLookbehind next_char compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_lookaround_NegativeLookbehind] removed
   dsimp [Code.c_lookaround_NegativeLookbehind]
   mintro _
-  mspec add_remove_state_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mspec add_union_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
-  mspec patch_spec; grind
+  mspec add_remove_state_lift_spec; grind only [← SPred.entails.refl]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_union_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
+    ← SPred.pure_mono, assignableIf_trans]
+  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
+    assignableIf_trans, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
+    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
+  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
+    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
   mspec patch_spec
-  · simp
+  · simp only [true_and, SPred.entails_nil, SPred.down_pure, forall_const]
     all_goals grind only [assignableP, patchAssignable_of_assignableIf,
       = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
   mspec patch_spec
-  · simp
+  · simp only [true_and, SPred.entails_nil, SPred.down_pure, forall_const]
     all_goals grind only [assignableP, patchAssignable_of_assignableIf,
       = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
   simp only [WP.pure, SPred.entails, SPred.down_pure]
   intros
   and_intros
+  grind only [= stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1]
+  grind only [= stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1]
+  grind only [= stateIdNextOfEqLt.eq_1]
+  grind only [= stateIdNextOfEqLt.eq_1]
   all_goals grind only [assignableP, patchAssignable_of_assignableIf,
     = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
     patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
@@ -597,7 +693,6 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                     ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
       Code.c_repetition_0_some_1_false union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_repetition_0_some_1_false] removed
   dsimp [Code.c_repetition_0_some_1_false]
   mintro _
   mspec add_empty_lift_spec
@@ -618,13 +713,20 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                   ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
       Code.c_repetition_0_some_1_true union compiled
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_repetition_0_some_1_true] removed
   dsimp [Code.c_repetition_0_some_1_true]
   mintro _
-  mspec add_eat_lift_spec; grind
-  mspec add_empty_lift_spec; grind
+  mspec add_eat_lift_spec; grind only [← SPred.pure_mono, = Unchecked.EatMode.nextOf.eq_1]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
   mvcgen
-  all_goals grind
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans]
+  grind only [assignableIf_trans, assignableP2, = stateIdNextOfEqLt.eq_1,
+    patch2Assignable_of_assignableIf]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableP,
+    = stateIdNextOfEqLt.eq_1, assignableIf_trans, = assignableIf.eq_1]
 
 @[spec] theorem c_repetition_0_some_1_true_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -658,13 +760,34 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
   mintro _
   dsimp [Code.add_union, Code.add_union_reverse]
   intros
-  split <;> (mspec push_lift_spec; grind; simp; intros; and_intros; all_goals grind)
+  split
+  · mspec push_lift_spec
+    grind only [← SPred.pure_mono, nextOf_union_eq]
+    simp only [pushPostCond, stateIdNextOfLt, isAppendOfState, Array.append_singleton,
+      SPred.entails_1, SPred.down_pure]
+    intros; and_intros;
+    grind only
+    grind only
+    grind only
+    grind only [patchAssignable_of_eq, = Array.getElem_push]
+    grind only [patch2Assignable_of_eq, = Array.getElem_push]
+    grind only [patchAssignable_of_some, State.patchAssignable_of_union]
+  · mspec push_lift_spec
+    grind only [← SPred.pure_mono, nextOf_union_reverse_eq]
+    simp only [pushPostCond, stateIdNextOfLt, isAppendOfState, Array.append_singleton,
+      SPred.entails_1, SPred.down_pure]
+    intros; and_intros;
+    grind only
+    grind only
+    grind only
+    grind only [patchAssignable_of_eq, = Array.getElem_push]
+    grind only [patch2Assignable_of_eq, = Array.getElem_push]
+    grind only [patchAssignable_of_some, State.patchAssignable_of_union_reverse]
 
 @[spec] theorem c_at_least_0_pre_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
       Code.c_at_least_0_pre compiled greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_at_least_0_pre] removed
   dsimp [Code.c_at_least_0_pre]
   mintro _
   mspec greedy_union_spec
@@ -692,12 +815,29 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                  ∧ patchAssignable states compiled.end  ∧ patchAssignable states plus⌝⦄
       Code.c_at_least_0_post compiled plus greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_at_least_0_post] removed
   dsimp [Code.c_at_least_0_post]
   mintro _
-  mspec greedy_union_spec; grind
-  mspec add_empty_lift_spec; grind
-  mvcgen with grind
+  mspec greedy_union_spec; grind only [← SPred.entails.refl]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mvcgen
+  case vc5 =>
+    intros; and_intros;
+    grind only [= stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, = tRefNextOfLt.eq_1]
+    grind only [= tRefNextOfLt.eq_1, = tRefLt.eq_1]
+    grind only [= tRefNextOfLt.eq_1, = tRefLt.eq_1]
+    grind only [= tRefNextOfLt.eq_1]
+    grind only [patchAssignable_of_assignableIf, assignableIf_trans]
+    grind only [assignableIf_trans, patch2Assignable_of_assignableIf]
+    grind only
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans]
+  grind only [= stateIdNextOfLt.eq_1, assignableP, = stateIdNextOfEqLt.eq_1,
+    patchAssignable_of_assignableIf, assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableP,
+    = stateIdNextOfEqLt.eq_1, assignableIf_trans, = assignableIf.eq_1]
 
 @[spec] theorem c_at_least_0_post_lift_spec (compiled : ThompsonRef) (plus : Unchecked.StateID) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
@@ -761,12 +901,21 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                 ∧ patchAssignable states «prefix».end ∧ patchAssignable states last.end⌝⦄
       Code.c_at_least_2 «prefix» last greedy possessive
       ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  -- mvcgen [Code.c_at_least_2] removed
   dsimp [Code.c_at_least_2]
   mintro _
   mspec greedy_union_spec
-  grind
-  mvcgen with grind
+  grind only [← SPred.entails.refl]
+  mvcgen
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    = tRefNextOfLt.eq_1, assignableIf_trans, = tRefLt.eq_1, = assignableIf.eq_1]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans, = assignableIf.eq_1]
 
 @[spec] theorem c_at_least_2_lift_spec («prefix» last : ThompsonRef) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)

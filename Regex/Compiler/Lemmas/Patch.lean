@@ -99,27 +99,17 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
 @[simp, grind .] theorem patchAssignable_of_some {s : Array Unchecked.State} (hlt : f < s.size)
   {state : Unchecked.State} (h : s[f]? = some state) (hp : State.patchAssignable state)
     : patchAssignable s f := by
-  simp [getElem?] at h
-  obtain ⟨_, h⟩ := h
-  simp [patchAssignable]
-  exact ⟨hlt, by rw [h]; simp_all⟩
+  grind +locals
 
 @[simp, grind .] theorem patchAssignable_of_eq (s1 s2 : Array Unchecked.State)
   (h1 : patchAssignable s1 sid) (h2 : sid < s1.size) (h3 : sid < s2.size)  (h4 : s1[sid] = s2[sid])
     : patchAssignable s2 sid := by
-  simp [patchAssignable]
-  simp [patchAssignable] at h1
-  exact ⟨h3, by split<;> simp_all⟩
+  grind +locals
 
 @[simp, grind →] theorem patchAssignable_of_append (s1 s2 : Array Unchecked.State)
   (h1 : patchAssignable s1 sid) (h2 : isAppend s1 s2)
     : patchAssignable s2 sid := by
-  simp [patchAssignable]
-  simp [patchAssignable] at h1
-  obtain ⟨h1, hm⟩ := h1
-  obtain ⟨s3, _⟩ := h2
-  have hlt : sid < s2.size := by grind
-  exact ⟨hlt, by simp_all⟩
+  grind +locals
 
 @[simp, grind .] theorem assignableIf_trans (s1 s2 : Array Unchecked.State)
   (h1 : assignableIf s1 s2) (h2 : assignableIf s2 s3)
@@ -128,16 +118,16 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
   and_intros
   · intros sid h
     have h1 := h1.left sid h
-    exact h2.left ⟨sid, by grind [= patchAssignable]⟩ h1
+    exact h2.left ⟨sid, by grind +locals⟩ h1
   · intros sid h
     have h1 := h1.right sid h
-    exact h2.right ⟨sid, by grind [= patch2Assignable]⟩ h1
+    exact h2.right ⟨sid, by grind +locals⟩ h1
 
 @[simp, grind .] theorem patchAssignable_of_assignableIf (s1 s2 : Array Unchecked.State)
   (h1 : patchAssignable s1 sid) (h2 : assignableIf s1 s2)
     : patchAssignable s2 sid := by
   simp at h2
-  exact h2.left ⟨sid, by grind [= patchAssignable]⟩ h1
+  exact h2.left ⟨sid, by grind +locals⟩ h1
 
 @[simp, grind .] theorem patch2Assignable_of_assignableIf (s1 s2 : Array Unchecked.State)
   (h1 : patch2Assignable s1 sid) (h2 : assignableIf s1 s2)
@@ -156,7 +146,7 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
   intros
   split
   case h_11 | isFalse => simp_all
-  all_goals (rename_i heq; rw [heq] at h; dsimp [EStateM.set] at h; simp at h)
+  all_goals (rename_i heq; rw [heq] at h; unfold EStateM.instMonadStateOf EStateM.set at h; simp at h)
 
 @[simp, grind .] theorem patch2Assignable_of_eq (s1 s2 : Array Unchecked.State)
   (h1 : patch2Assignable s1 sid) (h2 : sid < s1.size) (h3 : sid < s2.size)  (h4 : s1[sid] = s2[sid])
@@ -190,10 +180,22 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
               bind, Monad.toBind, EStateM.bind] at h
   split at h
   simp [patch2Assignable]
+  rename_i heq
+  unfold MonadStateOf.get EStateM.instMonadStateOf EStateM.get at heq
+  simp at heq
+  rw [heq.left]
+  rw [heq.left] at hlt
+  split at h
+  case h_2 =>
+    rename_i heq
+    unfold MonadStateOf.get EStateM.instMonadStateOf EStateM.get at heq
+    simp_all
+  case h_1.isFalse => simp_all
   intros
   split
-  case h_5 | isFalse => simp_all
-  all_goals (rename_i heq; rw [heq] at h; dsimp [EStateM.set] at h; simp at h)
+  case h_5 => simp
+  all_goals (rename_i heq; rw [heq] at h; dsimp [EStateM.set] at h;
+              unfold EStateM.instMonadStateOf EStateM.set at h; simp at h)
 
 @[simp, grind .] theorem not_patch2Assignable_if_patch_eq (s1 s2 : Array Unchecked.State)
   (h : Code.patch f t s1 = EStateM.Result.ok () s2)
@@ -245,7 +247,7 @@ theorem patch_spec_assignable («from»: Unchecked.StateID) («to»: Unchecked.S
   have hpatch := patch_spec_assignable f t s1
   simp [Triple] at hpatch
   have hpatch := hpatch hf ht
-  simp [wp] at hpatch
+  simp only [wp, PredTrans.apply, EStateM.run] at hpatch
   split at hpatch
   all_goals grind
 
@@ -261,7 +263,9 @@ theorem patch_spec_assignable («from»: Unchecked.StateID) («to»: Unchecked.S
   have hpatch := patch_spec_constant «from» to states
   simp [Triple] at hpatch
   have hpatch := hpatch h f t
-  simp [wp] at hpatch
+  simp only [wp, PredTrans.apply, EStateM.run] at hpatch
+  intros
+  simp only [PredTrans.apply, EStateM.run]
   split
   · intros
     and_intros
@@ -309,7 +313,7 @@ theorem patch2_spec_assignable («from»: Unchecked.StateID) (to₁ to₂ : Unch
   have hpatch := patch2_spec_assignable f t1 t2 s1
   simp [Triple] at hpatch
   have hpatch := hpatch hf ht1
-  simp [wp] at hpatch
+  simp only [wp, PredTrans.apply, EStateM.run] at hpatch
   split at hpatch
   all_goals grind
 
@@ -340,13 +344,12 @@ theorem patch2_spec_assignable («from»: Unchecked.StateID) (to₁ to₂ : Unch
       ⦃post⟨fun _ r => ⌜stateIdNextOfEqLt states to₁ r ∧ to₂ < r.size ∧ assignableIf states r⌝, fun _ => ⌜False⌝ ⟩⦄ := by
   simp [Triple]
   intros h f t
-  simp [wp]
   have hpatch := patch2_spec_constant «from» to₁ to₂ states
-  simp [Triple] at hpatch
-  have hpatch := hpatch h f t
-  simp [wp] at hpatch
+  simp [Triple, wp, PredTrans.apply] at hpatch
+  simp only [wp, PredTrans.apply]
+  intros
   split
   · intros
     and_intros
-    all_goals grind
-  · grind
+    all_goals grind [EStateM.run]
+  · grind [EStateM.run]

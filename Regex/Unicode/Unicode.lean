@@ -159,12 +159,12 @@ def case_fold_char (c : Char) :  Array (NonemptyInterval Char) :=
   let data := getUnicodeData c
   match data.uppercase with
   | some cUpper =>
-      #[⟨⟨cUpper, cUpper⟩, by simp [Char.eq_le _]⟩, ⟨⟨c, c⟩, by simp [Char.eq_le _]⟩]
+      #[⟨⟨cUpper, cUpper⟩, by simp⟩, ⟨⟨c, c⟩, by simp⟩]
   | none =>
     match data.lowercase with
     | some cLower =>
-      #[⟨⟨c, c⟩ , by simp [Char.eq_le _]⟩, ⟨⟨cLower, cLower⟩, by simp [Char.eq_le _]⟩]
-    | none => #[⟨⟨c, c⟩, by simp [Char.eq_le _]⟩]
+      #[⟨⟨c, c⟩ , by simp⟩, ⟨⟨cLower, cLower⟩, by simp⟩]
+    | none => #[⟨⟨c, c⟩, by simp⟩]
 
 private def loop (c : Char) (n count : Nat) (acc : Array Char)
     (h1 : n < UInt32.size) (h2 : count < UInt32.size) : Array Char :=

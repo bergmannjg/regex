@@ -29,8 +29,9 @@ theorem toNat_toUInt_eq (u : UInt32) : u.toNat.toUInt32 = u := by
   simp_all
 
 theorem ofNat_eq (n : Nat) (h : n < UInt32.size) : (UInt32.ofNat n).toFin = ⟨n, h⟩ := by
-  simp_all [UInt32.ofNat, Fin.instOfNat]
+  simp_all [UInt32.ofNat]
   rw [← Fin.ofNat_eq n h]
+  rfl
 
 @[simp] theorem toBitVecToNat_eq_val {u : UInt32} : u.toBitVec.toNat = u.toFin.val := rfl
 

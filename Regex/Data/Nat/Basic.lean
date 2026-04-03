@@ -60,7 +60,7 @@ theorem toLT_iff : ∀ (a b : Nat), (Ord.toLT instOrdNat).lt a b
     ↔ (Ord.toLE instOrdNat).le a b ∧ ¬(Ord.toLE instOrdNat).le b a  := by
   intro a b
   rw [toLT_iff_lt a b, toLE_iff_le a b, toLE_iff_le b a]
-  exact Nat.lt_iff_le_not_le
+  exact Nat.lt_iff_le_and_not_ge
 
 theorem toLT_notLt : ∀ (a b : Nat), ¬(Ord.toLT instOrdNat).lt a b
     ↔ (Ord.toLE instOrdNat).le b a  := by

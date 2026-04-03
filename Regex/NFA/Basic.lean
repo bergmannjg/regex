@@ -45,7 +45,8 @@ instance : LE NFA.Capture where
             else a.group < b.group
 
 instance (a b : NFA.Capture) : Decidable (LE.le a b) := by
-  simp [NFA.instLECapture]
+  unfold LE.le NFA.instLECapture
+  simp
   exact instDecidableIte
 
 namespace Capture

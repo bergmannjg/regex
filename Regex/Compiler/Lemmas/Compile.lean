@@ -28,6 +28,8 @@ open Std.Do
 
 set_option mvcgen.warning false
 
+set_option trace.profiler.threshold 2000
+
 @[spec] theorem c_bounded.fold.patch.pre_spec (compiled: ThompsonRef) (prev_end : Unchecked.StateID)
   (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states
@@ -48,10 +50,18 @@ set_option mvcgen.warning false
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
   dsimp [Code.c_bounded.fold.patch.possessive]
   mintro _
-  mspec add_union_lift_spec; grind
-  mspec add_fail_lift_spec; grind
-  mspec add_eat_lift_spec; grind
-  mvcgen with grind
+  mspec add_union_lift_spec; grind only [← SPred.entails.refl]
+  mspec add_fail_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mspec add_eat_lift_spec; grind only [= stateIdNextOfLt.eq_1, ← SPred.pure_mono,
+    = Unchecked.EatMode.nextOf.eq_2]
+  mvcgen
+  grind only [= stateIdNextOfLt.eq_1, = assignableP.eq_1, → isAppend_of_isAppendOfState,
+    → patchAssignable_of_append, patchAssignable_of_assignableIf]
+  grind only [= stateIdNextOfLt.eq_1, = assignableP2.eq_1, = stateIdNextOfEqLt.eq_1,
+    patch2Assignable_of_assignableIf]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableIf_trans,
+    → isAppend_of_assignableP, = stateIdNextOfEqLt.eq_1, = assignableIf.eq_1,
+    → patchAssignable_of_append]
 
 @[spec] theorem c_bounded.fold.patch.post_spec (compiled: ThompsonRef) (union empty : Unchecked.StateID) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ compiled.end < states.size
@@ -88,9 +98,19 @@ set_option mvcgen.warning false
       ⦃post⟨fun r s => ⌜tRefNextOfLt states ⟨r.1, r.2⟩ s ∧ assignableIf states s ∧ patchAssignable s r.1 ∧ patchAssignable s r.2⌝, fun _ => ⌜False⌝⟩⦄ := by
   dsimp [Code.c_alt_iter_step]
   mintro _
-  mspec add_union_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mvcgen with grind
+  mspec add_union_lift_spec; grind only [← SPred.entails.refl]
+  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
+  mvcgen
+  grind only [= stateIdNextOfLt.eq_1, = assignableP.eq_1, patchAssignable_of_assignableIf]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+    assignableIf_trans]
+  grind only [= stateIdNextOfLt.eq_1, → isAppend_of_assignableP, = assignableP.eq_1,
+    = stateIdNextOfEqLt.eq_1, → patchAssignable_of_append, patchAssignable_of_assignableIf,
+    assignableIf_trans]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableIf_trans,
+    = stateIdNextOfEqLt.eq_1]
+  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableIf_trans,
+    = assignableP.eq_1, = stateIdNextOfEqLt.eq_1, = assignableIf.eq_1]
 
 @[spec] theorem c_alt_iter_step_lift_spec (first second: ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -117,6 +137,10 @@ set_option mvcgen.warning false
       (Code.c_rep_pre greedy : Code.CompilerM Unchecked.StateID)
       ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   exact coe_spec_EStateM_to_CompilerM (c_rep_pre_spec _ _)
+
+@[simp, grind =] theorem cMemAndValid_iff (prev caps : Array NFA.Capture) :
+    cMemAndValid prev caps ↔ (∀ a ∈ prev, a ∈ caps) ∧ NFA.Capture.Valid caps := by
+  rfl
 
 set_option maxHeartbeats 4000000
 
@@ -150,16 +174,28 @@ mutual
         mspec patch_lift_spec
         inst_mvars
         case post.success =>
-          mvcgen with grind [= cMemAndValid]
-        all_goals grind [= cMemAndValid]
-      all_goals grind [= cMemAndValid]
-    all_goals grind
+          mvcgen
+          grind only [assignableIf_trans, = tRefNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
+            cMemAndValid, #ab8902846395062a, #8e27c298286ff11c]
+        grind only [= stateIdNextOfEqLt.eq_1]
+        grind only [= tRefNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, = tRefLt.eq_1]
+        grind only [= tRefNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1]
+        grind only [patchAssignable_of_assignableIf]
+        grind only [cValid_of_cMemAndValid]
+      grind only [= tRefNextOfLt.eq_1]
+      grind only [= tRefNextOfLt.eq_1]
+      grind only [= tRefNextOfLt.eq_1, = tRefLt.eq_1]
+      grind only [patchAssignable_of_assignableIf, assignableIf_trans]
+      grind only [cValid_of_cMemAndValid]
+    all_goals grind only [cValid_of_cMemAndValid]
   case pre =>
-    simp_all
+    simp_all only [assignableIf, SPred.entails_1,
+      SPred.down_pure, Std.le_refl, implies_true, and_self, cMemAndValid_of_cValid_of_eq]
   case post =>
-    simp
-    all_goals grind [= cMemAndValid]
-  simp
+    simp only [assignableIf, statesNextOfLeLt,
+      SPred.entails_1, SPred.down_pure, and_imp, Prod.forall, forall_const]
+    grind only
+  simp only [ExceptConds.entails.refl]
 termination_by sizeOf hirs
 
 @[spec] theorem c_concat_fold_spec (tail : Array Hir) (sid : Unchecked.StateID)
@@ -174,7 +210,9 @@ termination_by sizeOf hirs
     exact (fun (xs, r) s => ⌜states.size ≤ s.1.size ∧ sid < s.1.size ∧ r < s.1.size ∧ NextOfLt s.1
                               ∧ assignableIf states s.1 ∧ patchAssignable s.1 r
                               ∧ cMemAndValid captures s.2.1⌝, fun e => ⌜False⌝, ())
-  case pre => simp_all
+  case pre => simp_all only [assignableIf,
+    and_self_left, SPred.entails_1, SPred.down_pure, Std.le_refl, implies_true, and_self,
+    cMemAndValid_of_cValid_of_eq]
   case step =>
     intros
     expose_names
@@ -185,13 +223,14 @@ termination_by sizeOf hirs
     case post.success =>
       mspec patch_lift_spec
       · inst_mvars
-        all_goals grind [= cMemAndValid]
+        all_goals grind
       · mvcgen
-        grind [= cMemAndValid]
+        grind
     all_goals grind
-  simp
-  grind [= cMemAndValid]
-  simp
+  simp only [assignableIf, stateIdNextOfLeLt,
+    SPred.entails_1, SPred.down_pure, and_imp, Prod.forall, forall_const]
+  grind only
+  rfl
 termination_by sizeOf tail
 
 @[spec] theorem c_alt_iter_spec (alt : Syntax.Alternation) (states : Array Unchecked.State)
@@ -217,7 +256,7 @@ termination_by sizeOf tail
       mspec c_alt_iter_fold_spec
       inst_mvars
       case post.success =>
-        mvcgen with grind [= cMemAndValid]
+        mvcgen with grind
       all_goals grind
     all_goals grind
   all_goals grind
@@ -240,10 +279,11 @@ termination_by sizeOf alt
       inst_mvars
       case post.success => mvcgen with grind
       all_goals grind
-    · simp
+    · simp only [tRefNextOfLt, tRefLt, assignableIf,
+        WP.pure, SPred.entails_1, SPred.down_pure, and_imp, Prod.forall, forall_const]
       intros
       and_intros
-      all_goals grind [= cMemAndValid]
+      all_goals grind
   case isTrue.post.success.isFalse =>
       mspec add_empty_lift_spec'
       inst_mvars
@@ -253,8 +293,21 @@ termination_by sizeOf alt
         case post.success =>
           mspec patch_lift_spec
           · inst_mvars; all_goals grind
-          · simp
-            all_goals grind [= cMemAndValid]
+          · simp only [stateIdNextOfEqLt, assignableIf,
+              tRefNextOfLt, tRefLt, WP.pure, SPred.entails_1, SPred.down_pure, and_imp, Prod.forall,
+              forall_const]
+            intros
+            and_intros
+            grind only [tRefNextOfLt, = stateIdNextOfLt.eq_1, = stateIdNextOfLeLt.eq_1]
+            grind only [tRefNextOfLt, = stateIdNextOfLt.eq_1, = stateIdNextOfLeLt.eq_1, tRefLt]
+            assumption
+            assumption
+            grind only [patchAssignable_of_assignableIf, assignableIf_trans, assignableIf]
+            grind only [patch2Assignable_of_assignableIf, assignableIf_trans, assignableIf]
+            grind only [= assignableP.eq_1, patchAssignable_of_assignableIf, assignableIf_trans,
+              assignableIf]
+            grind
+            rename_i h; exact h.right
         all_goals grind
       all_goals grind
   case isFalse =>
@@ -272,13 +325,15 @@ termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
   mintro _
   unfold Code.c_lookaround
   split
-  case h_1 | h_2 =>
+  case h_1 |  h_2 =>
     mspec c_spec
     inst_mvars; grind; grind
     mspec
     inst_mvars; grind; grind; grind; grind; grind
-    simp
-    all_goals grind [= cMemAndValid]
+    simp only [tRefNextOfLeLt, tRefLt, assignableIf,
+      tRefNextOfLt, SPred.entails_1, SPred.down_pure, and_imp, Prod.forall, forall_const]
+    grind only [= stateIdNextOfLt.eq_1, tRefNextOfLt, patchAssignable_of_assignableIf,
+            assignableIf_trans, assignableIf, patch2Assignable_of_assignableIf]
   case h_3 | h_4 =>
     mspec add_next_char_lift_spec
     inst_mvars
@@ -288,7 +343,12 @@ termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
       case post.success =>
         mspec
         inst_mvars
-        case post.success => simp; intros; grind
+        case post.success =>
+          simp only [tRefNextOfLeLt, tRefLt, assignableIf, tRefNextOfLt, SPred.entails_1,
+            SPred.down_pure, and_imp, Prod.forall, forall_const]
+          intros
+          grind only [= stateIdNextOfLt.eq_1, tRefNextOfLt, patchAssignable_of_assignableIf,
+            assignableIf_trans, assignableIf, patch2Assignable_of_assignableIf]
         all_goals grind
       all_goals grind
     all_goals grind
@@ -335,9 +395,11 @@ termination_by sizeOf look
     mspec c_bounded_spec
     mspec c_empty_lift_spec
     inst_mvars; grind; grind
-    simp
+    simp only [tRefNextOfLt, tRefLt, assignableP, isAppendOfStateID, isAppendOfState,
+      Array.append_singleton, assignableIf,
+      SPred.entails_1, SPred.down_pure, and_imp, forall_exists_index, Prod.forall, forall_const]
     intros
-    grind [= cMemAndValid]
+    grind only [patchAssignable_of_eq, = Array.getElem_push, patch2Assignable_of_eq]
 termination_by sizeOf rep
 
 @[spec] theorem c_exactly_spec (hir : Hir) (n : Nat) (states : Array Unchecked.State)
@@ -408,14 +470,17 @@ termination_by sizeOf hirs
     case post.success =>
       mspec patch_lift_spec
       inst_mvars
-      case post.success => mvcgen with grind [= cMemAndValid]
-      all_goals grind [= cMemAndValid]
+      case post.success => mvcgen with grind
+      all_goals grind
     all_goals grind
   case pre | isFalse =>
-    simp_all
+    simp_all only [Nat.not_lt, Nat.le_zero_eq, stateIdNextOfLeLt, assignableIf, WP.pure,
+      SPred.entails_1, SPred.down_pure, Std.le_refl,
+      and_self, implies_true, cMemAndValid_of_cValid_of_eq]
   case isTrue.post =>
-    simp
-    all_goals grind [= cMemAndValid]
+    simp only [assignableIf,  stateIdNextOfLeLt,
+      SPred.entails_1, SPred.down_pure, and_imp, Prod.forall, forall_const]
+    all_goals grind
   simp
 termination_by sizeOf hir + sizeOf n
 
@@ -423,7 +488,8 @@ termination_by sizeOf hir + sizeOf n
   (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧  NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_at_least hir n greedy possessive
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
+      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ assignableIf states s.1
+            ∧ patchAssignable s.1 r.end ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   mintro _
   unfold Code.c_at_least
   split
@@ -447,8 +513,13 @@ termination_by sizeOf hir + sizeOf n
     case isTrue.post.success.post.success =>
       mspec c_at_least_1_post_lift_spec
       inst_mvars
-      case post.success => simp; intros; grind [= cMemAndValid]
-      all_goals grind [= cMemAndValid]
+      case post.success =>
+        simp only [tRefNextOfLeLt, tRefLt, assignableIf,
+          tRefNextOfLt, SPred.entails_1, SPred.down_pure, and_imp, Prod.forall, forall_const]
+        intros
+        grind only [tRefNextOfLt, = stateIdNextOfLt.eq_1, patchAssignable_of_assignableIf,
+          assignableIf_trans, assignableIf, patch2Assignable_of_assignableIf]
+      all_goals grind
     case isFalse =>
       mspec c_exactly_spec
       inst_mvars; grind; grind
@@ -457,7 +528,12 @@ termination_by sizeOf hir + sizeOf n
       case post.success.post.success =>
         mspec c_at_least_2_lift_spec
         inst_mvars
-        case post.success => simp; intros; grind [= cMemAndValid]
+        case post.success =>
+          simp only [tRefNextOfLeLt, tRefLt, assignableIf, tRefNextOfLt, SPred.entails_1,
+            SPred.down_pure, and_imp, Prod.forall, forall_const]
+          intros
+          grind only [tRefNextOfLt, = cMemAndValid_iff, patchAssignable_of_assignableIf,
+            assignableIf_trans, assignableIf, patch2Assignable_of_assignableIf]
         all_goals grind
       all_goals grind
     all_goals grind
@@ -486,18 +562,25 @@ termination_by sizeOf hir + sizeOf n + 1
     case post.success =>
       mspec c_bounded.fold.patch_lift_spec
       inst_mvars
-      case post.success => mvcgen with grind [= cMemAndValid]
+      case post.success => mvcgen with grind
       all_goals grind
     all_goals grind
   case pre =>
     intro _
-    simp_all
+    simp_all only [tRefLt, assignableIf,
+      cMemAndValid_iff, SPred.entails_nil, SPred.down_pure, Std.le_refl, implies_true, and_self,
+      true_and, and_imp]
+    grind only [= Capture.Valid.iff, cap_exists_of_cap_role_end_of_cValid, #0000, #f40e, #25d2]
   case isTrue =>
-    simp
+    simp only [assignableIf,  cMemAndValid_iff,
+      stateIdNextOfLeLt, SPred.entails_1, SPred.down_pure, and_imp, Prod.forall, forall_const]
     all_goals grind
   case isFalse =>
     intro _
-    simp_all
+    simp_all only [Nat.not_lt, Nat.le_zero_eq, tRefLt, stateIdNextOfLeLt, assignableIf,
+      cMemAndValid_iff, WP.pure, SPred.entails_nil,
+      SPred.down_pure, Std.le_refl, and_self, implies_true, true_and, and_imp]
+    grind only [= Capture.Valid.iff, cap_exists_of_cap_role_end_of_cValid]
   simp
 termination_by sizeOf hir + sizeOf n
 
@@ -523,12 +606,12 @@ termination_by sizeOf hir + sizeOf n
       case post.success =>
         mspec patch_lift_spec
         inst_mvars
-        case post.success =>
-          mvcgen with grind [= cMemAndValid]
+        case post.success => mvcgen with grind
         all_goals grind
       all_goals grind
-    simp_all
-    all_goals grind [= cMemAndValid]
+    simp_all only [stateIdNextOfLt, assignableIf, assignableP, isAppendOfStateID, isAppendOfState,
+      Array.append_singleton, cMemAndValid_iff, tRefNextOfLt, tRefLt]
+    all_goals grind
   all_goals grind
 termination_by sizeOf hir
 
@@ -576,7 +659,15 @@ end
       ⦃post⟨fun r s => ⌜tRefLt r s.1 ∧ NextOfLt s.1 ∧ patchAssignable s.1 r.end ∧ cValid s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   dsimp [Code.init]
   mintro _
-  split <;> (mspec; simp; and_intros; grind; rfl; grind; simp; grind)
+  split
+  mspec; simp; and_intros; grind; rfl; grind; simp; grind only [cValid_of_empty]
+  mspec; simp; and_intros; grind; rfl; grind
+  simp only [tRefNextOfLt, tRefLt, assignableIf, cMemAndValid_iff, WP.pure, SPred.entails_1,
+    SPred.down_pure, and_imp, Prod.forall, forall_const]
+  intros
+  and_intros
+  case isFalse.post.success.refine_2.refine_2.refine_2 => assumption
+  all_goals grind
 
 @[spec] theorem c_compile_spec (anchored : Bool) (hir : Hir)
     : ⦃fun s => ⌜s.1.size = 0 ∧ s.2.1.size = 0⌝⦄
@@ -609,17 +700,30 @@ theorem compile_nextOf_lt {anchored : Bool} {expr : Hir}
     : NextOfLt states := by
   have heq := c_compile_spec anchored expr (#[], #[], #[])
   simp [wp] at heq
+  dsimp [PredTrans.apply] at heq
   split at heq <;> simp_all
+  expose_names
+  dsimp [EStateM.run] at heq_1
+  simp_all
 
 theorem compile_captures_valid {anchored : Bool} {expr : Hir}
   (h : Code.compile anchored expr (#[], #[], #[]) = EStateM.Result.ok () (states, captures, groups))
     : Capture.Valid captures := by
   have heq := c_compile_spec anchored expr (#[], #[], #[])
   simp [wp] at heq
-  split at heq <;> grind [= cValid]
+  dsimp [PredTrans.apply] at heq
+  split at heq
+  · expose_names
+    dsimp [EStateM.run] at heq_1
+    grind
+  · grind [= cValid]
 
 theorem compile_eq_ok {anchored : Bool} {expr : Hir}
    : ∃ s, Code.compile anchored expr (#[], #[], #[]) = EStateM.Result.ok () s := by
   have heq := c_compile_spec anchored expr (#[], #[], #[])
   simp [wp] at heq
+  dsimp [PredTrans.apply] at heq
   split at heq <;> simp_all
+  expose_names
+  dsimp [EStateM.run] at heq_1
+  grind

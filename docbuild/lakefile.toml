@@ -9,10 +9,11 @@ path = "../"
 
 [[require]]
 name = "UnicodeBasic"
-git = "https://github.com/fgdorais/lean4-unicode-basic.git"
-rev = "v1.3.1"
+git = "https://github.com/fgdorais/lean4-unicode-basic"
+rev = "v4.29.0-rc7"
 
 [[require]]
 scope = "leanprover"
 name = "doc-gen4"
-rev = "v4.28.0"
+git = "https://github.com/leanprover/doc-gen4"
+rev = "v4.29.0"
