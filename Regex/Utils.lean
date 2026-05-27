@@ -10,12 +10,6 @@ namespace Char
 def multiple (c : Char) ( n : Nat) (acc : String ): String :=
   if n = 0 then acc else multiple c ( n - 1) (c.toString ++ acc)
 
-def isHexDigit (c : Char) : Bool :=
-  if '0' ≤ c && c ≤ '9' then true
-  else if 'a' ≤ c && c ≤ 'f' then true
-  else if 'A' ≤ c && c ≤ 'F' then true
-  else false
-
 def decodeHexDigit (c : Char) : Option (UInt32) :=
   if '0' ≤ c && c ≤ '9' then some (c.val - '0'.val)
   else if 'a' ≤ c && c ≤ 'f' then some (10 + c.val - 'a'.val)

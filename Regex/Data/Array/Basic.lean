@@ -27,9 +27,6 @@ def unique [DecidableEq α] (as: Array α) : Array α :=
   where
     acc [DecidableEq α] (x : α × Array α) r := if x.fst = r then (r, x.snd) else (r, x.snd.push r)
 
-def mergeSort (as: Array α) (le : α → α → Bool := by exact fun a b => a ≤ b) :=
-  as.toList.mergeSort le |>.toArray
-
 /-- Unattach values of subtype in `arr` and collect their properties. -/
 def map_option_subtype {p : α → Prop} [DecidablePred p] (arr : Array (Option { m : α // p m }))
     : { arr : Array (Option α) // arr.all (Option.all (p · ) ·) } :=

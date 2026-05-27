@@ -314,13 +314,3 @@ private theorem nodup.nodup_of_foldl [DecidableEq α] [LE α] [LT α] [Std.IsPre
     have : ∀ (a : α), a ∈ tail → init.fst ≤ a := by rw [← hi]; simp_all
     apply nodup.nodup_of_foldl tail init
     all_goals grind
-
-@[simp] theorem mergeSort_toList_eq (as bs: Array α) (le : α → α → Bool := by exact fun a b => a ≤ b)
-  (h : bs = as.mergeSort le) : as.toList.mergeSort le = bs.toList := by
-  unfold Array.mergeSort at h
-  grind
-
-@[simp] theorem mem_mergeSort [LE α] (as : Array α) (le : α → α → Bool := by exact (· ≤ ·))
-    : a ∈ as.mergeSort le ↔ a ∈ as := by
-  unfold Array.mergeSort
-  simp_all only [List.mem_toArray, List.mem_mergeSort, mem_toList_iff]
