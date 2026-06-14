@@ -1,7 +1,7 @@
 import Init.Meta
 import Parser
 import Regex.Syntax.Flavor
-import Regex.Data.Parsec.Basic
+import Regex.Syntax.Grammar.Basic
 
 open Lean Lean.Syntax Parser Parser.Char
 
@@ -23,7 +23,7 @@ private structure Parser where
 
 instance : Inhabited Parser  := ⟨⟨.None⟩⟩
 
-abbrev ParsecM := ReaderT Syntax.Flavor $ StateT Parser (SimpleParser Substring.Raw Char)
+abbrev ParsecM := ReaderT Syntax.Flavor $ StateT Parser SimpleCharParser
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC4 -/
 private def isMetaCharacter : Char → Bool
@@ -62,7 +62,7 @@ private def isWsChar (c : Char) (inCharacterClass : Bool) : Bool :=
   if inCharacterClass then c = '\x09' || c = ' '
   else c = '\x09' || c = '\x0a' || c = '\x0b' || c = '\x0c' || c = '\x0d' || c = ' '
 
-private def wsChar (inCharacterClass : Bool) : (SimpleParser Substring.Raw Char) Char := withBacktracking do
+private def wsChar (inCharacterClass : Bool) : SimpleCharParser Char := withBacktracking do
   let c ← anyToken
   if isWsChar c inCharacterClass then return c else fail ""
 
@@ -157,7 +157,7 @@ private def parenWithCharsM (p : ParsecM α) (startChar : Char := '{') (endChar 
     : ParsecM $ Array α := attemptM do
   skipChar startChar *> manyM p <* skipChar endChar
 
-private def groupLetter : (SimpleParser Substring.Raw Char) Char := Parser.withBacktracking do
+private def groupLetter : SimpleCharParser Char := Parser.withBacktracking do
   let c ← anyToken
   if (c = ' ' ∨ ('0' ≤ c ∧ c ≤ '9')
       ∨ ('A' ≤ c ∧ c ≤ 'Z') ∨ ('a' ≤ c ∧ c ≤ 'z'))
@@ -256,7 +256,7 @@ private def namedLookaroundGroupKind : ParsecM Syntax := attemptM do
   <|> skipString "plb:" *> (pure $ mkNodeOfKind `lookaroundGroup "?<=" f t)
   <|> skipString "nlb:" *> (pure $ mkNodeOfKind `lookaroundGroup "?<!" f t)
 
-private def controlName : (SimpleParser Substring.Raw Char) Syntax := withBacktracking do
+private def controlName : SimpleCharParser Syntax := withBacktracking do
   if let some (f, t, _) ← tryCharWithPos (· = ':') then
     let chars ← manyChars (Char.ASCII.alphanum <|> Char.char '(')
     pure $ mkNodeOfKind `controlName (String.ofList chars.toList)  f t
@@ -264,9 +264,9 @@ private def controlName : (SimpleParser Substring.Raw Char) Syntax := withBacktr
 
 private def controlVerbGroupKind : ParsecM Syntax := attemptM do
   let (f, t, _) ← withPos (Char.char ('*'))
-  (string "ACCEPT" <|> string "COMMIT" <|> string "MARK"<|> string "PRUNE"
-      <|> string "SKIP" <|> string "THEN")
-    *> controlName *> (pure $ mkNodeOfKind `controlVerbGroup "" f t)
+  withBacktracking ((chars "ACCEPT" <|> chars "COMMIT" <|> chars "MARK" <|> chars "PRUNE"
+      <|> chars "SKIP" <|> chars "THEN")
+    *> controlName *> (pure $ mkNodeOfKind `controlVerbGroup "" f t))
   <|> controlName
 
 private def containsString (s m : String) : Bool :=
@@ -432,7 +432,7 @@ private def escapedChar : ParsecM Syntax := attemptM do
 
 private def literalChars : ParsecM Syntax := attemptM do
   skipChar 'Q'
-  let chars ← manyChars (notFollowedBy (string "\\E") *> anyToken) <* skipString? "\\E"
+  let chars ← manyChars (notFollowedBy (chars "\\E") *> anyToken) <* skipString? "\\E"
   let list := chars.toList |> List.map (fun c => mkLiteral c 0 0)
   pure $ Syntax.node (SourceInfo.synthetic 0 0) `sequence list.toArray
 
@@ -536,10 +536,10 @@ private def repetition : ParsecM Syntax := attemptM do
     pure $ Syntax.node (SourceInfo.synthetic f t) `repetition #[litA, litB, modifier]
   else fail ""
 
-private def posixCharacterClass : (SimpleParser Substring.Raw Char) Syntax := withBacktracking do
-  let (f, _, _) ← withPos $ string "[:"
+private def posixCharacterClass : SimpleCharParser Syntax := withBacktracking do
+  let (f, _, _) ← withPos $ chars "[:"
   let (_, t, chars) ← withPos $
-      manyChars (notFollowedBy (string ":]") *> (Char.ASCII.alphanum <|> Char.char '^')) <* string ":]"
+      manyChars (notFollowedBy (chars ":]") *> (Char.ASCII.alphanum <|> Char.char '^')) <* chars ":]"
   pure $ mkNodeOfKind `posixCharacterClass chars f t
 
 private def consumeStartOfCharacterClass : ParsecM $ Array Syntax := attemptM do
@@ -557,21 +557,14 @@ private def characterClass (val : ParsecM Syntax) : ParsecM Syntax := attemptM d
   let (_, t, _) ← withPos (Char.char (']'))
   pure $ Syntax.node (SourceInfo.synthetic f t) `characterClass (start ++ arr)
 
-mutual
-
-private partial def valInCharacterClass : ParsecM $ Syntax := do
-  let p ← EscapeSeq.escapeSeq true
+private def valInCharacterClass : ParsecM $ Syntax :=
+  loop fun p => do
+    EscapeSeq.escapeSeq true
     <|> posixCharacterClass
     <|> wsChars true
-    <|> (if Syntax.Flavor.Rust == (← read) then characterClass' else fail "")
+    <|> (if Syntax.Flavor.Rust == (← read) then characterClass p else fail "")
     <|> characterClassSetOperation <|> hyphen
     <|> literal true
-  pure $ p
-
-private partial def characterClass' : ParsecM Syntax :=
-  characterClass valInCharacterClass
-
-end
 
 private def getFlags (x : Syntax) : Option String :=
   match x with
@@ -594,11 +587,11 @@ private def group (val : ParsecM Syntax) : ParsecM Syntax := attemptM do
 
   pure $ Syntax.node (SourceInfo.synthetic f t) `group (#[kind] ++ arr)
 
-private partial def val : ParsecM $ Syntax := do
-  let p ← EscapeSeq.escapeSeq <|> (group val) <|> verticalBar <|> assertion
-          <|> characterClass valInCharacterClass <|> repetition <|> comments
-          <|> wsChars false <|> dot <|> literal
-  pure $ p
+private def val : ParsecM $ Syntax :=
+  loop fun p => do
+    EscapeSeq.escapeSeq <|> (group p) <|> verticalBar <|> assertion
+    <|> characterClass valInCharacterClass <|> repetition <|> comments
+    <|> wsChars false <|> dot <|> literal
 
 private def sequence : ParsecM $ TSyntax `sequence := do
   let (f, t, arr) ← withPosM (manyM val)
@@ -608,7 +601,7 @@ private def sequence : ParsecM $ TSyntax `sequence := do
 def parse (s : String) (flavor : Syntax.Flavor) (extended : ExtendedKind := .None) : Except String $ TSyntax `sequence :=
   match (sequence flavor ⟨extended⟩) s with
   | Parser.Result.ok it res =>
-      if Substring.Raw.bsize it = 0
+      if String.Slice.isEmpty it
       then Except.ok res.1
-      else Except.error s!"offset {repr it}: cannot parse regex"
-  | Parser.Result.error it err  => Except.error s!"offset {repr it}: {err}"
+      else Except.error s!"offset {it.startInclusive.offset}: cannot parse regex"
+  | Parser.Result.error it err  => Except.error s!"offset {it}: {err}"
