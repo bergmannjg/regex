@@ -1,8 +1,12 @@
-import Lean
-import Lake.Toml
-import Lake.Toml.Decode
+module
 
-import RegexTest
+public import Lean
+public import Lake.Toml
+public import Lake.Toml.Decode
+
+public import RegexTest
+
+public section
 
 open Lean System Lake Lake.Toml
 

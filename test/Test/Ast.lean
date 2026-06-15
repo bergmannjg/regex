@@ -1,6 +1,8 @@
-import Regex
+module
 
-open Syntax
+public import Regex
+
+open Regex.Syntax
 open AstItems
 open Regex
 

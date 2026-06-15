@@ -1,9 +1,13 @@
-import Init.Data.Random
-import Regex
-import Regex.Backtrack
+module
+
+public import Init.Data.Random
+public import Regex
+public import Regex.Backtrack
+
+public section
 
 open NFA
-open Syntax
+open Regex.Syntax
 open Regex
 open BoundedBacktracker
 

@@ -1,15 +1,18 @@
+module
 
-import Std.Tactic.Do
-import Std.Tactic.Do.Syntax
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
 
-import Regex.Data.Nat.Basic
-import Regex.Compiler.Basic
-import Regex.Compiler.Patch
-import Regex.Compiler.Lemmas.Basic
+public import Regex.Data.Nat.Basic
+public import Regex.Compiler.Basic
+public import Regex.Compiler.Patch
+public import Regex.Compiler.Lemmas.Basic
+
+@[expose] public section
 
 namespace Compiler
 
-open Syntax
+open Regex.Syntax
 open NFA
 
 namespace Lemmas
@@ -156,7 +159,7 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
   exact ⟨h3, by split<;> simp_all⟩
 
 @[simp, grind →] theorem patch2Assignable_of_append (s1 s2 : Array Unchecked.State)
-  (h1 : patch2Assignable s1 sid) (h2 :isAppend s1 s2)
+  (h1 : patch2Assignable s1 sid) (h2 : isAppend s1 s2)
     : patch2Assignable s2 sid := by
   simp [patch2Assignable]
   simp [patch2Assignable] at h1

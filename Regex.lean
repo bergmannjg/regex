@@ -1,11 +1,13 @@
-import Regex.Basic
-import Regex.Syntax.Grammar.Grammar
-import Regex.Syntax.Grammar.Translate
-import Regex.Syntax.Ast.Parser
-import Regex.Syntax.Hir
-import Regex.Nfa
-import Regex.Regex
-import Regex.Notation
+module
+
+public import Regex.Basic
+public import Regex.Syntax.Grammar.Grammar
+public import Regex.Syntax.Grammar.Translate
+public import Regex.Syntax.Ast.Parser
+public import Regex.Syntax.Hir
+public import Regex.Nfa
+public import Regex.Regex
+public import Regex.Notation
 
 /-!
 # Regex

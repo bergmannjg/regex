@@ -1,4 +1,8 @@
-namespace Syntax
+module
+
+@[expose] public section
+
+namespace Regex.Syntax
 
 /-- Flavor of regular expressions -/
 inductive Flavor where

@@ -1,13 +1,16 @@
+module
 
-import Std.Tactic.Do
-import Std.Tactic.Do.Syntax
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
 
-import Regex.Compiler.Basic
-import Regex.Compiler.Compile
+public import Regex.Compiler.Basic
+public import Regex.Compiler.Compile
+
+@[expose] public section
 
 namespace Compiler
 
-open Syntax
+open Regex.Syntax
 open NFA
 
 namespace Lemmas

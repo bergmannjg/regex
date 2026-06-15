@@ -1,14 +1,18 @@
-import Regex
+module
 
-import Test.Interval
-import Test.Grammar
-import Test.Ast
-import Test.Hir
-import Test.Compiler
+public import Regex
 
-import RegexTest
-import TomlLoader
-import PcreLoader
+public import Test.Interval
+public import Test.Grammar
+public import Test.Ast
+public import Test.Hir
+public import Test.Compiler
+
+public import RegexTest
+public import TomlLoader
+public import PcreLoader
+
+public section
 
 open Lean System
 

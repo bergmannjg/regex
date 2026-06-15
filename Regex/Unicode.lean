@@ -1,4 +1,6 @@
-import Regex.Unicode.Unicode
+module
+
+public import Regex.Unicode.Unicode
 
 namespace Unicode
 

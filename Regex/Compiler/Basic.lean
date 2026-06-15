@@ -1,9 +1,13 @@
-import Regex.Syntax.Hir
-import Regex.Nfa
+module
+
+public import Regex.Syntax.Hir
+public import Regex.Nfa
+
+@[expose] public section
 
 namespace Compiler
 
-open Syntax
+open Regex.Syntax
 open NFA
 
 /-!

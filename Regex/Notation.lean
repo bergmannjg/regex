@@ -1,4 +1,11 @@
-import Regex.Regex
+module
+
+public import Regex.Regex
+public meta import Regex.Syntax.Hir
+public meta import Regex.Compiler.Basic
+public meta import Regex.Regex
+
+public section
 
 namespace Regex.Notation
 
@@ -10,7 +17,7 @@ Notation `regex%` to build the regular expression at compile time.
 
 open Lean
 
-def toNumLit (n : Nat) : NumLit :=
+meta def toNumLit (n : Nat) : NumLit :=
   Lean.Syntax.mkNumLit (Nat.repr n)
 
 theorem of_decide_eq_true_ext (p : Prop) (inst : Decidable p) : Eq (decide p) true → p :=
@@ -20,7 +27,7 @@ theorem of_decide_eq_true_ext (p : Prop) (inst : Decidable p) : Eq (decide p) tr
 
   example : 1 < 300 := @of_decide_eq_true (1 < 300) (Nat.decLt 1 300) (Eq.refl true)
 -/
-private def mkTermOfDecideLt (n m : Nat) : Term :=
+protected meta def mkTermOfDecideLt (n m : Nat) : Term :=
   let eq_refl : Term := Syntax.mkApp (mkCIdent ``Eq.refl) #[Quote.quote true]
   let args := #[toNumLit n, toNumLit m]
   let lt_lt := Syntax.mkApp (mkCIdent ``LT.lt) args
@@ -28,27 +35,27 @@ private def mkTermOfDecideLt (n m : Nat) : Term :=
 
   Syntax.mkApp (mkCIdent ``of_decide_eq_true_ext) #[lt_lt, decLt, eq_refl]
 
-private def mkTermOfFin (f: Fin n) : Term :=
+protected meta def mkTermOfFin (f: Fin n) : Term :=
   Syntax.mkApp (mkCIdent ``Fin.mk)
-                #[Syntax.mkNumLit (ToString.toString f.val), mkTermOfDecideLt f.val n]
+                #[Syntax.mkNumLit (ToString.toString f.val), Notation.mkTermOfDecideLt f.val n]
 
-instance : Quote (Fin n) where
-  quote := mkTermOfFin
+@[expose] meta instance : Quote (Fin n) where
+  quote := Notation.mkTermOfFin
 
-private def mkTermOfUInt32 (n : UInt32) : Term :=
+protected meta def mkTermOfUInt32 (n : UInt32) : Term :=
   Syntax.mkApp (mkCIdent `UInt32.mk) #[Quote.quote n.toFin]
 
-instance : Quote UInt32 where
-  quote := mkTermOfUInt32
+@[expose] meta instance : Quote UInt32 where
+  quote := Notation.mkTermOfUInt32
 
-private def mkTermOfTransition (t: NFA.Checked.Transition n) : Term :=
+protected meta def mkTermOfTransition (t: NFA.Checked.Transition n) : Term :=
   Syntax.mkApp (mkCIdent `NFA.Checked.Transition.mk)
                 #[Quote.quote t.start, Quote.quote t.«end», Quote.quote t.next]
 
-instance : Quote (NFA.Checked.Transition n) where
-  quote := mkTermOfTransition
+@[expose] meta instance : Quote (NFA.Checked.Transition n) where
+  quote := Notation.mkTermOfTransition
 
-private def mkTermOfLook (l : NFA.Look) : Term :=
+protected meta def mkTermOfLook (l : NFA.Look) : Term :=
   match l with
   | .Start => Syntax.mkApp (mkCIdent ``NFA.Look.Start) #[]
   | .End => Syntax.mkApp (mkCIdent ``NFA.Look.End) #[]
@@ -66,89 +73,89 @@ private def mkTermOfLook (l : NFA.Look) : Term :=
   | .PreviousMatch => Syntax.mkApp (mkCIdent ``NFA.Look.PreviousMatch) #[]
   | .ClearMatches => Syntax.mkApp (mkCIdent ``NFA.Look.ClearMatches) #[]
 
-instance : Quote NFA.Look where
-  quote := mkTermOfLook
+@[expose] meta instance : Quote NFA.Look where
+  quote := Notation.mkTermOfLook
 
-private def mkTermOfRole (r : NFA.Capture.Role) : Term :=
+protected meta def mkTermOfRole (r : NFA.Capture.Role) : Term :=
   match r with
   | .Start => Syntax.mkApp (mkCIdent ``NFA.Capture.Role.Start) #[]
   | .End => Syntax.mkApp (mkCIdent ``NFA.Capture.Role.End) #[]
 
-instance : Quote NFA.Capture.Role where
-  quote := mkTermOfRole
+@[expose] meta instance : Quote NFA.Capture.Role where
+  quote := Notation.mkTermOfRole
 
-private def mkTermOfCapture (c : NFA.Capture) : Term :=
+protected meta def mkTermOfCapture (c : NFA.Capture) : Term :=
   Syntax.mkApp (mkCIdent ``NFA.Capture.mk)
-    #[Quote.quote c.role, Quote.quote c.group]
+    #[Notation.mkTermOfRole c.role, Quote.quote c.group]
 
-instance : Quote NFA.Capture where
-  quote := mkTermOfCapture
+@[expose] meta instance : Quote NFA.Capture where
+  quote := Notation.mkTermOfCapture
 
-private def mkTermOfEatMode (m : NFA.Checked.EatMode n) : Term :=
+protected meta def mkTermOfEatMode (m : NFA.Checked.EatMode n) : Term :=
   match m with
-  | .Until sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.Until) #[Quote.quote sid]
-  | .ToLast sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.ToLast) #[Quote.quote sid]
+  | .Until sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.Until) #[Notation.mkTermOfFin sid]
+  | .ToLast sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.ToLast) #[Notation.mkTermOfFin sid]
 
-instance : Quote (NFA.Checked.EatMode n) where
-  quote := mkTermOfEatMode
+@[expose] meta instance : Quote (NFA.Checked.EatMode n) where
+  quote := Notation.mkTermOfEatMode
 
-private def mkTermOfState (s : NFA.Checked.State n) : Term :=
+protected meta def mkTermOfState (s : NFA.Checked.State n) : Term :=
   match s with
   | .Empty next =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Empty) #[Quote.quote next]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Empty) #[Notation.mkTermOfFin next]
   | .NextChar offset next =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.NextChar) #[Quote.quote offset, Quote.quote next]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.NextChar) #[Quote.quote offset, Notation.mkTermOfFin next]
   | .Fail =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Fail) #[]
   | .Eat m next  =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Eat) #[Quote.quote m, Quote.quote next]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Eat) #[Notation.mkTermOfEatMode m, Notation.mkTermOfFin next]
   | .ChangeFrameStep f t =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.ChangeFrameStep) #[Quote.quote f, Quote.quote t]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.ChangeFrameStep) #[Notation.mkTermOfFin f, Notation.mkTermOfFin t]
   | .RemoveFrameStep s =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.RemoveFrameStep) #[Quote.quote s]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.RemoveFrameStep) #[Notation.mkTermOfFin s]
   | .BackRef b f sid =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.BackRef) #[Quote.quote b, Quote.quote f, Quote.quote sid]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.BackRef) #[Quote.quote b, Quote.quote f, Notation.mkTermOfFin sid]
   | .ByteRange t =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.ByteRange) #[Quote.quote t]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.ByteRange) #[Notation.mkTermOfTransition t]
   | .SparseTransitions transitions =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.SparseTransitions) #[Quote.quote transitions]
   | .Look look next =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Look) #[Quote.quote look, Quote.quote next]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.Look) #[Notation.mkTermOfLook look, Notation.mkTermOfFin next]
   | .Union alts =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Union) #[Quote.quote alts]
   | .UnionReverse alts =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.UnionReverse) #[Quote.quote alts]
   | .BinaryUnion alt1 alt2 =>
-      Syntax.mkApp (mkCIdent ``NFA.Checked.State.BinaryUnion) #[Quote.quote alt1, Quote.quote alt2]
+      Syntax.mkApp (mkCIdent ``NFA.Checked.State.BinaryUnion) #[Notation.mkTermOfFin alt1, Notation.mkTermOfFin alt2]
   | .Capture next r id g =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Capture)
-        #[Quote.quote next, Quote.quote r, toNumLit id, toNumLit g]
+        #[Notation.mkTermOfRole next, Notation.mkTermOfFin r, toNumLit id, toNumLit g]
   | .Match id =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Match) #[toNumLit id]
 
-instance : Quote (NFA.Checked.State n) where
-  quote := mkTermOfState
+@[expose] meta instance : Quote (NFA.Checked.State n) where
+  quote := Notation.mkTermOfState
 
-private def mkTermIsEq (n : Nat) : Term :=
+protected meta def mkTermIsEq (n : Nat) : Term :=
   Syntax.mkApp (mkCIdent ``Eq.refl) #[toNumLit n]
 
-private def mkTermCapturesValid (captures : Term) : Term :=
+protected meta def mkTermCapturesValid (captures : Term) : Term :=
   Syntax.mkApp (mkCIdent ``NFA.CapturesValidOfRangeMap) #[captures,
       Syntax.mkApp (mkCIdent ``rfl) #[]]
 
-private def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
+protected meta def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
   let states : Term := Quote.quote nfa.states
   let groups : Term := Quote.quote nfa.groups
   let captures : Term := Quote.quote nfa.captures
   let flag : Term := Quote.quote nfa.unanchored_prefix_in_backtrack
   Syntax.mkApp (mkCIdent `NFA.Checked.NFA.mk) #[toNumLit nfa.n, states, groups, captures, flag,
-    mkTermIsEq nfa.n, mkTermCapturesValid captures]
+    Notation.mkTermIsEq nfa.n, Notation.mkTermCapturesValid captures]
 
-private def mkTermOfRegex (re : Regex) : Term :=
-  Syntax.mkApp (mkCIdent `Regex.mk) #[mkTermOfNfa re.nfa]
+protected meta def mkTermOfRegex (re : Regex) : Term :=
+  Syntax.mkApp (mkCIdent `Regex.mk) #[Notation.mkTermOfNfa re.nfa]
 
-instance : Quote Regex where
-  quote := mkTermOfRegex
+@[expose] meta instance : Quote Regex where
+  quote := Notation.mkTermOfRegex
 
 declare_syntax_cat regex
 syntax str : regex
@@ -158,5 +165,5 @@ syntax "regex%" regex : term
 macro_rules
 | `(regex% $p:str) =>
     match Regex.build p.getString with
-    | Except.ok re => return @Quote.quote _ `term _ re
+    | Except.ok re => return  @Quote.quote _ `term _ re
     | Except.error e => throw <| Lean.Macro.Exception.error p e

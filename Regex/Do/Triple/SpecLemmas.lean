@@ -1,13 +1,19 @@
-import Std.Tactic.Do
-import Std.Tactic.Do.Syntax
+module
+
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
+
+@[expose] public section
 
 namespace Std.Do
 
 @[spec]
 theorem except_ok_spec {α ε : Type} {x : α} {pre : Prop}
   {post : α → Prop} {error : ε → Prop}
-  (h : ∀ r, r = x ∧ pre → post r) : ⦃⌜pre⌝⦄ Except.ok x ⦃post⟨fun a => ⌜post a⌝ , fun e => ⌜ error e⌝ ⟩⦄ := by
-  solve_by_elim
+  (h : ∀ r, r = x ∧ pre → post r) : ⦃⌜pre⌝⦄ Except.ok x ⦃⟨fun a => ⌜post a⌝ , fun e => ⌜error e⌝, ()⟩⦄ := by
+  mintro _
+  simp_all
+  assumption
 
 theorem Except.by_wp {α} {x : α} {prog : Except ε α} (h : prog = Except.ok x)
   {P : α → Prop} {Q : ε → Prop}

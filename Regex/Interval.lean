@@ -1,3 +1,5 @@
-import Regex.Interval.Basic
-import Regex.Interval.Basic
-import Regex.Interval.Intersection
+module
+
+public import Regex.Interval.Basic
+public import Regex.Interval.Basic
+public import Regex.Interval.Intersection

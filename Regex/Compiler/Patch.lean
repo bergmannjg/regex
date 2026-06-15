@@ -1,9 +1,13 @@
-import Regex.Do.Triple.SpecLemmas
-import Regex.Compiler.Basic
+module
+
+public import Regex.Do.Triple.SpecLemmas
+public import Regex.Compiler.Basic
+
+@[expose] public section
 
 namespace Compiler
 
-open Syntax
+open Regex.Syntax
 open NFA
 
 namespace Code
@@ -71,10 +75,10 @@ namespace Lemmas
   grind
 
 private theorem maxD_of_union_lt («from» : Nat) (s : Array Unchecked.State) (alternates : Array Unchecked.StateID)
-  (h1 : «from» < s.size) (h3 : NextOfLt s)
+  (h1 : «from» < s.size) (h3 : Compiler.NextOfLt s)
   (hm : s[«from»] = Unchecked.State.Union alternates)
     : List.maxD 0 alternates.toList < s.size := by
-  have h3 := NextOfLt.forall h3
+  have h3 := Compiler.NextOfLt.forall h3
   have hn := h3 «from» h1
   rw [hm] at hn
   unfold  Unchecked.State.nextOf at hn

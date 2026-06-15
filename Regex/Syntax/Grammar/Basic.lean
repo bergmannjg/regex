@@ -1,8 +1,12 @@
-import Init.Meta
-import Parser
-import Std.Internal.Parsec
+module
+
+public import Init.Meta
+public import Parser
+public import Std.Internal.Parsec
 
 open Lean Lean.Syntax Parser Parser.Char
+
+public section
 
 /-! Parser utils for ReaderT and StateT -/
 namespace Parser

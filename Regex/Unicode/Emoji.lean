@@ -1,6 +1,11 @@
-import UnicodeBasic
-import Regex.Interval
-import Regex.Unicode.Utils
+module
+
+public import UnicodeBasic
+public import UnicodeBasic.CharacterDatabase
+public import Regex.Interval
+public import Regex.Unicode.Utils
+
+public section
 
 namespace Unicode
 
@@ -24,7 +29,7 @@ private def transform (data : Array (Array Substring.Raw)) : Array Emoji :=
       else acc
     | none => acc.push ⟨name, #[val]⟩)
 
-private unsafe def Emoji.init : IO $ Array Emoji := do
+unsafe def Emoji.init : IO $ Array Emoji := do
   let stream := UCDStream.ofString Emojis.txt
   let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do

@@ -1,4 +1,6 @@
-import Regex
+module
+
+public import Regex
 
 namespace Test.NonemptyInterval
 

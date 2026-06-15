@@ -1,16 +1,20 @@
-import Std.Tactic.Do
-import Std.Tactic.Do.Syntax
+module
 
-import Regex.Compiler.Basic
-import Regex.Compiler.Patch
-import Regex.Compiler.Compile
-import Regex.Compiler.Lemmas.Basic
-import Regex.Compiler.Lemmas.Patch
-import Regex.Compiler.Lemmas.AddState
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
+
+public import Regex.Compiler.Basic
+public import Regex.Compiler.Patch
+public import Regex.Compiler.Compile
+public import Regex.Compiler.Lemmas.Basic
+public import Regex.Compiler.Lemmas.Patch
+public import Regex.Compiler.Lemmas.AddState
+
+public section
 
 namespace Compiler
 
-open Syntax
+open Regex.Syntax
 open NFA
 
 namespace Lemmas
@@ -30,7 +34,7 @@ set_option mvcgen.warning false
 
 set_option trace.profiler.threshold 2000
 
-@[spec] theorem c_bounded.fold.patch.pre_spec (compiled: ThompsonRef) (prev_end : Unchecked.StateID)
+@[spec] private theorem c_bounded.fold.patch.pre_spec (compiled: ThompsonRef) (prev_end : Unchecked.StateID)
   (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states
                       ∧ prev_end < states.size ∧ NextOfLt states
@@ -42,7 +46,7 @@ set_option trace.profiler.threshold 2000
   mspec greedy_union_spec; grind
   mvcgen with grind
 
-@[spec] theorem c_bounded.fold.patch.possessive_spec (compiled: ThompsonRef) (empty : Unchecked.StateID)
+@[spec] private theorem c_bounded.fold.patch.possessive_spec (compiled: ThompsonRef) (empty : Unchecked.StateID)
   (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states
                       ∧ empty < states.size ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
@@ -63,7 +67,7 @@ set_option trace.profiler.threshold 2000
     → isAppend_of_assignableP, = stateIdNextOfEqLt.eq_1, = assignableIf.eq_1,
     → patchAssignable_of_append]
 
-@[spec] theorem c_bounded.fold.patch.post_spec (compiled: ThompsonRef) (union empty : Unchecked.StateID) (states : Array Unchecked.State)
+@[spec] private theorem c_bounded.fold.patch.post_spec (compiled: ThompsonRef) (union empty : Unchecked.StateID) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ compiled.end < states.size
                       ∧ union < states.size ∧ empty < states.size ∧ NextOfLt states
                       ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
@@ -71,7 +75,7 @@ set_option trace.profiler.threshold 2000
       ⦃post⟨fun r s => ⌜stateIdNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch.post] with grind
 
-@[spec] theorem c_bounded.fold.patch_spec (compiled: ThompsonRef) (prev_end empty : Unchecked.StateID)
+@[spec] private theorem c_bounded.fold.patch_spec (compiled: ThompsonRef) (prev_end empty : Unchecked.StateID)
   (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt compiled states
                       ∧ prev_end < states.size ∧ empty < states.size ∧ NextOfLt states
@@ -80,7 +84,7 @@ set_option trace.profiler.threshold 2000
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
   mvcgen [Code.c_bounded.fold.patch] with grind
 
-@[spec] theorem c_bounded.fold.patch_lift_spec  (compiled: ThompsonRef) (prev_end empty : Unchecked.StateID)
+@[spec] private theorem c_bounded.fold.patch_lift_spec  (compiled: ThompsonRef) (prev_end empty : Unchecked.StateID)
   (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states
                       ∧ prev_end < states.size ∧ empty < states.size ∧ NextOfLt states
@@ -90,7 +94,7 @@ set_option trace.profiler.threshold 2000
       ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   exact coe_spec_EStateM_to_CompilerM (c_bounded.fold.patch_spec _ _ _ _ _ _)
 
-@[spec] theorem c_alt_iter_step_spec (first second: ThompsonRef) (states : Array Unchecked.State)
+@[spec] private theorem c_alt_iter_step_spec (first second: ThompsonRef) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ tRefLt first states
                       ∧ tRefLt second states ∧ NextOfLt states
                       ∧ patchAssignable states first.end ∧ patchAssignable states second.end⌝⦄
@@ -112,7 +116,7 @@ set_option trace.profiler.threshold 2000
   grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableIf_trans,
     = assignableP.eq_1, = stateIdNextOfEqLt.eq_1, = assignableIf.eq_1]
 
-@[spec] theorem c_alt_iter_step_lift_spec (first second: ThompsonRef) (states : Array Unchecked.State)
+@[spec] private theorem c_alt_iter_step_lift_spec (first second: ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜(s.1 = states ∧ tRefLt first states ∧ tRefLt second states ∧ NextOfLt states
                     ∧ patchAssignable states first.end ∧ patchAssignable states second.end)
@@ -122,7 +126,7 @@ set_option trace.profiler.threshold 2000
                         ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   exact coe_spec_EStateM_to_CompilerM (c_alt_iter_step_spec _ _ _)
 
-@[spec] theorem c_rep_pre_spec (greedy : Bool) (states : Array Unchecked.State)
+@[spec] private theorem c_rep_pre_spec (greedy : Bool) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.c_rep_pre greedy
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
@@ -131,14 +135,14 @@ set_option trace.profiler.threshold 2000
   intros
   mspec greedy_union_spec
 
-@[spec] theorem c_rep_pre_lift_spec (greedy : Bool) (states : Array Unchecked.State)
+@[spec] private theorem c_rep_pre_lift_spec (greedy : Bool) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_rep_pre greedy : Code.CompilerM Unchecked.StateID)
       ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   exact coe_spec_EStateM_to_CompilerM (c_rep_pre_spec _ _)
 
-@[simp, grind =] theorem cMemAndValid_iff (prev caps : Array NFA.Capture) :
+@[simp, grind =] private theorem cMemAndValid_iff (prev caps : Array NFA.Capture) :
     cMemAndValid prev caps ↔ (∀ a ∈ prev, a ∈ caps) ∧ NFA.Capture.Valid caps := by
   rfl
 
@@ -146,7 +150,7 @@ set_option maxHeartbeats 4000000
 
 mutual
 
-@[spec] theorem c_alt_iter_fold_spec (hirs : Array Hir) (union «end» : Unchecked.StateID)
+@[spec] private theorem c_alt_iter_fold_spec (hirs : Array Hir) (union «end» : Unchecked.StateID)
   (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧ union < states.size ∧ «end» < states.size ∧ NextOfLt states
                 ∧ patchAssignable states union
@@ -198,7 +202,7 @@ mutual
   simp only [ExceptConds.entails.refl]
 termination_by sizeOf hirs
 
-@[spec] theorem c_concat_fold_spec (tail : Array Hir) (sid : Unchecked.StateID)
+@[spec] private theorem c_concat_fold_spec (tail : Array Hir) (sid : Unchecked.StateID)
  (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜(s.1 = states ∧ sid < states.size ∧ NextOfLt states ∧ patchAssignable states sid) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_concat.fold tail sid
@@ -233,7 +237,7 @@ termination_by sizeOf hirs
   rfl
 termination_by sizeOf tail
 
-@[spec] theorem c_alt_iter_spec (alt : Syntax.Alternation) (states : Array Unchecked.State)
+@[spec] private theorem c_alt_iter_spec (alt : Regex.Syntax.Alternation) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧  NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_alt_iter alt
@@ -242,9 +246,9 @@ termination_by sizeOf tail
   unfold Code.c_alt_iter
   split
   expose_names
-  have : sizeOf first < sizeOf (Syntax.Alternation.mk first second tail) := by simp +arith
-  have : sizeOf second < sizeOf (Syntax.Alternation.mk first second tail) := by simp +arith
-  have : sizeOf tail < sizeOf (Syntax.Alternation.mk first second tail) := by simp +arith
+  have : sizeOf first < sizeOf (Regex.Syntax.Alternation.mk first second tail) := by simp +arith
+  have : sizeOf second < sizeOf (Regex.Syntax.Alternation.mk first second tail) := by simp +arith
+  have : sizeOf tail < sizeOf (Regex.Syntax.Alternation.mk first second tail) := by simp +arith
   mspec c_spec
   inst_mvars; grind; grind
   mspec c_spec
@@ -262,7 +266,7 @@ termination_by sizeOf tail
   all_goals grind
 termination_by sizeOf alt
 
-@[spec] theorem c_bounded_spec (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : Bool)
+@[spec] private theorem c_bounded_spec (hir : Hir) (min max : Nat) (greedy : Bool) (possessive : Bool)
   (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧  NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_bounded hir min max greedy possessive
@@ -317,7 +321,7 @@ termination_by sizeOf alt
     all_goals grind
 termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
 
-@[spec] theorem c_lookaround_spec (look : Lookaround) (states : Array Unchecked.State)
+@[spec] private theorem c_lookaround_spec (look : Lookaround) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧ NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_lookaround look
@@ -354,7 +358,7 @@ termination_by sizeOf hir + sizeOf min + sizeOf (max - min) + 1
     all_goals grind
 termination_by sizeOf look
 
-@[spec] theorem c_repetition_spec (rep : Repetition) (states : Array Unchecked.State)
+@[spec] private theorem c_repetition_spec (rep : Repetition) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧ NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_repetition rep
@@ -402,7 +406,7 @@ termination_by sizeOf look
     grind only [patchAssignable_of_eq, = Array.getElem_push, patch2Assignable_of_eq]
 termination_by sizeOf rep
 
-@[spec] theorem c_exactly_spec (hir : Hir) (n : Nat) (states : Array Unchecked.State)
+@[spec] private theorem c_exactly_spec (hir : Hir) (n : Nat) (states : Array Unchecked.State)
    (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧  NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_exactly hir n
@@ -422,7 +426,7 @@ termination_by sizeOf rep
     all_goals grind
 termination_by sizeOf hir + sizeOf n
 
-@[spec] theorem c_concat_spec (hirs : Array Hir) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+@[spec] private theorem c_concat_spec (hirs : Array Hir) (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_concat hirs
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
@@ -447,7 +451,7 @@ termination_by sizeOf hir + sizeOf n
   all_goals grind
 termination_by sizeOf hirs
 
-@[spec] theorem c_exactly_fold_spec (hir : Hir) (n : Nat) («end» : Unchecked.StateID)
+@[spec] private theorem c_exactly_fold_spec (hir : Hir) (n : Nat) («end» : Unchecked.StateID)
   (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧ «end» < states.size ∧  NextOfLt states
                   ∧ patchAssignable states «end»
@@ -484,7 +488,7 @@ termination_by sizeOf hirs
   simp
 termination_by sizeOf hir + sizeOf n
 
-@[spec] theorem c_at_least_spec (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool)
+@[spec] private theorem c_at_least_spec (hir : Hir) (n : Nat) (greedy : Bool) (possessive : Bool)
   (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧  NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_at_least hir n greedy possessive
@@ -539,7 +543,7 @@ termination_by sizeOf hir + sizeOf n
     all_goals grind
 termination_by sizeOf hir + sizeOf n + 1
 
-@[spec] theorem c_bounded_fold_spec  (hir : Hir) (n : Nat) («prefix» : ThompsonRef) (empty : Unchecked.StateID)
+@[spec] private theorem c_bounded_fold_spec  (hir : Hir) (n : Nat) («prefix» : ThompsonRef) (empty : Unchecked.StateID)
   (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧ tRefLt «prefix» states ∧ empty < states.size ∧ NextOfLt states
                  ∧ patchAssignable states «prefix».end
@@ -584,7 +588,7 @@ termination_by sizeOf hir + sizeOf n + 1
   simp
 termination_by sizeOf hir + sizeOf n
 
-@[spec] theorem c_cap_spec (hir : Syntax.Capture) (states : Array Unchecked.State)
+@[spec] private theorem c_cap_spec (hir : Regex.Syntax.Capture) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧  NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c_cap hir
@@ -615,7 +619,7 @@ termination_by sizeOf hir + sizeOf n
   all_goals grind
 termination_by sizeOf hir
 
-@[spec] theorem c_spec (hir : Hir) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+@[spec] private theorem c_spec (hir : Hir) (states : Array Unchecked.State) (captures : Array NFA.Capture)
     : ⦃fun s => ⌜s.1 = states ∧  NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       Code.c hir
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
@@ -653,7 +657,7 @@ termination_by sizeOf hir
 
 end
 
-@[spec] theorem c_init_spec (anchored : Bool)
+@[spec] private theorem c_init_spec (anchored : Bool)
     : ⦃fun s => ⌜s.1.size = 0 ∧ s.2.1.size = 0⌝⦄
       Code.init anchored
       ⦃post⟨fun r s => ⌜tRefLt r s.1 ∧ NextOfLt s.1 ∧ patchAssignable s.1 r.end ∧ cValid s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by

@@ -1,10 +1,14 @@
-import UnicodeBasic
-import Regex.Interval
+module
+
+public import UnicodeBasic
+public import Regex.Interval
+
+public section
 
 namespace Unicode
 
 /-- extract data from records -/
-def extract (data : Array (Array Substring.Raw)) : Array (String × UInt32 × (Option UInt32)) :=
+def  extract (data : Array (Array Substring.Raw)) : Array (String × UInt32 × (Option UInt32)) :=
   let init : Array (String × UInt32 × (Option UInt32)) := #[]
   data |> Array.foldl (init := init) (fun acc record =>
     let val : UInt32 × Option UInt32 :=

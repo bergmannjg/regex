@@ -1,10 +1,14 @@
-import Batteries.Data.Fin.Lemmas
-import Batteries.Data.Nat.Lemmas
-import Regex.Data.Fin.Basic
-import Regex.Data.Nat.Basic
-import Init.Data.UInt.Lemmas
-import Init.Data.BitVec.Basic
-import Init.Data.BitVec.Lemmas
+module
+
+public import Batteries.Data.Fin.Lemmas
+public import Batteries.Data.Nat.Lemmas
+public import Regex.Data.Fin.Basic
+public import Regex.Data.Nat.Basic
+public import Init.Data.UInt.Lemmas
+public import Init.Data.BitVec.Basic
+public import Init.Data.BitVec.Lemmas
+
+@[expose] public section
 
 namespace UInt32
 

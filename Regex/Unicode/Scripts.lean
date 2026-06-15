@@ -1,7 +1,11 @@
-import UnicodeBasic
-import UnicodeData.Scripts
-import Regex.Interval
-import Regex.Unicode.Utils
+module
+
+public import UnicodeBasic
+public import UnicodeData.Scripts
+public import Regex.Interval
+public import Regex.Unicode.Utils
+
+public section
 
 /-!
 ## Script

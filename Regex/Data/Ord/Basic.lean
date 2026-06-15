@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 namespace Ord
 
 theorem toLE_opposite_eq [ord : Ord α] : ∀ (a b : α),

@@ -1,15 +1,19 @@
-import Batteries.Data.String
+module
 
-import Regex.Basic
-import Regex.Syntax.Flavor
-import Regex.Unicode
-import Regex.Nfa
-import Regex.Backtrack
-import Regex.Utils
-import Regex.Syntax.Ast.Parser
-import Regex.Syntax.Translate
-import Regex.Data.Array.Basic
-import Regex.Data.String.Lemmas
+public import Batteries.Data.String
+
+public import Regex.Basic
+public import Regex.Syntax.Flavor
+public import Regex.Unicode
+public import Regex.Nfa
+public import Regex.Backtrack
+public import Regex.Utils
+public import Regex.Syntax.Ast.Parser
+public import Regex.Syntax.Translate
+public import Regex.Data.Array.Basic
+public import Regex.Data.String.Lemmas
+
+public section
 
 namespace Regex
 

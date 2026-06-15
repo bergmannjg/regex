@@ -1,13 +1,17 @@
-import Init.Data.Ord
-import Batteries.Logic
-import Batteries.Data.Nat.Lemmas
-import Batteries.Data.Fin.Lemmas
-import Init.Data.Int.Lemmas
-import Batteries.Data.List.Basic
-import Regex.Utils
-import Regex.Data.Array.Basic
-import Regex.Data.UInt.Basic
-import Regex.Data.Char.Basic
+module
+
+public import Init.Data.Ord
+public import Batteries.Logic
+public import Batteries.Data.Nat.Lemmas
+public import Batteries.Data.Fin.Lemmas
+public import Init.Data.Int.Lemmas
+public import Batteries.Data.List.Basic
+public import Regex.Utils
+public import Regex.Data.Array.Basic
+public import Regex.Data.UInt.Basic
+public import Regex.Data.Char.Basic
+
+@[expose] public section
 
 /-!
 ## Interval Set
@@ -47,7 +51,7 @@ instance (α : Type) [LE α] [DecidableEq α] : DecidableEq (NonemptyInterval α
     match decEq a a' with
     | isTrue e₁ =>
       match decEq b b' with
-      | isTrue e₂  => isTrue (e₁ ▸ e₂ ▸ rfl)
+      | isTrue e₂  => isTrue (by grind)
       | isFalse n₂ => isFalse fun h => absurd (NonemptyInterval.eq_val_of_eq h).right n₂
     | isFalse n₁ => isFalse fun h => absurd (NonemptyInterval.eq_val_of_eq h).left n₁
 

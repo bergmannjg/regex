@@ -1,5 +1,9 @@
-import Batteries.Data.Array.Basic
-import Regex.Utils
+module
+
+public import Batteries.Data.Array.Basic
+public import Regex.Utils
+
+@[expose] public section
 
 /-!
 ## Abstract syntax tree for a single regular expression.
@@ -7,7 +11,7 @@ import Regex.Utils
 The abstract syntax tree `Syntax.AstItems.Ast`.
 -/
 
-namespace Syntax.AstItems
+namespace Regex.Syntax.AstItems
 
 /-- The type of an error that occurred while building an AST. -/
 inductive ErrorKind

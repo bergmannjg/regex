@@ -1,6 +1,11 @@
-import UnicodeBasic
-import Regex.Interval
-import Regex.Unicode.Utils
+module
+
+public import UnicodeBasic
+public import UnicodeBasic.CharacterDatabase
+public import Regex.Interval
+public import Regex.Unicode.Utils
+
+public section
 
 /-!
 ## SentenceBreakProperty
@@ -30,7 +35,7 @@ private def transform (data : Array (Array Substring.Raw)) : Array SentenceBreak
       else acc
     | none => acc.push ⟨name, #[val]⟩)
 
-private unsafe def SentenceBreakProperty.init : IO $ Array SentenceBreakProperty := do
+unsafe def SentenceBreakProperty.init : IO $ Array SentenceBreakProperty := do
   let stream := UCDStream.ofString SentenceBreakProperty.txt
   let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do

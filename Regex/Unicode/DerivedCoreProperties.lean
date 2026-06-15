@@ -1,6 +1,11 @@
-import UnicodeBasic
-import Regex.Interval
-import Regex.Unicode.Utils
+module
+
+public import UnicodeBasic
+public import UnicodeBasic.CharacterDatabase
+public import Regex.Interval
+public import Regex.Unicode.Utils
+
+public section
 
 /-!
 ## DerivedCoreProperties
@@ -30,7 +35,7 @@ private def transform (data : Array (Array Substring.Raw)) : Array DerivedCorePr
       else acc
     | none => acc.push ⟨name, #[val]⟩)
 
-private unsafe def DerivedCoreProperty.init : IO $ Array DerivedCoreProperty := do
+unsafe def DerivedCoreProperty.init : IO $ Array DerivedCoreProperty := do
   let stream := UCDStream.ofString DerivedCoreProperties.txt
   let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do

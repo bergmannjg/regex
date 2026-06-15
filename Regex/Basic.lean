@@ -1,5 +1,9 @@
-import Batteries.Data.String
-import Regex.Data.String.Basic
+module
+
+public import Batteries.Data.String
+public import Regex.Data.String.Basic
+
+public section
 
 namespace Regex
 

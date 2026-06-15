@@ -1,20 +1,24 @@
-import Lean
+module
 
-import RegexTest
+public import Lean
+
+public import RegexTest
+
+public section
 
 open Lean System
 
 namespace Loader.Pcre
 
-private def cZero : Char := ⟨0, by simp +arith +decide⟩
+protected def cZero : Char := ⟨0, by simp +arith +decide⟩
 
-private def octDigitsToChar! (chars : List Char) : Char :=
+protected def octDigitsToChar! (chars : List Char) : Char :=
   match Char.decodeOctDigits chars with
-  | Except.ok n => if h : UInt32.isValidChar n then ⟨n, h⟩ else cZero
-  | Except.error _ => cZero
+  | Except.ok n => if h : UInt32.isValidChar n then ⟨n, h⟩ else Pcre.cZero
+  | Except.error _ => Pcre.cZero
 
 /-- unescape strings from pcre json file generated from perltest.sh via JSON::PP. -/
-private def unescapeStr (s : String) (isHaystack : Bool := false) : String :=
+protected def unescapeStr (s : String) (isHaystack : Bool := false) : String :=
   String.ofList (loop s.toList)
 where
   toChar (a b : Char) : Char :=
@@ -48,36 +52,36 @@ where
       then
         match tail with
         | c2 :: c3 :: tail =>
-          if c2.isDigit && c3.isDigit then octDigitsToChar! [c1, c2, c3] :: (loop tail)
-          else if c2.isDigit then octDigitsToChar! [c1, c2] :: (loop (c3 :: tail))
-          else octDigitsToChar! [c1] :: (loop (c2 :: c3 :: tail))
+          if c2.isDigit && c3.isDigit then Pcre.octDigitsToChar! [c1, c2, c3] :: (loop tail)
+          else if c2.isDigit then Pcre.octDigitsToChar! [c1, c2] :: (loop (c3 :: tail))
+          else Pcre.octDigitsToChar! [c1] :: (loop (c2 :: c3 :: tail))
         | c2 :: [] =>
-          if c2.isDigit then [octDigitsToChar! [c1, c2]]
-          else  [octDigitsToChar! [c1], c2]
-        | [] => [octDigitsToChar! [c1]]
+          if c2.isDigit then [Pcre.octDigitsToChar! [c1, c2]]
+          else  [Pcre.octDigitsToChar! [c1], c2]
+        | [] => [Pcre.octDigitsToChar! [c1]]
       else '\\' :: c1 :: (loop tail)
     | head :: tail => head :: (loop tail)
 
-example : unescapeStr r"\x20" = String.ofList [' '] := by native_decide
+example : Pcre.unescapeStr r"\x20" = String.ofList [' '] := by native_decide
 
-example : unescapeStr r"\x20\x20" = String.ofList [' ', ' '] := by native_decide
+example : Pcre.unescapeStr r"\x20\x20" = String.ofList [' ', ' '] := by native_decide
 
-example : unescapeStr r"\0" = String.ofList [cZero] := by native_decide
+example : Pcre.unescapeStr r"\0" = String.ofList [Pcre.cZero] := by native_decide
 
-example : unescapeStr r"\0\0" = String.ofList [cZero, cZero] := by native_decide
+example : Pcre.unescapeStr r"\0\0" = String.ofList [Pcre.cZero, Pcre.cZero] := by native_decide
 
-example : unescapeStr r"a\0" = String.ofList ['a', cZero] := by native_decide
+example : Pcre.unescapeStr r"a\0" = String.ofList ['a', Pcre.cZero] := by native_decide
 
-example : unescapeStr r"\0a" = String.ofList [cZero, 'a'] := by native_decide
+example : Pcre.unescapeStr r"\0a" = String.ofList [Pcre.cZero, 'a'] := by native_decide
 
-example : unescapeStr r"\12a" = String.ofList ['\n', 'a'] := by native_decide
+example : Pcre.unescapeStr r"\12a" = String.ofList ['\n', 'a'] := by native_decide
 
-example : unescapeStr r"\12" = String.ofList ['\n'] := by native_decide
+example : Pcre.unescapeStr r"\12" = String.ofList ['\n'] := by native_decide
 
-example : unescapeStr r"\123" = String.ofList ['S'] := by native_decide
+example : Pcre.unescapeStr r"\123" = String.ofList ['S'] := by native_decide
 
 /-- A pcre match describes outputs of a pcre regex match generated from perltest.sh. -/
-private structure PcreMatch where
+protected structure PcreMatch where
   «match» : String
   group1 : Option String
   group2 : Option String
@@ -92,15 +96,15 @@ private structure PcreMatch where
 
 /-- A pcre test describes the inputs and expected outputs of a pcre regex match
     generated from perltest.sh. -/
-private structure PcreTest where
+protected structure PcreTest where
   matchExpected : Nat
   pattern : String
   haystack : String
-  «match» : Option $ Array PcreMatch
+  «match» : Option $ Array Pcre.PcreMatch
   noMatch : Option Bool
   deriving Lean.FromJson
 
-private def toSpan (_haystack _match : String ) : Except String $ Option RegexTest.Span := do
+protected def toSpan (_haystack _match : String ) : Except String $ Option RegexTest.Span := do
   if _haystack.length < _match.length then
     Except.error s!"haystack.length < match.length, haystack '{_haystack}' match '{_match}'" else
   if _match.length = 0 then pure <| some ⟨0, 0, some _match⟩ else
@@ -111,21 +115,21 @@ private def toSpan (_haystack _match : String ) : Except String $ Option RegexTe
     pure <| some ⟨f.utf8ByteSize, f.utf8ByteSize + _match.utf8ByteSize, some _match⟩
   | _ => pure none
 
-private def toCaptures (p : PcreTest) : Except String $ (Array RegexTest.Captures) := do
+protected def toCaptures (p : Pcre.PcreTest) : Except String $ (Array RegexTest.Captures) := do
   match p.match with
   | some arr =>
       let captures : Array $ RegexTest.Captures ←
         arr |> Array.mapM (fun m => do
-          let _haystack := unescapeStr p.haystack true
+          let _haystack := Pcre.unescapeStr p.haystack true
           let _match := unescapeStr m.«match»
-          let span ← toSpan _haystack _match
+          let span ← Pcre.toSpan _haystack _match
           let spans ← #[m.group1, m.group2, m.group3, m.group4, m.group5, m.group6]
-                |> Array.mapM (Option.bindM (toSpan _haystack <| unescapeStr ·) ·)
+                |> Array.mapM (Option.bindM (Pcre.toSpan _haystack <| unescapeStr ·) ·)
           pure ⟨Array.append #[span] spans⟩)
       pure captures
   | none => pure #[]
 
-private def setOption (c : Char) (t : RegexTest) : RegexTest :=
+protected def setOption (c : Char) (t : RegexTest) : RegexTest :=
   match c with
   | 'i' => { t with «case-insensitive» := some true }
   | 's' => { t with single_line := some true }
@@ -134,7 +138,7 @@ private def setOption (c : Char) (t : RegexTest) : RegexTest :=
   | 'x' => { t with extended := some .Extended }
   | _ => t
 
-private def toPattern (p : PcreTest) (t : RegexTest) : RegexTest :=
+protected def toPattern (p : Pcre.PcreTest) (t : RegexTest) : RegexTest :=
   let pattern := p.pattern.trimAscii.toString
   if pattern.endsWith "/xx" then
     { t with
@@ -145,34 +149,34 @@ private def toPattern (p : PcreTest) (t : RegexTest) : RegexTest :=
     | (some '/', some '/') =>
         { t with regex := Sum.inl  $ String.ofList (pattern.toList.drop 1).dropLast}
     | (some '/', some c1) =>
-      let t := setOption c1 t
+      let t := Pcre.setOption c1 t
       let data := (pattern.toList.drop 1).dropLast
       match data.getLast? with
       | some '/' => { t with regex :=  Sum.inl $ String.ofList data.dropLast}
       | some c2 =>
-        let t := setOption c2 t
+        let t := Pcre.setOption c2 t
         { t with regex :=  Sum.inl $ String.ofList data.dropLast.dropLast}
       | none => t
     | (_, _) => t
 
-private def toRegexTest (i : Nat) (p : PcreTest) : Except String $ RegexTest := do
-  pure <| toPattern p
+protected def toRegexTest (i : Nat) (p : Pcre.PcreTest) : Except String $ RegexTest := do
+  pure <| Pcre.toPattern p
     {
       name := s!"t{i}"
       regex := Sum.inl ""
-      haystack := unescapeStr p.haystack true
-      «matches» := (← toCaptures p).take p.matchExpected
+      haystack := Pcre.unescapeStr p.haystack true
+      «matches» := (← Pcre.toCaptures p).take p.matchExpected
       «match-limit» := some p.matchExpected
       unescape := some true
       «only-full-match» := some true
     }
 
-def toRegexTestArray (arr : Array PcreTest) : Except String $ Array RegexTest :=
-  arr.mapIdxM (fun i p => toRegexTest i p)
+def toRegexTestArray (arr : Array Pcre.PcreTest) : Except String $ Array RegexTest :=
+  arr.mapIdxM (fun i p => Pcre.toRegexTest i p)
 
-def loadFromString (contents : String) : IO (Array PcreTest) := do
+def loadFromString (contents : String) : IO (Array Pcre.PcreTest) := do
   let json ← IO.ofExcept <| Json.parse contents
-  IO.ofExcept <| fromJson? (α := Array PcreTest) json
+  IO.ofExcept <| fromJson? (α := Array Pcre.PcreTest) json
 
-def load (path : FilePath) : IO (Array PcreTest) := do
+def load (path : FilePath) : IO (Array Pcre.PcreTest) := do
   loadFromString (← IO.FS.readFile path)

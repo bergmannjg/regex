@@ -1,7 +1,12 @@
-import UnicodeBasic
-import Regex.Interval
-import Regex.Unicode.Utils
-import Regex.Unicode.Properties
+module
+
+public import UnicodeBasic
+public import UnicodeBasic.CharacterDatabase
+public import Regex.Interval
+public import Regex.Unicode.Utils
+public import Regex.Unicode.Properties
+
+public section
 
 /-!
 ## GraphemeBreakProperty
@@ -30,7 +35,7 @@ private def transform (data : Array (Array Substring.Raw)) : Array GraphemeBreak
       else acc
     | none => acc.push ⟨name, #[val]⟩)
 
-private unsafe def GraphemeBreakProperty.init : IO $ Array GraphemeBreakProperty := do
+unsafe def GraphemeBreakProperty.init : IO $ Array GraphemeBreakProperty := do
   let stream := UCDStream.ofString GraphemeBreakProperty.txt
   let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do

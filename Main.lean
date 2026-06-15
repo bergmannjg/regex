@@ -1,16 +1,20 @@
-import Init.System.IO
-import Lake.Util.Cli
-import Lake.Util.MainM
-import Lake.CLI.Error
-import Batteries.Data.String
+module
 
-import Regex
-import Regex.Backtrack
+public import Init.System.IO
+public import Lake.Util.Cli
+public import Lake.Util.MainM
+public import Lake.CLI.Error
+public import Batteries.Data.String
+
+public import Regex
+public import Regex.Backtrack
+
+public section
 
 open Lean
 open Lake
 open NFA
-open Syntax
+open Regex.Syntax
 open Regex
 open BoundedBacktracker
 

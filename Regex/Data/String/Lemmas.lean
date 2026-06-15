@@ -1,4 +1,8 @@
-import Batteries.Data.String
+module
+
+public import Batteries.Data.String
+
+@[expose] public section
 
 namespace String
 

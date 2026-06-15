@@ -1,7 +1,11 @@
-import Init.Data.Ord
-import Regex.Utils
-import Regex.Interval.Basic
-import Regex.Interval.Lemmas
+module
+
+public import Init.Data.Ord
+public import Regex.Utils
+public import Regex.Interval.Basic
+public import Regex.Interval.Lemmas
+
+@[expose] public section
 
 /-!
 ## Interval Set

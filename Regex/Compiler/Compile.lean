@@ -1,19 +1,23 @@
-import Init.Meta
-import Batteries.Data.Array.Basic
-import Batteries.Lean.Except
+module
 
-import Std.Tactic.Do
-import Std.Tactic.Do.Syntax
+public import Init.Meta
+public import Batteries.Data.Array.Basic
+public import Batteries.Lean.Except
 
-import Regex.Syntax.Hir
-import Regex.Nfa
-import Regex.Data.Nat.Basic
-import Regex.Compiler.Basic
-import Regex.Compiler.Patch
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
+
+public import Regex.Syntax.Hir
+public import Regex.Nfa
+public import Regex.Data.Nat.Basic
+public import Regex.Compiler.Basic
+public import Regex.Compiler.Patch
+
+@[expose] public section
 
 namespace Compiler
 
-open Syntax
+open Regex.Syntax
 open NFA
 
 namespace Code
@@ -99,7 +103,7 @@ def c_unicode_class (cls : ClassUnicode) : StackM ThompsonRef := do
 def c_literal (c : Char) : StackM ThompsonRef :=
   c_range c.val c.val
 
-def c_look (look : Syntax.Look) : StackM ThompsonRef :=
+def c_look (look : Regex.Syntax.Look) : StackM ThompsonRef :=
   match look with
   | .Start => push' (Unchecked.State.Look NFA.Look.Start 0)
   | .End => push' (Unchecked.State.Look NFA.Look.End 0)
@@ -151,7 +155,7 @@ def get_possible_empty_capture_group (hir : Hir) : Option Nat :=
     match kind with
     | .Repetition ⟨0, _, _, _, _⟩ => some g
     | .Concat hirs => if hirs.all is_possible_empty_repetition then some g else none
-    | .Alternation (Syntax.Alternation.mk fst snd tail) =>
+    | .Alternation (Alternation.mk fst snd tail) =>
         let hirs := tail.push fst |>.push snd
         if (hirs.any is_empty_concat) || (hirs.any is_possible_empty_repetition)
         then some g else none
@@ -420,9 +424,9 @@ def c_alt_iter.fold (hirs : Array Hir) (union «end» : Unchecked.StateID)
       pure s)
 termination_by sizeOf hirs
 
-def c_alt_iter (alt : Syntax.Alternation) : CompilerM ThompsonRef := do
+def c_alt_iter (alt : Alternation) : CompilerM ThompsonRef := do
   match hm : alt with
-  | Syntax.Alternation.mk first second tail =>
+  | Alternation.mk first second tail =>
     have : sizeOf first < sizeOf alt := by simp +arith [*]
     have : sizeOf second < sizeOf alt := by simp +arith [*]
     have : sizeOf tail < sizeOf alt := by simp +arith [*]
@@ -538,7 +542,7 @@ def c_repetition (rep : Repetition) : CompilerM ThompsonRef := do
       if min ≤ max then c_bounded sub min max greedy possessive else c_empty
 termination_by sizeOf rep
 
-def c_cap (hir : Syntax.Capture) : CompilerM ThompsonRef := do
+def c_cap (hir : Regex.Syntax.Capture) : CompilerM ThompsonRef := do
   match hir with
     | .mk group _ sub =>
       let start ← c_cap' Capture.Role.Start group

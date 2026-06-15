@@ -1,6 +1,11 @@
-import UnicodeBasic
-import Regex.Interval
-import Regex.Unicode.Utils
+module
+
+public import UnicodeBasic
+public import UnicodeBasic.CharacterDatabase
+public import Regex.Interval
+public import Regex.Unicode.Utils
+
+public section
 
 /-!
 ## WordBreakProperty
@@ -29,7 +34,7 @@ private def transform (data : Array (Array Substring.Raw)) : Array WordBreakProp
       else acc
     | none => acc.push ⟨name, #[val]⟩)
 
-private unsafe def WordBreakProperty.init : IO $ Array WordBreakProperty := do
+unsafe def WordBreakProperty.init : IO $ Array WordBreakProperty := do
   let stream := UCDStream.ofString WordBreakProperty.txt
   let mut records : Array (Array Substring.Raw) := #[]
   for record in stream do

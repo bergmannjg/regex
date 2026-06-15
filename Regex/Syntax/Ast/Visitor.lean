@@ -1,6 +1,10 @@
-import Regex.Data.Array.Basic
-import Regex.Data.Array.Lemmas
-import Regex.Syntax.Ast.Ast
+module
+
+public import Regex.Data.Array.Basic
+public import Regex.Data.Array.Lemmas
+public import Regex.Syntax.Ast.Ast
+
+public section
 
 /-!
 ## Visitor
@@ -9,7 +13,7 @@ Visit (`Syntax.Ast.visit`) every item in an abstract syntax tree `Syntax.Ast.Ast
 using the class `Syntax.Ast.Visitor`.
 -/
 
-namespace Syntax.AstItems
+namespace Regex.Syntax.AstItems
 
 open Syntax Ast
 

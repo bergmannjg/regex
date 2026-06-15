@@ -1,10 +1,14 @@
-import Batteries.Data.Nat.Lemmas
-import Batteries.Data.Fin.Lemmas
-import Init.Data.Int.Lemmas
-import Batteries.Data.List.Basic
-import Batteries.Data.List.Lemmas
+module
 
-import Regex.Data.Nat.Basic
+public import Batteries.Data.Nat.Lemmas
+public import Batteries.Data.Fin.Lemmas
+public import Init.Data.Int.Lemmas
+public import Batteries.Data.List.Basic
+public import Batteries.Data.List.Lemmas
+
+public import Regex.Data.Nat.Basic
+
+@[expose] public section
 
 namespace List
 

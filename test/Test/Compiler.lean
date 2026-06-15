@@ -1,7 +1,9 @@
-import Batteries.Data.String
-import Regex
+module
 
-open Syntax
+public import Batteries.Data.String
+public import Regex
+
+open Regex.Syntax
 open NFA
 open Regex
 
@@ -132,7 +134,6 @@ error: failed to parse pattern a[, error: unclosed character class
 #guard_msgs in
 def re := regex% "a["
 -/
-
 example : toString nfaOf'a'Checked.states = toString nfaOf'a'.states  := by native_decide
 
 example : toString (regex% "a").nfa.states = toString nfaOf'a'.states := by native_decide

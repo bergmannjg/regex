@@ -1,16 +1,20 @@
-import Init.Data.Fin.Lemmas
-import UnicodeBasic
-import UnicodeData.Basic
-import UnicodeData.PropList
-import Regex.Interval
-import Regex.Unicode.Properties
-import Regex.Unicode.SentenceBreakProperty
-import Regex.Unicode.WordBreakProperty
-import Regex.Unicode.GraphemeBreakProperty
-import Regex.Unicode.DerivedCoreProperties
-import Regex.Unicode.Emoji
-import Regex.Unicode.Scripts
-import Regex.Data.Char.Basic
+module
+
+public import Init.Data.Fin.Lemmas
+public import UnicodeBasic
+public import UnicodeData.Basic
+public import UnicodeData.PropList
+public import Regex.Interval
+public import Regex.Unicode.Properties
+public import Regex.Unicode.SentenceBreakProperty
+public import Regex.Unicode.WordBreakProperty
+public import Regex.Unicode.GraphemeBreakProperty
+public import Regex.Unicode.DerivedCoreProperties
+public import Regex.Unicode.Emoji
+public import Regex.Unicode.Scripts
+public import Regex.Data.Char.Basic
+
+public section
 
 /-!
 ## Unicode

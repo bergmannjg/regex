@@ -1,6 +1,10 @@
-import Std.Time
+module
 
-import Regex
+public import Std.Time
+
+public import Regex
+
+@[expose] public section
 
 namespace RegexTest
 
@@ -119,7 +123,7 @@ def checkFlagIsFalse (f : Option Bool) : Bool :=
 def checkFlagIsTrue (f : Option Bool) : Bool :=
   match f with | some v => v | none => false
 
-private def escape (s : String) : String :=
+protected def escape (s : String) : String :=
   s.replace "\n" "\\n" |>.replace "\r" "\\r" |>.replace (String.ofList [⟨0, by simp +arith +decide⟩]) r"\x00"
 
 instance : ToString RegexTest where
@@ -141,16 +145,16 @@ instance : ToString RegexTest where
 instance : ToString RegexTests where
   toString s := s!"{s.test}"
 
-def checkCompiles (flavor : Syntax.Flavor) (t : RegexTest) : Bool :=
-  let flags : Syntax.Flags := default
+def checkCompiles (flavor : Regex.Syntax.Flavor) (t : RegexTest) : Bool :=
+  let flags : Regex.Syntax.Flags := default
   let config : Compiler.Config := default
   match Regex.build (Sum.val t.regex) flavor flags config with
   | Except.ok _ => true
   | Except.error _ => false
 
-def captures (flavor : Syntax.Flavor) (t : RegexTest)
+def captures (flavor : Regex.Syntax.Flavor) (t : RegexTest)
     : Except String (Array (Regex.Captures t.haystackOf)) := do
-  let flags : Syntax.Flags := default
+  let flags : Regex.Syntax.Flags := default
   let config : Compiler.Config := default
 
   let flags := {flags with case_insensitive := t.«case-insensitive»,
@@ -185,7 +189,7 @@ def checkMatches (arr : Array (Regex.Captures s)) (t : RegexTest) : Bool :=
           | _, _ => (Option.getD t.«only-full-match» false) && 0 < i)
       else false)
 
-private def captureToString (r : Regex.Captures s) : String :=
+protected def captureToString (r : Regex.Captures s) : String :=
   r.matches |> Array.map (fun m =>
     match m with
     | some m => s!"({m.startInclusive.offset}, {m.endExclusive.offset}), "
@@ -198,9 +202,9 @@ private def captureToString (r : Regex.Captures s) : String :=
              else s
     "[" ++ s ++ "]"
 
-private def capturesToString (arr : Array (Regex.Captures s)) : String :=
+protected def capturesToString (arr : Array (Regex.Captures s)) : String :=
   arr
-  |> Array.map (fun c => captureToString c ++ ", ")
+  |> Array.map (fun c => RegexTest.captureToString c ++ ", ")
   |> Array.toList
   |> String.join
   |> fun s =>
@@ -241,7 +245,7 @@ def ignoredTests : List String :=
    "t1488", "t1489" -- empty quote
   ]
 
-def testItem (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
+def testItem (verbose : Bool) (flavor : Regex.Syntax.Flavor) (filename : String) (t : RegexTest) : IO (Nat × Nat × Nat) := do
   if checkFlagIsFalse t.compiles
   then
     if checkCompiles flavor t
@@ -269,12 +273,12 @@ def testItem (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (t : 
         if checkMatches result t
         then
             let dur := stop - start
-            if verbose then IO.println s!"RegexTest({filename}, {t.name}) ok: '{t.regex}' '{t.haystack}' {capturesToString result}, duration {dur.toMilliseconds} msecs"
+            if verbose then IO.println s!"RegexTest({filename}, {t.name}) ok: '{t.regex}' '{t.haystack}' {RegexTest.capturesToString result}, duration {dur.toMilliseconds} msecs"
             pure (1, 0, 0)
         else
           IO.println s!"RegexTest({filename}) failed: {t}"
           IO.println s!"  expected size {t.matches.size}, actual {result.size} "
-          IO.println s!"  match different, expected {t.matches}, actual {capturesToString result}"
+          IO.println s!"  match different, expected {t.matches}, actual {RegexTest.capturesToString result}"
           pure (0, 1, 0)
       | Except.error e =>
           if t.matches.size = 0 then pure (0, 0, 1) else
@@ -283,7 +287,7 @@ def testItem (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (t : 
           IO.println s!"  error {e}"
           pure (0, 1, 0)
 
-def testItems (verbose : Bool) (flavor : Syntax.Flavor) (filename : String) (items : Array RegexTest) : IO (Nat × Nat× Nat) := do
+def testItems (verbose : Bool) (flavor : Regex.Syntax.Flavor) (filename : String) (items : Array RegexTest) : IO (Nat × Nat× Nat) := do
   items |> Array.foldlM (init := (0, 0, 0)) (fun (succeeds, failures, ignored) RegexTest => do
     let (succeed, failure, ignore) ← testItem verbose flavor filename RegexTest
     pure (succeeds + succeed, failures + failure, ignore + ignored))

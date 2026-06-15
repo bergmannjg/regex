@@ -1,5 +1,9 @@
-import UnicodeBasic
-import Regex.Unicode.Utils
+module
+
+public import UnicodeBasic
+public import Regex.Unicode.Utils
+
+public section
 
 /-!
 ## Unicode character properties

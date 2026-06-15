@@ -1,5 +1,9 @@
-import Regex.NFA.Basic
-import Regex.NFA.Lemmas
+module
+
+public import Regex.NFA.Basic
+public import Regex.NFA.Lemmas
+
+public section
 
 namespace NFA
 

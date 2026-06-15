@@ -1,4 +1,8 @@
-import Batteries.Data.List.Lemmas
+module
+
+public import Batteries.Data.List.Lemmas
+
+@[expose] public section
 
 /-!
 ## Utils

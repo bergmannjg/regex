@@ -14568,7 +14568,7 @@
     "haystack": "%ab%",
     "match": [
       {
-        "match": "0x0p+0b%",
+        "match": "%ab%",
         "group1": ""
       }
     ]

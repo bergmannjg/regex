@@ -1,15 +1,19 @@
-import Init.Data.List.Lemmas
-import Init.Data.Order.Lemmas
-import Init.Data.Array.Mem
-import Batteries.Data.Array.Basic
+module
 
-import Std.Tactic.Do
-import Std.Tactic.Do.Syntax
+public import Init.Data.List.Lemmas
+public import Init.Data.Order.Lemmas
+public import Init.Data.Array.Mem
+public import Batteries.Data.Array.Basic
 
-import Regex.Data.List.Lemmas
-import Regex.Data.Ord.Basic
-import Regex.Data.Nat.Basic
-import Regex.Data.Array.Basic
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
+
+public import Regex.Data.List.Lemmas
+public import Regex.Data.Ord.Basic
+public import Regex.Data.Nat.Basic
+public import Regex.Data.Array.Basic
+
+@[expose] public section
 
 namespace Array
 

@@ -1,8 +1,12 @@
-import Batteries.Data.Array.Basic
-import Regex.Utils
-import Regex.Interval
-import Regex.Unicode
-import Regex.Syntax.Grammar.Grammar
+module
+
+public import Batteries.Data.Array.Basic
+public import Regex.Utils
+public import Regex.Interval
+public import Regex.Unicode
+public import Regex.Syntax.Grammar.Grammar
+
+public section
 
 /-!
 ## High-level intermediate representation for a regular expression.
@@ -10,7 +14,7 @@ import Regex.Syntax.Grammar.Grammar
 A high-level intermediate representation `Syntax.Hir` for a regular expression.
 -/
 
-namespace Syntax
+namespace Regex.Syntax
 
 abbrev ClassUnicodeRange := NonemptyInterval Char
 

@@ -1,9 +1,13 @@
-import Init.Meta
-import Parser
-import Regex.Syntax.Flavor
-import Regex.Syntax.Grammar.Basic
+module
+
+public import Init.Meta
+public import Parser
+public import Regex.Syntax.Flavor
+public import Regex.Syntax.Grammar.Basic
 
 open Lean Lean.Syntax Parser Parser.Char
+
+public section
 
 /-! Parse a regular expressions into a `Lean.Syntax` tree according to the `Syntax.Flavor`.
 -/
@@ -17,11 +21,11 @@ inductive ExtendedKind where
 deriving BEq, Repr
 
 /-- State of the parser -/
-private structure Parser where
+structure Parser where
    /-- Flag `x` or 'xx'  -/
   extended : ExtendedKind
 
-instance : Inhabited Parser  := ⟨⟨.None⟩⟩
+instance : Inhabited Regex.Grammar.Parser := ⟨⟨.None⟩⟩
 
 abbrev ParsecM := ReaderT Syntax.Flavor $ StateT Parser SimpleCharParser
 
@@ -37,7 +41,7 @@ private def isMetaCharacterInCharacterClass : Char → Bool
 private def mkLiteral (c : Char) (f t : String.Pos.Raw) : Syntax :=
   mkLit `literal (String.ofList [c]) (SourceInfo.synthetic f t)
 
-private def mkNodeOfKind (kind : SyntaxNodeKind) (s : String) (f t : String.Pos.Raw) : Syntax :=
+private def Grammar.mkNodeOfKind (kind : SyntaxNodeKind) (s : String) (f t : String.Pos.Raw) : Syntax :=
   mkLit kind s (SourceInfo.synthetic f t)
 
 private def mkBackRefOrLiteral (b : String) (c : Char) (f t : String.Pos.Raw) : Syntax :=
@@ -47,14 +51,14 @@ private def mkBackRefOrLiteral (b : String) (c : Char) (f t : String.Pos.Raw) : 
   ]
 
 private def consumeChar? (c : Char ): ParsecM $ Option Syntax := attemptM do
-  Parser.tryCharWithPosMap (· = c) mkLiteral
+  Parser.tryCharWithPosMap (· = c) Grammar.mkLiteral
 
 private def literal (inCharacterClass : Bool := false) : ParsecM Syntax := attemptM do
   let (f, t, c) ← Parser.withPos anyToken
-  if inCharacterClass && !isMetaCharacterInCharacterClass c then
-    pure $ mkLiteral c f t
-  else if !inCharacterClass && !isMetaCharacter c then
-    pure $ mkLiteral c f t
+  if inCharacterClass && !Grammar.isMetaCharacterInCharacterClass c then
+    pure $ Grammar.mkLiteral c f t
+  else if !inCharacterClass && !Grammar.isMetaCharacter c then
+    pure $ Grammar.mkLiteral c f t
   else
     fail "invalid literal character"
 
@@ -64,16 +68,16 @@ private def isWsChar (c : Char) (inCharacterClass : Bool) : Bool :=
 
 private def wsChar (inCharacterClass : Bool) : SimpleCharParser Char := withBacktracking do
   let c ← anyToken
-  if isWsChar c inCharacterClass then return c else fail ""
+  if Grammar.isWsChar c inCharacterClass then return c else fail ""
 
 private def wsChars (inCharacterClass : Bool) : ParsecM Syntax := attemptM do
   let state ← get
   if inCharacterClass && state.extended == ExtendedKind.ExtendedMore
       || !inCharacterClass && state.extended != ExtendedKind.None
   then
-    let (f, t, chars) ← withPos (manyChars (wsChar inCharacterClass))
+    let (f, t, chars) ← withPos (manyChars (Grammar.wsChar inCharacterClass))
     if chars.length > 0  then
-      pure $ mkNodeOfKind `whitespace chars f t
+      pure $ Grammar.mkNodeOfKind `whitespace chars f t
     else fail ""
   else fail ""
 
@@ -85,17 +89,17 @@ private def comments : ParsecM Syntax := attemptM do
     if let some _ ← tryChar (· = '#') then
       if ← testChar (· = '\n') then
         let (f, t, _) ← withPos $ skipChar '\n'
-        pure $ mkNodeOfKind `comment "" f t
+        pure $ Grammar.mkNodeOfKind `comment "" f t
       else
         let (f, t, chars) ← withPos $ manyChars (notFollowedBy (Char.char '\n') *> anyToken) <* skipChar? '\n'
         if chars.length > 0  then
-          pure $ mkNodeOfKind `comment chars f t
+          pure $ Grammar.mkNodeOfKind `comment chars f t
         else fail ""
     else fail ""
   else fail ""
 
 private def skipCommentsAndWsChars : ParsecM Unit := do
-  let _ ← manyM (comments <|> wsChars false)
+  let _ ← manyM (Grammar.comments <|> Grammar.wsChars false)
   pure ()
 
 private def toControlChar  (c : Char) (f t : String.Pos.Raw) : ParsecM Syntax := do
@@ -107,12 +111,12 @@ private def toControlChar  (c : Char) (f t : String.Pos.Raw) : ParsecM Syntax :=
     else fail "invalid control character"
 
   if h : UInt32.isValidChar val
-  then pure $ mkLiteral ⟨val, h⟩ f t
+  then pure $ Grammar.mkLiteral ⟨val, h⟩ f t
   else fail "invalid control character"
 
 private def controlChar : ParsecM Syntax := do
   let (f, t, c) ← withPos anyToken
-  toControlChar c f t
+  Grammar.toControlChar c f t
 
 private def isHexChar (c : Char) : Bool :=
   '0' ≤ c ∧ c ≤ '9' || 'a' ≤ c ∧ c ≤ 'f' || 'A' ≤ c ∧ c ≤ 'F'
@@ -128,24 +132,24 @@ private def hexCharToNat (c : Char) : Nat :=
     0
 
 private def hexChar : ParsecM Nat := attemptM do
-  if let some c ← tryChar isHexChar then pure $ hexCharToNat c
+  if let some c ← tryChar Grammar.isHexChar then pure $ Grammar.hexCharToNat c
   else fail "invalid hex character"
 
 private def isOctChar (c : Char) : Bool :=
   '0' ≤ c ∧ c ≤ '7'
 
 private def octCharToNat (c : Char) : Nat :=
-  if isOctChar c then c.val.toNat - '0'.val.toNat else 0
+  if Grammar.isOctChar c then c.val.toNat - '0'.val.toNat else 0
 
 private def octCharToNat' (c : Char) : Char × Nat :=
-  if isOctChar c then (c, c.val.toNat - '0'.val.toNat) else (c, 0)
+  if Grammar.isOctChar c then (c, c.val.toNat - '0'.val.toNat) else (c, 0)
 
 private def octChar : ParsecM Nat := attemptM do
-  if let some c ← tryChar isOctChar then pure $ octCharToNat c
+  if let some c ← tryChar Grammar.isOctChar then pure $ Grammar.octCharToNat c
   else fail "invalid octal character"
 
 private def octChar' : ParsecM $ Char × Nat := attemptM do
-  if let some c ← tryChar isOctChar then pure $ octCharToNat' c
+  if let some c ← tryChar Grammar.isOctChar then pure $ Grammar.octCharToNat' c
   else fail "invalid octal character"
 
 private def decodeDigits (l : List Nat) (base : Nat) : Char :=
@@ -165,39 +169,39 @@ private def groupLetter : SimpleCharParser Char := Parser.withBacktracking do
 
 private def verticalBar : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos $ Char.char '|'
-  pure $ mkNodeOfKind `verticalBar (String.ofList [c]) f t
+  pure $ Grammar.mkNodeOfKind `verticalBar (String.ofList [c]) f t
 
 private def dot : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos $ Char.char '.'
-  pure $ mkNodeOfKind `dot (String.ofList [c]) f t
+  pure $ Grammar.mkNodeOfKind `dot (String.ofList [c]) f t
 
 private def hyphen : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos $ Char.char '-'
-  pure $ mkNodeOfKind `hyphen (String.ofList [c]) f t
+  pure $ Grammar.mkNodeOfKind `hyphen (String.ofList [c]) f t
 
 private def characterClassSetOperation : ParsecM Syntax := do
   if Syntax.Flavor.Rust == (← read) then attemptM do
     if let some (f, _, c1) ← tryCharWithPos (· = '&') then
       let (_, t, c2) ← withPos $ Char.char '&'
-      pure $ mkNodeOfKind `characterClassSetOperation (String.ofList [c1, c2]) f t
+      pure $ Grammar.mkNodeOfKind `characterClassSetOperation (String.ofList [c1, c2]) f t
     else if let some (f, _, c1) ← tryCharWithPos (· = '-') then
       let (_, t, c2) ← withPos $ Char.char '-'
-      pure $ mkNodeOfKind `characterClassSetOperation (String.ofList [c1, c2]) f t
+      pure $ Grammar.mkNodeOfKind `characterClassSetOperation (String.ofList [c1, c2]) f t
     else if let some (f, _, c1) ← tryCharWithPos (· = '~') then
       let (_, t, c2) ← withPos $ Char.char '~'
-      pure $ mkNodeOfKind `characterClassSetOperation (String.ofList [c1, c2]) f t
+      pure $ Grammar.mkNodeOfKind `characterClassSetOperation (String.ofList [c1, c2]) f t
     else fail ""
   else fail ""
 
 private def assertion : ParsecM Syntax := attemptM do
   if let some (f, t, c) ← tryCharWithPos (fun c => c = '^' || c = '$') then
-    pure $ mkNodeOfKind `simpleAssertion (String.ofList [c]) f t
+    pure $ Grammar.mkNodeOfKind `simpleAssertion (String.ofList [c]) f t
   else fail ""
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC16 -/
 private def groupName : ParsecM String := do
   let takeName (c : Char): ParsecM String :=
-    manyChars (notFollowedBy (Char.char c) *> groupLetter) <* skipChar c
+    manyChars (notFollowedBy (Char.char c) *> Grammar.groupLetter) <* skipChar c
 
   if ← trySkipChar (·  = '<') then takeName '>'
   else if ← trySkipChar (·  = '\'') then takeName '\''
@@ -207,66 +211,66 @@ private def groupName : ParsecM String := do
 private def capturingGroupKind : ParsecM Syntax := attemptM do
   let (f, _, _) ← withPos (Char.char ('?'))
   if ← testChar (fun c1 => c1 = '<' || c1 = '\'' || c1 = 'P') then
-    let (_, t, name) ← withPosM (groupName (← read))
-    pure $ mkNodeOfKind `capturingGroup name f t
+    let (_, t, name) ← withPosM (Grammar.groupName (← read))
+    pure $ Grammar.mkNodeOfKind `capturingGroup name f t
   else fail "invalid capturing group character"
 
 private def atomicGroupKind : ParsecM Syntax := attemptM do
   let (f, _, _) ← withPos (Char.char ('?'))
   if let some (_, t, _) ← tryCharWithPos (· = '>') then
-    pure $ mkNodeOfKind `atomicGroup "" f t
+    pure $ Grammar.mkNodeOfKind `atomicGroup "" f t
   else fail "invalid capturing group character"
 
 private def lookaroundGroupKind : ParsecM Syntax := attemptM do
   let (f, _, c) ← withPos (Char.char ('?'))
   if let some (_, t, c1) ← tryCharWithPos (fun c1 => c1 = '=' || c1 = '!') then
-      pure $ mkNodeOfKind `lookaroundGroup (String.ofList [c, c1]) f t
+      pure $ Grammar.mkNodeOfKind `lookaroundGroup (String.ofList [c, c1]) f t
   else if let some (_, _, c1) ← tryCharWithPos (· = '<') then
       if let some (_, t, c2) ← tryCharWithPos (fun x => x = '=' || x  = '!') then
-        pure $ mkNodeOfKind `lookaroundGroup (String.ofList [c, c1, c2]) f t
+        pure $ Grammar.mkNodeOfKind `lookaroundGroup (String.ofList [c, c1, c2]) f t
       else fail "lookaround char expected"
   else fail "lookaround char expected"
 
 private def defineGroupKind : ParsecM Syntax := attemptM do
   let (f, t, _) ← withPos (Char.char ('?'))
-  skipString "(DEFINE)" *> (pure $ mkNodeOfKind `controlVerbGroup "" f t)
+  skipString "(DEFINE)" *> (pure $ Grammar.mkNodeOfKind `controlVerbGroup "" f t)
 
 private def subroutineGroupKind : ParsecM Syntax := attemptM do
   let (f, t, _) ← withPos (Char.char ('?'))
   let c1 ← peekChar
   if c1 = '?' || c1 = '&' || c1 = '(' || c1 = 'P' || c1 = '|' || c1.isDigit then
-    let chars ← manyChars (notFollowedBy (Char.char ')') *> groupLetter)
-    pure $ mkNodeOfKind `subroutineGroupKind (String.ofList chars.toList)  f t
+    let chars ← manyChars (notFollowedBy (Char.char ')') *> Grammar.groupLetter)
+    pure $ Grammar.mkNodeOfKind `subroutineGroupKind (String.ofList chars.toList)  f t
   else if c1 = '-' then
     skipAnyChar
     let chars ← many1Chars (notFollowedBy (Char.char ')') *> Char.ASCII.numeric)
-    pure $ mkNodeOfKind `subroutineGroupKind (String.ofList ([c1] ++ chars.toList))  f t
+    pure $ Grammar.mkNodeOfKind `subroutineGroupKind (String.ofList ([c1] ++ chars.toList))  f t
   else fail ""
 
 private def commentGroupKind : ParsecM Syntax := attemptM do
   let (f, t, _) ← withPos (Char.char ('?'))
   skipChar '#'
   let chars ← manyChars (notFollowedBy (Char.char ')') *> anyToken)
-  pure $ mkNodeOfKind `commentGroupKind (String.ofList chars.toList)  f t
+  pure $ Grammar.mkNodeOfKind `commentGroupKind (String.ofList chars.toList)  f t
 
 private def namedLookaroundGroupKind : ParsecM Syntax := attemptM do
   let (f, t, _) ← withPos (Char.char ('*'))
-  skipString "pla:" *> (pure $ mkNodeOfKind `lookaroundGroup "?=" f t)
-  <|> skipString "nla:" *> (pure $ mkNodeOfKind `lookaroundGroup "?!"  f t)
-  <|> skipString "plb:" *> (pure $ mkNodeOfKind `lookaroundGroup "?<=" f t)
-  <|> skipString "nlb:" *> (pure $ mkNodeOfKind `lookaroundGroup "?<!" f t)
+  skipString "pla:" *> (pure $ Grammar.mkNodeOfKind `lookaroundGroup "?=" f t)
+  <|> skipString "nla:" *> (pure $ Grammar.mkNodeOfKind `lookaroundGroup "?!"  f t)
+  <|> skipString "plb:" *> (pure $ Grammar.mkNodeOfKind `lookaroundGroup "?<=" f t)
+  <|> skipString "nlb:" *> (pure $ Grammar.mkNodeOfKind `lookaroundGroup "?<!" f t)
 
 private def controlName : SimpleCharParser Syntax := withBacktracking do
   if let some (f, t, _) ← tryCharWithPos (· = ':') then
     let chars ← manyChars (Char.ASCII.alphanum <|> Char.char '(')
-    pure $ mkNodeOfKind `controlName (String.ofList chars.toList)  f t
-  else pure $ mkNodeOfKind `controlName ""  0 0
+    pure $ Grammar.mkNodeOfKind `controlName (String.ofList chars.toList)  f t
+  else pure $ Grammar.mkNodeOfKind `controlName ""  0 0
 
 private def controlVerbGroupKind : ParsecM Syntax := attemptM do
   let (f, t, _) ← withPos (Char.char ('*'))
   withBacktracking ((chars "ACCEPT" <|> chars "COMMIT" <|> chars "MARK" <|> chars "PRUNE"
       <|> chars "SKIP" <|> chars "THEN")
-    *> controlName *> (pure $ mkNodeOfKind `controlVerbGroup "" f t))
+    *> controlName *> (pure $ Grammar.mkNodeOfKind `controlVerbGroup "" f t))
   <|> controlName
 
 private def containsString (s m : String) : Bool :=
@@ -276,7 +280,7 @@ private def containsString (s m : String) : Bool :=
 private def toExtendedKind (flags : String) : ExtendedKind :=
   if flags.contains '-' && flags.contains 'x'
     && flags.find (· = '-') < flags.find (· = 'x') then .None
-  else if containsString flags "xx" then .ExtendedMore
+  else if Grammar.containsString flags "xx" then .ExtendedMore
   else if flags.contains 'x' then .Extended
   else .None
 
@@ -293,93 +297,93 @@ private def nonCapturingGroupKind : ParsecM Syntax := attemptM do
   let flags ← manyChars
     (notFollowedBy (Char.char ':' <|> Char.char ')') *> (Char.ASCII.alphanum <|> Char.char '-' <|> Char.char '^')) <* skipChar? ':'
 
-  let flags := expandFlags flags
+  let flags := Grammar.expandFlags flags
   if flags.length > 0 then
     let state ← get
-    set {state with extended := toExtendedKind flags}
+    set {state with extended := Grammar.toExtendedKind flags}
 
-  pure $ mkNodeOfKind `nonCapturingGroup flags f t
+  pure $ Grammar.mkNodeOfKind `nonCapturingGroup flags f t
 
 private def groupKind : ParsecM Syntax := do
   if ← testChar (· = '?')
-  then atomicGroupKind <|> subroutineGroupKind <|> capturingGroupKind
-                  <|> lookaroundGroupKind <|> commentGroupKind
-                  <|> nonCapturingGroupKind <|> defineGroupKind
+  then Grammar.atomicGroupKind <|> Grammar.subroutineGroupKind <|> Grammar.capturingGroupKind
+                  <|> Grammar.lookaroundGroupKind <|> Grammar.commentGroupKind
+                  <|> Grammar.nonCapturingGroupKind <|> Grammar.defineGroupKind
 
-  else if ← testChar (· = '*') then (namedLookaroundGroupKind <|> controlVerbGroupKind)
+  else if ← testChar (· = '*') then (Grammar.namedLookaroundGroupKind <|> Grammar.controlVerbGroupKind)
   else pure $ mkLit `capturingGroup "" (SourceInfo.none)
 
 namespace EscapeSeq
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC5 -/
 private def hexChars (f t : String.Pos.Raw): ParsecM Syntax := attemptM do
-  if let some (_, t, arr) ← tryCharThenPWithPosM (· = '{') (parenWithCharsM hexChar) then
-    pure $ mkLiteral (decodeDigits arr.toList 16) f t
-  else if let some (_, t, u1) ← tryCharThenPWithPosM isHexChar hexChar then
-    if let some (_, t, u2) ← tryCharThenPWithPosM isHexChar hexChar  then
-        pure $ mkLiteral (decodeDigits [u1, u2] 16) f t
-    else pure $ mkLiteral (decodeDigits [u1] 16) f t
-  else pure $ mkLiteral (decodeDigits [0] 16) f t
+  if let some (_, t, arr) ← tryCharThenPWithPosM (· = '{') (Grammar.parenWithCharsM Grammar.hexChar) then
+    pure $ Grammar.mkLiteral (Grammar.decodeDigits arr.toList 16) f t
+  else if let some (_, t, u1) ← tryCharThenPWithPosM Grammar.isHexChar Grammar.hexChar then
+    if let some (_, t, u2) ← tryCharThenPWithPosM Grammar.isHexChar Grammar.hexChar  then
+        pure $ Grammar.mkLiteral (Grammar.decodeDigits [u1, u2] 16) f t
+    else pure $ Grammar.mkLiteral (Grammar.decodeDigits [u1] 16) f t
+  else pure $ Grammar.mkLiteral (Grammar.decodeDigits [0] 16) f t
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC5 -/
 private def octChars (inCharacterClass : Bool) (c : Char) (u1 : Nat) (f t : String.Pos.Raw)
     : ParsecM Syntax := attemptM do
-  if let some (_, _, (c2, u2)) ← tryCharThenPWithPosM isOctChar octChar' then
-    if let some (_, _, u3) ← tryCharThenPWithPosM isOctChar octChar then
-      pure $ mkLiteral (decodeDigits [u1, u2, u3] 8) f t
+  if let some (_, _, (c2, u2)) ← tryCharThenPWithPosM Grammar.isOctChar Grammar.octChar' then
+    if let some (_, _, u3) ← tryCharThenPWithPosM Grammar.isOctChar Grammar.octChar then
+      pure $ Grammar.mkLiteral (Grammar.decodeDigits [u1, u2, u3] 8) f t
     else
       if inCharacterClass || (u1 = 0 && u2 = 0)
-      then pure $ mkLiteral (decodeDigits [u1, u2] 8) f t
-      else pure $ mkBackRefOrLiteral (String.ofList [c, c2]) (decodeDigits [u1, u2] 8) f t
+      then pure $ Grammar.mkLiteral (Grammar.decodeDigits [u1, u2] 8) f t
+      else pure $ Grammar.mkBackRefOrLiteral (String.ofList [c, c2]) (Grammar.decodeDigits [u1, u2] 8) f t
   else if inCharacterClass || c = '0' then
     if h : UInt32.isValidChar u1.toUInt32 then
-      pure $ mkLiteral ⟨u1.toUInt32, h⟩ f t
+      pure $ Grammar.mkLiteral ⟨u1.toUInt32, h⟩ f t
     else fail ""
-  else pure $ mkNodeOfKind `backReferenceNumber (String.ofList [c]) f t
+  else pure $ Grammar.mkNodeOfKind `backReferenceNumber (String.ofList [c]) f t
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC5 -/
 private def nonPrintingChar (inCharacterClass : Bool := false) : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos anyToken
-  if c = 'a' then pure $ mkLiteral '\x07' f t
-  else if c = 'a' then pure $ mkLiteral '\x07' f t
-  else if c = 'c' then controlChar
-  else if c = 'e' then pure $ mkLiteral '\x1b' f t
-  else if c = 'E' then pure $ mkNodeOfKind `endQuote (String.ofList [c]) f t
-  else if c = 'f' then pure $ mkLiteral '\x0c' f t
-  else if c = 'n' then pure $ mkLiteral '\x0a' f t
-  else if c = 'r' then pure $ mkLiteral '\x0d' f t
-  else if c = 't' then pure $ mkLiteral '\x09' f t
+  if c = 'a' then pure $ Grammar.mkLiteral '\x07' f t
+  else if c = 'a' then pure $ Grammar.mkLiteral '\x07' f t
+  else if c = 'c' then Grammar.controlChar
+  else if c = 'e' then pure $ Grammar.mkLiteral '\x1b' f t
+  else if c = 'E' then pure $ Grammar.mkNodeOfKind `endQuote (String.ofList [c]) f t
+  else if c = 'f' then pure $ Grammar.mkLiteral '\x0c' f t
+  else if c = 'n' then pure $ Grammar.mkLiteral '\x0a' f t
+  else if c = 'r' then pure $ Grammar.mkLiteral '\x0d' f t
+  else if c = 't' then pure $ Grammar.mkLiteral '\x09' f t
   else if c = 'o' then
-    let (_, t, arr) ← withPosM (parenWithCharsM octChar)
-    pure $ mkLiteral (decodeDigits arr.toList 8) f t
-  else if c = 'x' then hexChars f t
-  else if isOctChar c then octChars inCharacterClass c (octCharToNat c) f t
+    let (_, t, arr) ← withPosM (Grammar.parenWithCharsM Grammar.octChar)
+    pure $ Grammar.mkLiteral (Grammar.decodeDigits arr.toList 8) f t
+  else if c = 'x' then EscapeSeq.hexChars f t
+  else if Grammar.isOctChar c then EscapeSeq.octChars inCharacterClass c (Grammar.octCharToNat c) f t
   else fail "fail nonPrintingChar"
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC19 -/
 private def backReference : ParsecM Syntax := attemptM do
   if let some (f, t, c) ← tryCharWithPos Char.isDigit then
-    pure $ mkNodeOfKind `backReferenceNumber (String.ofList [c]) f t
+    pure $ Grammar.mkNodeOfKind `backReferenceNumber (String.ofList [c]) f t
   else if let some _ ← tryCharWithPos (· = 'g') then
     if ← testChar (· = '{') then
-      let (f, t, chars) ← withPosM $ (parenWithCharsM (Parser.coeSimpleParser.coe (groupLetter <|> char '-')))
+      let (f, t, chars) ← withPosM $ (Grammar.parenWithCharsM (Parser.coeSimpleParser.coe (Grammar.groupLetter <|> char '-')))
 
       let kind := if Array.all chars (fun c => c.isDigit || c = '-')
                   then `backReferenceNumber
                   else `backReferenceName
-      pure $ mkNodeOfKind kind (String.ofList chars.toList) f t
+      pure $ Grammar.mkNodeOfKind kind (String.ofList chars.toList) f t
     else if let some (f, _, cm) ← tryCharWithPos (· = '-') then
       if let some (_, t, c) ← tryCharWithPos Char.isDigit then
-        pure $ mkNodeOfKind `backReferenceNumber (String.ofList [cm, c]) f t
+        pure $ Grammar.mkNodeOfKind `backReferenceNumber (String.ofList [cm, c]) f t
       else fail ""
     else if let some (f, t, c) ← tryCharWithPos Char.isDigit then
-      pure $ mkNodeOfKind `backReferenceNumber (String.ofList [c]) f t
+      pure $ Grammar.mkNodeOfKind `backReferenceNumber (String.ofList [c]) f t
     else fail ""
   else if let some _ ← tryCharWithPos (· = 'k') then
     if ← testChar (· = '<') then
-      let (f, t, chars) ← withPosM $ parenWithCharsM groupLetter '<' '>'
+      let (f, t, chars) ← withPosM $ Grammar.parenWithCharsM Grammar.groupLetter '<' '>'
       let kind := `backReferenceName
-      pure $ mkNodeOfKind kind (String.ofList chars.toList) f t
+      pure $ Grammar.mkNodeOfKind kind (String.ofList chars.toList) f t
     else fail ""
   else fail ""
 
@@ -387,24 +391,24 @@ private def genericCharacterType : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos anyToken
   if c = 'd' || c = 'D' || c = 'h' || c = 'H' || c = 'N' || c = 's' || c = 'S'
      || c = 'v' || c = 'V' || c = 'w' || c = 'W'
-  then pure $ mkNodeOfKind `genericCharacterType (String.ofList [c]) f t
+  then pure $ Grammar.mkNodeOfKind `genericCharacterType (String.ofList [c]) f t
   else fail ""
 
 private def simpleAssertion (inCharacterClass : Bool := false) : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos anyToken
-  if c = 'b' && inCharacterClass then pure $ mkLiteral ⟨8, by simp +arith +decide⟩ f t
+  if c = 'b' && inCharacterClass then pure $ Grammar.mkLiteral ⟨8, by simp +arith +decide⟩ f t
   else if (← read) == Syntax.Flavor.Rust && (← testChar (c = 'b' && · = '{')) then
-    let (_, t, chars) ← withPosM (parenWithCharsM (Parser.coeSimpleParser.coe (Char.ASCII.alphanum <|> char '-')))
+    let (_, t, chars) ← withPosM (Grammar.parenWithCharsM (Parser.coeSimpleParser.coe (Char.ASCII.alphanum <|> char '-')))
     let s := String.ofList chars.toList
     if s = "start" || s = "end" || s = "start-half" || s = "end-half"
-    then pure $ mkNodeOfKind `simpleAssertion s f t
+    then pure $ Grammar.mkNodeOfKind `simpleAssertion s f t
     else fail ""
   else if c = 'b' || c = 'B' || c = 'A' || c = 'Z' || c = 'z' || c = 'G' || c = 'K' then
-    pure $ mkNodeOfKind `simpleAssertion (String.ofList [c]) f t
+    pure $ Grammar.mkNodeOfKind `simpleAssertion (String.ofList [c]) f t
   else fail ""
 
 private def unicodeCharacterProperty : ParsecM Syntax := attemptM do
-  let name := manyChars (groupLetter <|> Char.char '_')
+  let name := manyChars (Grammar.groupLetter <|> Char.char '_')
   if let some c ← tryChar (fun c => c = 'p' || c = 'P') then
     let kind := if c = 'p' then `unicodeCharacterProperty else `unicodeCharacterPropertyNegated
     if ← trySkipChar (· = '{') then
@@ -428,7 +432,7 @@ private def unicodeCharacterProperty : ParsecM Syntax := attemptM do
 
 private def escapedChar : ParsecM Syntax := attemptM do
   let (f, t, c) ← withPos anyToken
-  pure $ mkLiteral c f t
+  pure $ Grammar.mkLiteral c f t
 
 private def literalChars : ParsecM Syntax := attemptM do
   skipChar 'Q'
@@ -441,17 +445,17 @@ private def escapeSeq (inCharacterClass : Bool := false) : ParsecM Syntax := att
   let c ← peekChar
   if c = '\\' then
     skipChar c
-    literalChars <|> nonPrintingChar inCharacterClass
-          <|> (if !inCharacterClass then backReference else fail "")
-          <|> simpleAssertion inCharacterClass
-          <|> genericCharacterType   <|> unicodeCharacterProperty
-          <|> escapedChar
+    EscapeSeq.literalChars <|> EscapeSeq.nonPrintingChar inCharacterClass
+          <|> (if !inCharacterClass then EscapeSeq.backReference else fail "")
+          <|> EscapeSeq.simpleAssertion inCharacterClass
+          <|> EscapeSeq.genericCharacterType   <|> EscapeSeq.unicodeCharacterProperty
+          <|> EscapeSeq.escapedChar
   else fail ""
 
 end EscapeSeq
 
 private def repetitionModifier : ParsecM Syntax := do
-  skipCommentsAndWsChars
+  Grammar.skipCommentsAndWsChars
   match ← peekChar? with
   | some c =>
     if c = '+' || c = '?'
@@ -476,63 +480,63 @@ private def repetitionContent : ParsecM Syntax := attemptM do
     else
       ws
       let b ← manyChars Char.ASCII.numeric
-      let litA := toRepetitionLeft ""
-      let litB := toRepetitionRight b
+      let litA := Grammar.toRepetitionLeft ""
+      let litB := Grammar.toRepetitionRight b
       ws
       let (_, t, _) ← withPos (Char.char ('}'))
-      let modifier ← repetitionModifier
+      let modifier ← Grammar.repetitionModifier
       pure $ Syntax.node (SourceInfo.synthetic f t) `repetition #[litA, litB, modifier]
   else
     let (f, _, a) ← withPos $ manyChars Char.ASCII.numeric
     ws
-    let litA := toRepetitionLeft a
+    let litA := Grammar.toRepetitionLeft a
     let c ← peekChar
     if c = '}' then
       let (_, t, _) ← withPos (Char.char ('}'))
-      let litB := toRepetitionRight a
-      let modifier ← repetitionModifier
+      let litB := Grammar.toRepetitionRight a
+      let modifier ← Grammar.repetitionModifier
       pure $ Syntax.node (SourceInfo.synthetic f t) `repetition #[litA, litB, modifier]
     else
       skipChar ','
       ws
       let b ← manyChars Char.ASCII.numeric
       ws
-      let litB := toRepetitionRight b
+      let litB := Grammar.toRepetitionRight b
       let (_, t, _) ← withPos (Char.char ('}'))
-      let modifier ← repetitionModifier
+      let modifier ← Grammar.repetitionModifier
       pure $ Syntax.node (SourceInfo.synthetic f t) `repetition #[litA, litB, modifier]
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC17 -/
 private def repetition : ParsecM Syntax := attemptM do
-  skipCommentsAndWsChars
+  Grammar.skipCommentsAndWsChars
   let c ← peekChar
   if c = '{' then
     let (f, t, _) ← withPos (Char.char ('{'))
     if let some (f1, t1, _) ← tryCharWithPos (· = '}')
     then
       pure $ Syntax.node (SourceInfo.synthetic f t1) `sequence #[
-          mkLiteral '{' f t,
-          mkLiteral '}' f1 t1
+          Grammar.mkLiteral '{' f t,
+          Grammar.mkLiteral '}' f1 t1
       ]
     else
-      repetitionContent <|> (pure $ mkLiteral c f t)
+      Grammar.repetitionContent <|> (pure $ Grammar.mkLiteral c f t)
   else if c = '*' then
     let (f, t, _) ← withPos (Char.char ('*'))
-    let litA := toRepetitionLeft "0"
-    let litB := toRepetitionRight ""
-    let modifier ← repetitionModifier
+    let litA := Grammar.toRepetitionLeft "0"
+    let litB := Grammar.toRepetitionRight ""
+    let modifier ← Grammar.repetitionModifier
     pure $ Syntax.node (SourceInfo.synthetic f t) `repetition #[litA, litB, modifier]
   else if c = '+' then
     let (f, t, _) ← withPos (Char.char ('+'))
-    let litA := toRepetitionLeft "1"
-    let litB := toRepetitionRight ""
-    let modifier ← repetitionModifier
+    let litA := Grammar.toRepetitionLeft "1"
+    let litB := Grammar.toRepetitionRight ""
+    let modifier ← Grammar.repetitionModifier
     pure $ Syntax.node (SourceInfo.synthetic f t) `repetition #[litA, litB, modifier]
   else if c = '?' then
     let (f, t, _) ← withPos (Char.char ('?'))
-    let litA := toRepetitionLeft "0"
-    let litB := toRepetitionRight "1"
-    let modifier ← repetitionModifier
+    let litA := Grammar.toRepetitionLeft "0"
+    let litB := Grammar.toRepetitionRight "1"
+    let modifier ← Grammar.repetitionModifier
     pure $ Syntax.node (SourceInfo.synthetic f t) `repetition #[litA, litB, modifier]
   else fail ""
 
@@ -540,19 +544,19 @@ private def posixCharacterClass : SimpleCharParser Syntax := withBacktracking do
   let (f, _, _) ← withPos $ chars "[:"
   let (_, t, chars) ← withPos $
       manyChars (notFollowedBy (chars ":]") *> (Char.ASCII.alphanum <|> Char.char '^')) <* chars ":]"
-  pure $ mkNodeOfKind `posixCharacterClass chars f t
+  pure $ Grammar.mkNodeOfKind `posixCharacterClass chars f t
 
 private def consumeStartOfCharacterClass : ParsecM $ Array Syntax := attemptM do
-  if let some stx ← consumeChar? '^' then
-    if let some stx' ← consumeChar? ']' then pure #[stx, stx']
+  if let some stx ← Grammar.consumeChar? '^' then
+    if let some stx' ← Grammar.consumeChar? ']' then pure #[stx, stx']
     else pure #[stx]
-  else if let some stx ← consumeChar? ']' then pure #[stx]
+  else if let some stx ← Grammar.consumeChar? ']' then pure #[stx]
   else pure #[]
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC9 -/
 private def characterClass (val : ParsecM Syntax) : ParsecM Syntax := attemptM do
   let (f, _, _) ← withPos (Char.char ('['))
-  let start ← consumeStartOfCharacterClass
+  let start ← Grammar.consumeStartOfCharacterClass
   let arr ← manyM (val (← read))
   let (_, t, _) ← withPos (Char.char (']'))
   pure $ Syntax.node (SourceInfo.synthetic f t) `characterClass (start ++ arr)
@@ -575,14 +579,14 @@ private def getFlags (x : Syntax) : Option String :=
 private def group (val : ParsecM Syntax) : ParsecM Syntax := attemptM do
   let state ← get
   let (f, _, _) ← withPos (Char.char ('('))
-  let kind ← groupKind
+  let kind ← Grammar.groupKind
   let arr ← manyM val
   let (_, t, _) ← withPos (Char.char (')'))
 
-  let flags := Option.getD (getFlags kind) ""
+  let flags := Option.getD (Grammar.getFlags kind) ""
   if arr.size =  0 then -- set state in outer group
     let state ← get
-    set {state with extended := toExtendedKind flags}
+    set {state with extended := Grammar.toExtendedKind flags}
   else set state -- set previous state
 
   pure $ Syntax.node (SourceInfo.synthetic f t) `group (#[kind] ++ arr)
@@ -593,8 +597,8 @@ private def val : ParsecM $ Syntax :=
     <|> characterClass valInCharacterClass <|> repetition <|> comments
     <|> wsChars false <|> dot <|> literal
 
-private def sequence : ParsecM $ TSyntax `sequence := do
-  let (f, t, arr) ← withPosM (manyM val)
+def sequence : ParsecM $ TSyntax `sequence := do
+  let (f, t, arr) ← withPosM (manyM Grammar.val)
   pure $ (TSyntax.mk (Syntax.node (SourceInfo.synthetic f t) `sequence arr))
 
 /-- Parse a PCRE2 regular expressions into a `Lean.Syntax` tree. -/

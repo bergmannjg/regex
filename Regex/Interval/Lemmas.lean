@@ -1,17 +1,21 @@
-import Init.Data.Ord
-import Batteries.Logic
-import Batteries.Data.Nat.Lemmas
-import Batteries.Data.Fin.Lemmas
-import Init.Data.Int.Lemmas
-import Batteries.Data.List.Basic
-import Batteries.Data.Array.Lemmas
-import Regex.Utils
-import Regex.Data.UInt.Basic
-import Regex.Data.Char.Basic
-import Regex.Data.List.Lemmas
-import Regex.Data.Array.Basic
-import Regex.Data.Array.Lemmas
-import Regex.Interval.Basic
+module
+
+public import Init.Data.Ord
+public import Batteries.Logic
+public import Batteries.Data.Nat.Lemmas
+public import Batteries.Data.Fin.Lemmas
+public import Init.Data.Int.Lemmas
+public import Batteries.Data.List.Basic
+public import Batteries.Data.Array.Lemmas
+public import Regex.Utils
+public import Regex.Data.UInt.Basic
+public import Regex.Data.Char.Basic
+public import Regex.Data.List.Lemmas
+public import Regex.Data.Array.Basic
+public import Regex.Data.Array.Lemmas
+public import Regex.Interval.Basic
+
+@[expose] public section
 
 namespace Intervals
 

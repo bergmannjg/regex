@@ -1,9 +1,13 @@
-import Batteries.Data.Fin.Basic
-import Regex.Utils
-import Regex.Data.List.Lemmas
-import Regex.Data.Array.Basic
-import Regex.Data.Array.Lemmas
-import Regex.NFA.Basic
+module
+
+public import Batteries.Data.Fin.Basic
+public import Regex.Utils
+public import Regex.Data.List.Lemmas
+public import Regex.Data.Array.Basic
+public import Regex.Data.Array.Lemmas
+public import Regex.NFA.Basic
+
+@[expose] public section
 
 namespace NFA
 

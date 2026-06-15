@@ -1,9 +1,13 @@
-import Regex.Syntax.Grammar.Grammar
-import Regex.Data.Array.Basic
-import Regex.Data.Array.Lemmas
-import Batteries.Data.Array.Basic
+module
+
+public import Regex.Syntax.Grammar.Grammar
+public import Regex.Data.Array.Basic
+public import Regex.Data.Array.Lemmas
+public import Batteries.Data.Array.Basic
 
 open Lean Lean.Parser
+
+public section
 
 /-!
 ## Translate

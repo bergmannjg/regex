@@ -1,7 +1,11 @@
-import Batteries.Data.Fin.Basic
-import Regex.Utils
-import Regex.Data.List.Lemmas
-import Regex.Data.Array.Basic
+module
+
+public import Batteries.Data.Fin.Basic
+public import Regex.Utils
+public import Regex.Data.List.Lemmas
+public import Regex.Data.Array.Basic
+
+@[expose] public section
 
 namespace NFA
 
@@ -228,7 +232,7 @@ inductive State where
   | Match (pattern_id : PatternID) : State
 deriving BEq, DecidableEq
 
-private def beq' :  State → State → Bool
+def beq' :  State → State → Bool
   | .Empty n1 , .Empty n2  => n1 = n2
   | .ByteRange trans1 , .ByteRange trans2  =>
       trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next
@@ -401,7 +405,7 @@ inductive State (n : Nat) where
   | Match (pattern_id : PatternID) : State n
 deriving BEq, DecidableEq
 
-private def beq' :  State n → State n → Bool
+def beq' :  State n → State n → Bool
   | .Empty ⟨n1, _⟩ , .Empty ⟨n2, _⟩  => n1 = n2
   | .ByteRange trans1 , .ByteRange trans2  =>
       trans1.start = trans2.start && trans1.«end» = trans2.«end» && trans1.next = trans2.next

@@ -1,6 +1,10 @@
-import Batteries.Data.Nat.Lemmas
-import Regex.Data.UInt.Basic
-import Batteries.Data.Char.Basic
+module
+
+public import Batteries.Data.Nat.Lemmas
+public import Regex.Data.UInt.Basic
+public import Batteries.Data.Char.Basic
+
+@[expose] public section
 
 namespace Char
 

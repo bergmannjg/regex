@@ -1,21 +1,22 @@
-import Lean.Util
+module
 
-import Batteries.Data.Nat.Lemmas
-import Batteries.Tactic.Exact
-import Batteries.Data.String
+public import Lean.Util
 
-import Regex.Basic
-import Regex.Syntax.Hir
-import Regex.Nfa
-import Regex.Compiler
-import Regex.Utils
-import Regex.Data.Array.Basic
-import Regex.Data.Array.Lemmas
-import Regex.Data.String.Lemmas
-import Regex.Data.List.Lemmas
-import Regex.Data.Nat.Basic
-import Regex.Data.String.Basic
+public import Batteries.Data.Nat.Lemmas
+public import Batteries.Tactic.Exact
+public import Batteries.Data.String
 
+public import Regex.Basic
+public import Regex.Syntax.Hir
+public import Regex.Nfa
+public import Regex.Compiler
+public import Regex.Utils
+public import Regex.Data.Array.Basic
+public import Regex.Data.Array.Lemmas
+public import Regex.Data.String.Lemmas
+public import Regex.Data.List.Lemmas
+public import Regex.Data.Nat.Basic
+public import Regex.Data.String.Basic
 
 /-!
 ## BoundedBacktracker
@@ -38,7 +39,7 @@ open NFA
 namespace Array.Ref
 
 /-- make reference of array -/
-def mkRef {α β : Type} [Inhabited β] (arr : Array α) : ST.Ref β (Array α) :=
+public def mkRef {α β : Type} [Inhabited β] (arr : Array α) : ST.Ref β (Array α) :=
   let st : ST β (ST.Ref β (Array α)) := ST.Prim.mkRef arr
   st (Void.mk default) |>.val
 
@@ -46,12 +47,12 @@ instance {α β : Type} [Inhabited β] : Inhabited (ST.Ref β (Array α)) where
   default := mkRef #[]
 
 /-- get array of reference -/
-def getRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) : Array α :=
+public def getRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) : Array α :=
   let st := ST.Prim.Ref.get ref
   st (Void.mk default) |>.val
 
 /-- modify array, try to perform the update destructively -/
-def modifyRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) (index : Nat) (value : α)
+public def modifyRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) (index : Nat) (value : α)
   (f : ST.Out β Unit → Bool := fun _ => True)
     : ST.Ref β (Array α)  :=
   let st := ST.Prim.Ref.modify ref (fun arr =>
@@ -65,7 +66,7 @@ def modifyRefValue {α β : Type} [Inhabited β] (ref : ST.Ref β (Array α)) (i
 end Array.Ref
 
 /-- Char position in a slice of some underlying string. -/
-structure CharPos (s : String.Slice) where
+public structure CharPos (s : String.Slice) where
   /-- current position -/
   pos : String.Slice.Pos s := s.startPos
   /-- char at current position -/
@@ -87,7 +88,7 @@ instance : ToString (String.Slice.Pos s) where
 namespace CharPos
 
 /-- create a CharPos from `s` and position `«at»` -/
-def create (s : String.Slice) («at» : String.Slice.Pos s)
+public def create (s : String.Slice) («at» : String.Slice.Pos s)
     : CharPos s :=
   let prev? := if _ : «at» = s.startPos then none
     else some ((«at».prev (by assumption)).get (by exact String.Slice.Pos.prev_ne_endPos))
@@ -109,7 +110,7 @@ def prevn (offset : Nat) (cp : CharPos s) : Option (CharPos s) :=
     else cp
 
 /-- to next position of `cp` -/
-def next (cp : CharPos s) : CharPos s :=
+public def next (cp : CharPos s) : CharPos s :=
   if h : cp.pos = s.endPos then cp
   else
     match cp.curr? with
@@ -129,13 +130,13 @@ def atStop (cp : CharPos s) : Bool :=
 end CharPos
 
 /-- Represents a stack frame on the heap while doing backtracking. -/
-inductive Frame (n : Nat) (s : String.Slice) where
+public inductive Frame (n : Nat) (s : String.Slice) where
   /-- Look for a match starting at `sid` and the given position in the haystack. -/
   | Step (sid: Fin n) («at»: CharPos s) : Frame n s
   /-- Reset the given `slot` to the given `pos` (which might be `None`). -/
   | RestoreCapture (role : Capture.Role) (slot: Nat) (pos: Option (s.Pos)) : Frame n s
 
-instance : ToString $ Frame n s where
+public instance : ToString $ Frame n s where
   toString frame :=
     match frame with
     | .Step sid «at» => s!"Step({sid}, {«at».pos.offset})"
@@ -162,16 +163,16 @@ private def compare (a : Fin n × String.Pos.Raw) (b : Fin n × String.Pos.Raw) 
   else Ordering.gt
 
 /-- The stack of frames  -/
-abbrev Stack n s := List $ Frame n s
+public abbrev Stack n s := List $ Frame n s
 
 namespace Stack
 
 /-- Push frame to stack  -/
-@[inline] def push (stack : Stack n s) (v : Frame n s) : Stack n s :=
+@[inline] public def push (stack : Stack n s) (v : Frame n s) : Stack n s :=
   v :: stack
 
 /-- pop head frame from stack  -/
-@[inline] def pop? (stack : Stack n s) : Option (Frame n s × Stack n s) :=
+@[inline] public def pop? (stack : Stack n s) : Option (Frame n s × Stack n s) :=
   match stack with
   | [] => none
   | head :: tail => (head, tail)
@@ -249,10 +250,7 @@ theorem valid_of_range_map (s : String.Slice) (slots : Array (SlotEntry s))
 
 private theorem mem_le_max (xs : Array Nat) (h : xs.max? = some m)
     : ∀ a ∈ xs, a ≤ m := by
-  unfold Array.max? at h
-  intro a ha
-  have := Array.le_max_of_mem ha
-  grind
+  grind [Array.max?_eq_some_iff]
 
 namespace Capture
 
@@ -316,9 +314,7 @@ theorem mem_range_map_of_mem (captures : Array Capture)
             grind
           · simp_all
             exact Nat.mul_div_cancel capture.group (by simp)
-        · rename_i heq
-          unfold Array.max? at heq
-          simp_all⟩
+        · grind⟩
     · exact ⟨capture.group * 2 + 1, by
         split at hsize
         · and_intros
@@ -338,9 +334,7 @@ theorem mem_range_map_of_mem (captures : Array Capture)
             have h3 := @Nat.mul_div_cancel capture.group 2 (by simp)
             simp_all
             assumption
-        · rename_i heq
-          unfold Array.max? at heq
-          simp_all⟩
+        · grind⟩
   grind
 
 /-- State of the backtracking search -/
@@ -614,13 +608,13 @@ private def toPairs (slots : Array (SlotEntry s)) (groups : Array Nat)
       acc)
 
 /-- add a msg to the SearchState while doing backtracking.  -/
-@[inline] private def withMsg (msg : Unit -> String) (state : SearchState n s) : SearchState n s :=
+@[inline] protected def withMsg (msg : Unit -> String) (state : SearchState n s) : SearchState n s :=
   if state.logEnabled then { state with msgs := state.msgs.push s!"{msg ()}"}
   else state
 
 theorem withMsg_eq {nfa : Checked.NFA} {s s1 : SearchState nfa.n input} {msg : Unit -> String}
-  (h : withMsg  msg s = s1) : s.countVisited = s1.countVisited ∧ s.stack = s1.stack := by
-  unfold withMsg at h
+  (h : BoundedBacktracker.withMsg  msg s = s1) : s.countVisited = s1.countVisited ∧ s.stack = s1.stack := by
+  unfold BoundedBacktracker.withMsg at h
   split at h <;> try simp_all
   simp [SearchState.ext_iff] at h
   simp_all
@@ -690,19 +684,19 @@ private def encodeChar? (c: Option Char) : String :=
   !word_after
 
 @[inline] private def step_empty (next : Fin n) (state : SearchState n s) : SearchState n s :=
-  withMsg (fun _ => s!"{state.sid}: Empty -> {next}") {state with sid := next}
+  BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Empty -> {next}") {state with sid := next}
 
 @[inline] private def step_next_char (offset : Nat) (next : Fin n) (state : SearchState n s)
     : SearchState n s :=
   match state.at.prevn offset with
   | some pos =>
-    withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} to charpos {pos} -> {next}")
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} to charpos {pos} -> {next}")
                       {state with sid := next, «at» := pos}
   | none =>
-    withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} failed at charpos {state.at}") state
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: NextChar offset {offset} failed at charpos {state.at}") state
 
 @[inline] private def step_fail (state : SearchState n s) : SearchState n s :=
-  withMsg (fun _ => s!"{state.sid}: Fail") state
+  BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Fail") state
 
 /-- eat frames until State `sid` found -/
 @[inline] private def step_eat_until (sid next : Fin n) (state : SearchState n s) : SearchState n s :=
@@ -712,10 +706,10 @@ private def encodeChar? (c: Option Char) : String :=
 
   match stack with
   |  .Step _ _ :: stack' =>
-    withMsg (fun _ => s!"{state.sid}: EatUntil {sid} stack {stack'} => {next}")
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: EatUntil {sid} stack {stack'} => {next}")
                       {state with stack := stack', sid := next }
   | _ =>
-    withMsg (fun _ => s!"{state.sid}: EatUntil failed ") state
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: EatUntil failed ") state
 
 /-- eat frames inclusive last occurunce of State `sid`  -/
 @[inline] private def step_eat_to_last (sid next : Fin n) (state : SearchState n s)
@@ -728,9 +722,9 @@ private def encodeChar? (c: Option Char) : String :=
     let index := state.stack.length -index
     let stack := state.stack |> List.drop index
 
-    withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {stack} => {next}")
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {stack} => {next}")
                       {state with stack := stack, sid := next }
-  else withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {state.stack} => {next}")
+  else BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: EatToLast {sid} stack {state.stack} => {next}")
                          {state with sid := next }
     --withMsg (fun _ => s!"{state.sid}: EatToLast failed ") state
 
@@ -763,10 +757,10 @@ private def encodeChar? (c: Option Char) : String :=
   match stack with
   |  .Step _ «at» :: stack' =>
     let stack := Frame.Step t «at» :: stack'
-    withMsg (fun _ => s!"{state.sid}: ChangeFrameStep stack {stack} slots {slots}")
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: ChangeFrameStep stack {stack} slots {slots}")
                       {state with stack := stack, slots := slots.val, slotsValid := slots.property}
   | _ =>
-    withMsg (fun _ => s!"{state.sid}: ChangeFrameStep failed ") state
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: ChangeFrameStep failed ") state
 
 @[inline] private def step_remove_frame_step (sid : Fin n) (state : SearchState n s)
     : SearchState n s :=
@@ -778,46 +772,46 @@ private def encodeChar? (c: Option Char) : String :=
 
   match stack with
   |  .Step _ _ :: stack' =>
-    withMsg (fun _ => s!"{state.sid}: RemoveFrameStep {sid} stack {stack'} slots {slots}")
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: RemoveFrameStep {sid} stack {stack'} slots {slots}")
                       {state with stack := stack', slots := slots.val, slotsValid := slots.property}
   | _ =>
-    withMsg (fun _ => s!"{state.sid}: RemoveFrameStep failed ") state
+    BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: RemoveFrameStep failed ") state
 
 @[inline] private def step_look (look : Look) (next : Fin n)
      (state : SearchState n s) : SearchState n s :=
   match look with
   | .Start =>
     if state.at.atStart then
-      let state := (withMsg (fun _ => s!"{state.sid}: Look.Start -> {next}") {state with sid := next})
+      let state := (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.Start -> {next}") {state with sid := next})
       state
     else state
   | .End =>
     if state.at.atStop then
-      let state := (withMsg (fun _ => s!"{state.sid}: Look.End -> {next}") {state with sid := next})
+      let state := (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.End -> {next}") {state with sid := next})
       state
     else state
   | .EndWithOptionalLF =>
     if state.at.atStop then
-      let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}")
+      let state := (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}")
                                       {state with sid := next})
       state
     else
       match (state.at.curr?, state.at.next.atStop) with
       | (some '\n', true) =>
-          let state := (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}")
+          let state := (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF -> {next}")
                                           {state with sid := next})
           state
-      | _ => (withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF failed at pos"
+      | _ => (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.EndWithOptionalLF failed at pos"
                                     ++ "{state.at} atStop {state.at.next.atStop}") state)
   | .StartLF =>
     if state.at.atStart || state.at.prev?.any (· = '\n') then
-      (withMsg (fun _ => s!"{state.sid}: Look.StartLF -> {next}") {state with sid := next})
+      (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.StartLF -> {next}") {state with sid := next})
     else
         let prev := encodeChar? state.at.prev?
-        (withMsg (fun _ => s!"{state.sid}: StartLF failed at pos {state.at.pos} prev '{prev}'") state)
+        (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: StartLF failed at pos {state.at.pos} prev '{prev}'") state)
   | .EndLF =>
     if state.at.atStop || state.at.curr?.any (· = '\n') then
-      (withMsg (fun _ => s!"{state.sid}: Look.EndLF -> {next}") {state with sid := next})
+      (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.EndLF -> {next}") {state with sid := next})
     else state
   | .StartCRLF =>
     if state.at.atStart
@@ -825,7 +819,7 @@ private def encodeChar? (c: Option Char) : String :=
         || (state.at.prev?.any (· = '\r')
             && (state.at.atStop || state.at.curr?.any (· != '\n')))
     then
-      (withMsg (fun _ => s!"{state.sid}: Look.StartCRLF -> {next}") {state with sid := next})
+      (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.StartCRLF -> {next}") {state with sid := next})
     else state
   | .EndCRLF =>
     if state.at.atStop
@@ -833,53 +827,53 @@ private def encodeChar? (c: Option Char) : String :=
         || state.at.curr?.any (· = '\n')
             && (state.at.pos.offset.byteIdx = 0 || state.at.prev?.any (· != '\r'))
     then
-      (withMsg (fun _ => s!"{state.sid}: Look.EndCRLF -> {next}") {state with sid := next})
+      (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.EndCRLF -> {next}") {state with sid := next})
     else state
   | .WordUnicode =>
     if is_word_unicode state then
-      (withMsg (fun _ => s!"{state.sid}: Look.WordUnicode -> {next}") {state with sid := next})
+      (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.WordUnicode -> {next}") {state with sid := next})
     else
       let prev := encodeChar? state.at.prev?
       let curr := encodeChar? state.at.curr?
-      (withMsg
+      (BoundedBacktracker.withMsg
         (fun _ => s!"WordUnicode failed at pos {state.at.pos} prev '{prev}' curr '{curr}'") state)
   | .WordUnicodeNegate =>
     if is_word_unicode_negate state then
-      let state := (withMsg (fun _ =>
+      let state := (BoundedBacktracker.withMsg (fun _ =>
                     s!"{state.sid}: Look.WordUnicodeNegate -> {next}") {state with sid := next})
       state
     else state
   | .WordStartUnicode =>
     if is_word_start_unicode state then
-      let state := (withMsg (fun _ => s!"{state.sid}: Look.WordStartUnicode -> {next}")
+      let state := (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.WordStartUnicode -> {next}")
                        {state with sid := next})
       state
     else state
   | .WordEndUnicode =>
     if is_word_end_unicode state then
-      let state := (withMsg (fun _ => s!"{state.sid}: Look.WordEndUnicode -> {next}")
+      let state := (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.WordEndUnicode -> {next}")
                         {state with sid := next})
       state
     else state
   | .WordStartHalfUnicode =>
     if is_word_start_half_unicode state then
-      let state := (withMsg
+      let state := (BoundedBacktracker.withMsg
         (fun _ => s!"{state.sid}: Look.WordStartHalfUnicode -> {next}") {state with sid := next})
       state
     else state
   | .WordEndHalfUnicode =>
     if is_word_end_half_unicode state then
-      let state := (withMsg
+      let state := (BoundedBacktracker.withMsg
         (fun _ => s!"{state.sid}: Look.WordEndHalfUnicode -> {next}") {state with sid := next})
       state
     else state
   | .PreviousMatch =>
     if state.at.atStart then
-      let state := (withMsg (fun _ => s!"{state.sid}: Look.PreviousMatch -> {next}")
+      let state := (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.PreviousMatch -> {next}")
                    {state with sid := next})
       state
     else
-      (withMsg
+      (BoundedBacktracker.withMsg
         (fun _ => s!"PreviousMatch failed at pos {state.at.pos}") state)
   | .ClearMatches =>
     if h : 0 < state.slots.size then
@@ -889,7 +883,7 @@ private def encodeChar? (c: Option Char) : String :=
       let f := fun (s, g, _) =>
         if s = 0 then (s, g, state.at.pos) else (s, g, none)
       let slots := state.slots.map f
-      (withMsg (fun _ => s!"{state.sid}: Look.ClearMatches stack {stack} slots {slots} -> {next}")
+      (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Look.ClearMatches stack {stack} slots {slots} -> {next}")
                           {state with stack := stack, slots := slots, sid := next,
                                       slotsValid := SearchState.slots_of_map_valid
                                                       state.slots state.slotsValid f
@@ -898,23 +892,23 @@ private def encodeChar? (c: Option Char) : String :=
                                                         unfold f
                                                         repeat split <;> try simp_all)})
     else
-      (withMsg
+      (BoundedBacktracker.withMsg
         (fun _ => s!"ClearMatches failed at pos {state.at.pos}, no slots") state)
 
 @[inline] private def step_byterange (trans : Checked.Transition n) (state : SearchState n s)
     : SearchState n s :=
   if state.at.atStop then
-    (withMsg (fun _ =>
+    (BoundedBacktracker.withMsg (fun _ =>
       s!"{state.sid}: ByteRange failed at stop")
       state)
   else if state.at.curr?.any (Checked.Transition.matches trans)  then
     let next := state.at.next
-    (withMsg (fun _ =>
+    (BoundedBacktracker.withMsg (fun _ =>
             let t := s!"{Nat.intAsString trans.start}-{Nat.intAsString trans.end}"
             s!"{state.sid}: ByteRange matched '{t}' at charpos {state.at} -> {trans.next}")
          {state with sid := trans.next, «at» := next})
   else
-    (withMsg (fun _ =>
+    (BoundedBacktracker.withMsg (fun _ =>
             let t := s!"{Nat.intAsString trans.start}-{Nat.intAsString trans.end}"
             s!"{state.sid}: ByteRange failed match '{t}' at charpos {state.at}")
       state)
@@ -946,31 +940,31 @@ termination_by pos.offset.byteDistance s.endPos.offset
           let slice := s.slice f t h
           match step_backreference_loop slice slice.startPos case_insensitive state.«at» with
           | some cp =>
-              (withMsg (fun _ => s!"{state.sid}: Backreference {b} '{slice}' matched from charpos"
+              (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Backreference {b} '{slice}' matched from charpos"
                                     ++ "{state.at} to {cp} -> {next}")
                   {state with sid := next, «at» := cp })
           | none =>
-            (withMsg (fun _ =>
+            (BoundedBacktracker.withMsg (fun _ =>
               s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, no match with '{s.startPos},{s.endPos}'")
               state)
         else
-            (withMsg (fun _ =>
+            (BoundedBacktracker.withMsg (fun _ =>
               s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, '{f} > {t}'")
               state)
 
     | _ =>
-      (withMsg (fun _ =>
+      (BoundedBacktracker.withMsg (fun _ =>
         s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, recentCapture empty")
         state)
   else
-    (withMsg (fun _ =>
+    (BoundedBacktracker.withMsg (fun _ =>
     s!"{state.sid}: Backreference '{b}' failed at charpos {state.at}, recentCapture not found")
     state)
 
 @[inline] private def step_sparse_transitions (_ : Checked.NFA)
     (transitions : Array $ Checked.Transition n)  (state : SearchState n s) : SearchState n s :=
   if state.at.atStop then
-      (withMsg
+      (BoundedBacktracker.withMsg
         (fun _ =>
             s!"{state.sid}: SparseTransitions failed at stop") state)
   else
@@ -978,11 +972,11 @@ termination_by pos.offset.byteDistance s.endPos.offset
             (fun trans => state.at.curr?.any (Checked.Transition.matches trans)) with
     | some t =>
         let next := state.at.next
-        (withMsg (fun _ => s!"{state.sid}: SparseTransitions '{encodeChar? state.at.curr?}' "
+        (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: SparseTransitions '{encodeChar? state.at.curr?}' "
                               ++ "matched at charpos {state.at} -> {t.next}")
             {state with sid := t.next, «at» := next})
     | none =>
-      (withMsg
+      (BoundedBacktracker.withMsg
         (fun _ =>
             s!"{state.sid}: SparseTransitions failed  at charpos {state.at}") state)
 
@@ -992,14 +986,14 @@ termination_by pos.offset.byteDistance s.endPos.offset
     let alt1 := alts[0]
     let alt2 := alts[1]
     let stack := Stack.push state.stack (Frame.Step alt2 state.at)
-    (withMsg (fun _ => s!"{state.sid}: Union stack {stack} -> {alt1}")
+    (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Union stack {stack} -> {alt1}")
       {state with sid := alt1, stack := stack})
   else
     match alts.head? with
     | some (alt, alts) =>
       let stack := Stack.append state.stack
                     (Stack.toStack (alts |> Array.map (fun a => Frame.Step a state.at)))
-      (withMsg
+      (BoundedBacktracker.withMsg
         (fun _ => s!"{state.sid} Union stack {stack} -> {alt}")
         {state with sid := alt, stack := stack})
     | none => state
@@ -1011,21 +1005,21 @@ termination_by pos.offset.byteDistance s.endPos.offset
     let alt1 := alts[0]
     let alt2 := alts[1]
     let stack := Stack.push state.stack (Frame.Step alt1 state.at)
-    (withMsg (fun _ => s!"{state.sid}: Union_Reverse stack {stack} -> {alt2}")
+    (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Union_Reverse stack {stack} -> {alt2}")
       {state with sid := alt2, stack := stack})
   else
     match alts.head? with
     | some (alt, alts) =>
       let stack := Stack.append state.stack
                     (Stack.toStack (alts.reverse |> Array.map (fun a => Frame.Step a state.at)))
-      (withMsg
+      (BoundedBacktracker.withMsg
             (fun _ => s!"{state.sid}: Union_Reverse stack {stack} -> {alt}")
             {state with sid := alt, stack := stack})
     | none => state
 
 @[inline] private def step_binary_union (alt1 alt2 : Fin n)
      (state : SearchState n s) : SearchState n s :=
-  (withMsg (fun _ => s!"BinaryUnion {state.sid} -> {alt1}")
+  (BoundedBacktracker.withMsg (fun _ => s!"BinaryUnion {state.sid} -> {alt1}")
        {state with sid := alt1, stack := Stack.push state.stack (Frame.Step alt2 state.at)})
 
 @[inline] private def step_change_capture_slot (next : Fin n) (slot : Nat)
@@ -1034,12 +1028,12 @@ termination_by pos.offset.byteDistance s.endPos.offset
   then
     let f := fun _ => some $ state.at.pos
     let slots := state.slots.modify slot ((Prod.map id (Prod.map id f)))
-    (withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} slots {slots} -> {next}")
+    (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} slots {slots} -> {next}")
                 {state with sid := next, slots := slots,
                             slotsValid := SearchState.slots_of_modify_valid state.slots
                                             state.slotsValid slot f})
   else
-    (withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} invalid")
+    (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: ChangeCaptureSlot slot {slot} invalid")
                 state)
 
 @[inline] private def step_capture (role : Capture.Role) (next : Fin n) (group slot : Nat)
@@ -1080,20 +1074,20 @@ termination_by pos.offset.byteDistance s.endPos.offset
         else state.recentCaptures
       (Stack.push state.stack frame, slots, recentCaptures)
     else (state.stack, ⟨state.slots, state.slotsValid⟩, state.recentCaptures)
-  (withMsg (fun _ => s!"{state.sid}: Capture{role} group {group} stack {stack} slots {slots} "
+  (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: Capture{role} group {group} stack {stack} slots {slots} "
                         ++ "recentCaptures {recentCaptures} -> {next}")
                 {state with sid := next, slots := slots, stack := stack,
                             recentCaptures := recentCaptures, slotsValid := by
                               have := state.slotsValid
                               exact slots.property})
 
-@[inline] private def step_match (pattern_id : PatternID)
+@[inline] protected def step_match (pattern_id : PatternID)
      (state : SearchState n s) : SearchState n s :=
-  (withMsg (fun _ => s!"Match {state.sid}")
+  (BoundedBacktracker.withMsg (fun _ => s!"Match {state.sid}")
           {state with halfMatch := some ⟨pattern_id, state.at.pos⟩})
 
 /-- execute next step in NFA if state not already visited -/
-@[inline] private def toNextStep (nfa : Checked.NFA) (state : Checked.State nfa.n)
+@[inline] protected def toNextStep (nfa : Checked.NFA) (state : Checked.State nfa.n)
     (searchState : SearchState nfa.n s) : SearchState nfa.n s :=
   match state with
   | .Empty next => step_empty next searchState
@@ -1110,92 +1104,92 @@ termination_by pos.offset.byteDistance s.endPos.offset
   | .UnionReverse alts => step_union_reverse alts searchState
   | .BinaryUnion alt1 alt2 => step_binary_union alt1 alt2 searchState
   | .Capture role next _ g => step_capture role next g (Capture.toSlot ⟨role, g⟩) searchState
-  | .Match pattern_id => step_match pattern_id searchState
+  | .Match pattern_id => BoundedBacktracker.step_match pattern_id searchState
 
 private theorem witMsg_countVisited_eq (msg : Unit -> String) (s1 s2 : SearchState n s)
-  (h : withMsg msg s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp [withMsg, SearchState.ext_iff] at h
+  (h : BoundedBacktracker.withMsg msg s1 = s2) : s1.countVisited = s2.countVisited := by
+  simp [BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   split at h <;> simp_all
 
 private theorem step_empty_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_empty next s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_empty, withMsg, SearchState.ext_iff] at h
+  simp only [step_empty, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   split at h <;> simp_all only [Bool.true_eq]
 
 private theorem step_next_char_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_next_char offset next s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_next_char, withMsg, SearchState.ext_iff] at h
+  simp only [step_next_char, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> simp_all only [Bool.true_eq]
 
 private theorem step_fail_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_fail s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_fail, withMsg, SearchState.ext_iff] at h
+  simp only [step_fail, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   split at h <;> simp_all only [Bool.true_eq]
 
 private theorem step_eat_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_eat mode next s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_eat, step_eat_until, step_eat_to_last, withMsg, SearchState.ext_iff] at h
+  simp only [step_eat, step_eat_until, step_eat_to_last, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> try simp_all only [Bool.true_eq]
 
 private theorem step_change_frame_step_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_change_frame_step f t s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_change_frame_step, withMsg, SearchState.ext_iff] at h
+  simp only [step_change_frame_step, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> simp_all only [Bool.true_eq]
 
 private theorem step_remove_frame_step_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_remove_frame_step sid s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_remove_frame_step, withMsg, SearchState.ext_iff] at h
+  simp only [step_remove_frame_step, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> simp_all only [Bool.true_eq ]
 
 private theorem step_look_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_look look next s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_look, withMsg, SearchState.ext_iff] at h
+  simp only [step_look, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat (split at h <;> try simp_all only [Bool.true_eq])
 
 private theorem step_backreference_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_backreference b c next s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_backreference, withMsg, SearchState.ext_iff] at h
+  simp only [step_backreference, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> try simp_all only [Bool.true_eq]
 
 private theorem step_byterange_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_byterange t s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_byterange, withMsg, SearchState.ext_iff] at h
+  simp only [step_byterange, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> try simp_all only [Bool.true_eq]
 
 private theorem step_sparse_transitions_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_sparse_transitions nfa t s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_sparse_transitions, withMsg, SearchState.ext_iff] at h
+  simp only [step_sparse_transitions, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> try simp_all only [Bool.true_eq]
 
 private theorem step_union_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_union alts s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_union, withMsg, SearchState.ext_iff] at h
+  simp only [step_union, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> try simp_all only [Bool.true_eq]
 
 private theorem step_union_reverse_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_union_reverse alts s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_union_reverse, withMsg, SearchState.ext_iff] at h
+  simp only [step_union_reverse, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   repeat split at h <;> try simp_all only [Bool.true_eq]
 
 private theorem step_binary_union_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_binary_union alt1 alt2 s1 = s2) : s1.countVisited = s2.countVisited := by
-  simp only [step_binary_union, withMsg, SearchState.ext_iff] at h
+  simp only [step_binary_union, BoundedBacktracker.withMsg, SearchState.ext_iff] at h
   split at h <;> try simp_all only [Bool.true_eq]
 
 private theorem step_capture_countVisited_eq (s1 s2 : SearchState n s)
   (h : step_capture role next g slot s1 = s2) : s1.countVisited = s2.countVisited := by
-  unfold step_capture withMsg at h
+  unfold step_capture BoundedBacktracker.withMsg at h
   repeat split at h <;> (try simp [SearchState.ext_iff] at h; exact h.right.right.left)
 
 theorem step_match_countVisited_eq (s1 s2 : SearchState n s)
-  (h : step_match p s1 = s2) : s1.countVisited = s2.countVisited := by
-  unfold step_match withMsg at h
+  (h : BoundedBacktracker.step_match p s1 = s2) : s1.countVisited = s2.countVisited := by
+  unfold BoundedBacktracker.step_match BoundedBacktracker.withMsg at h
   split at h <;> (try simp [SearchState.ext_iff] at h; exact h.right.right.left)
 
 theorem toNextStep_countVisited_eq (nfa : Checked.NFA) (state : Checked.State nfa.n)
-  (s1 s2 : SearchState nfa.n s) (h : toNextStep (nfa : Checked.NFA) state s1 = s2)
+  (s1 s2 : SearchState nfa.n s) (h : BoundedBacktracker.toNextStep (nfa : Checked.NFA) state s1 = s2)
     : s1.countVisited = s2.countVisited := by
-  unfold toNextStep at h
+  unfold BoundedBacktracker.toNextStep at h
   split at h
   · exact step_empty_countVisited_eq s1 s2 h
   · exact step_next_char_countVisited_eq s1 s2 h
@@ -1215,29 +1209,29 @@ theorem toNextStep_countVisited_eq (nfa : Checked.NFA) (state : Checked.State nf
 
 theorem toNextStep_eq {nfa : Checked.NFA} {state : Checked.State nfa.n}
   {s s1 : SearchState nfa.n input} {msg : Unit → String}
-  (h : toNextStep nfa state (withMsg msg s) = s1) : s.countVisited = s1.countVisited := by
-  generalize hs : (withMsg msg s) = s' at h
+  (h : BoundedBacktracker.toNextStep nfa state (BoundedBacktracker.withMsg msg s) = s1) : s.countVisited = s1.countVisited := by
+  generalize hs : (BoundedBacktracker.withMsg msg s) = s' at h
   have := witMsg_countVisited_eq msg s s' hs
   have := toNextStep_countVisited_eq nfa state s' s1
   simp_all
 
 /-- execute next step in NFA if state not already visited. Returns true if steps available. -/
-@[inline] private def toNextStepChecked (nfa : Checked.NFA) (state : SearchState nfa.n s)
+@[inline] protected def toNextStepChecked (nfa : Checked.NFA) (state : SearchState nfa.n s)
     : Bool × SearchState nfa.n s :=
   match Visited.checkVisited' state with
   | (false, state') =>
       let state := nfa.states[state'.sid.val]'(by
                                     rw [← Checked.NFA.isEq nfa]
                                     exact state'.sid.isLt)
-      (true, toNextStep
+      (true, BoundedBacktracker.toNextStep
                 nfa
                 state
-                (withMsg (fun _ => s!"{state'.sid}: visit charpos {state'.at}") state'))
-  | _ => (false, (withMsg (fun _ => s!"{state.sid}: isVisited charpos {state.at}") state))
+                (BoundedBacktracker.withMsg (fun _ => s!"{state'.sid}: visit charpos {state'.at}") state'))
+  | _ => (false, (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: isVisited charpos {state.at}") state))
 
 theorem toNextStepChecked_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
-  (h : toNextStepChecked nfa s = (true, s1)) : s.countVisited < s1.countVisited := by
-  unfold toNextStepChecked at h
+  (h : BoundedBacktracker.toNextStepChecked nfa s = (true, s1)) : s.countVisited < s1.countVisited := by
+  unfold BoundedBacktracker.toNextStepChecked at h
   split at h <;> simp_all
   rename_i s2 hcv
   have heq : s1.countVisited = s2.countVisited := by
@@ -1246,40 +1240,41 @@ theorem toNextStepChecked_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n 
   exact Nat.lt_of_lt_of_eq hlt (id (Eq.symm heq))
 
 theorem toNextStepChecked_false_eq (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
-  (h : toNextStepChecked nfa s = (false, s1))
+  (h : BoundedBacktracker.toNextStepChecked nfa s = (false, s1))
     : s.countVisited = s1.countVisited ∧ s.stack = s1.stack := by
-  unfold toNextStepChecked at h
+  unfold BoundedBacktracker.toNextStepChecked at h
   split at h <;> try simp_all
   exact withMsg_eq h
 
-@[inline] private def visitedSize (state : SearchState n s) : Nat :=
+@[inline] protected def visitedSize (state : SearchState n s) : Nat :=
    (Visited.getRefValue state.visited).size
 
-@[inline] private def unvisited (state : SearchState n s) : Nat :=
-   (visitedSize state) - state.countVisited
+@[inline] protected def unvisited (state : SearchState n s) : Nat :=
+   (BoundedBacktracker.visitedSize state) - state.countVisited
 
 /-- execute next steps in NFA. -/
-def steps (nfa : Checked.NFA) (state : SearchState nfa.n s) : SearchState nfa.n s :=
-  match toNextStepChecked nfa state with
-  | (true, state) => loop nfa state
-  | (false, state) => state
-where
-  loop (nfa : Checked.NFA) (state : SearchState nfa.n s) : SearchState nfa.n s :=
-    match h : toNextStepChecked nfa state with
+protected def steps.loop (nfa : Checked.NFA) (state : SearchState nfa.n s) : SearchState nfa.n s :=
+    match h : BoundedBacktracker.toNextStepChecked nfa state with
     | (true, state') =>
       have h2 : state.countVisited < state'.countVisited :=
         toNextStepChecked_true_lt nfa state state' h
-      if h0 : state.countVisited < visitedSize state then
-        if h1 : visitedSize state = visitedSize state' then
-          have : unvisited state' < unvisited state := by
-            unfold unvisited
+      if h0 : state.countVisited < BoundedBacktracker.visitedSize state then
+        if h1 : BoundedBacktracker.visitedSize state = BoundedBacktracker.visitedSize state' then
+          have : BoundedBacktracker.unvisited state' < BoundedBacktracker.unvisited state := by
+            unfold BoundedBacktracker.unvisited
             omega
-          loop nfa state'
+          steps.loop nfa state'
         else state
       else {state with msgs := state.msgs.push "overflow visited array"}
     | (false, state) => state
 
-theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n input) (h : steps.loop nfa s = s1)
+protected def steps (nfa : Checked.NFA) (state : SearchState nfa.n s) : SearchState nfa.n s :=
+  match BoundedBacktracker.toNextStepChecked nfa state with
+  | (true, state) => steps.loop nfa state
+  | (false, state) => state
+
+protected theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
+  (h : BoundedBacktracker.steps.loop nfa s = s1)
     : s.countVisited ≤ s1.countVisited := by
   unfold steps.loop at h
   split at h <;> try simp_all
@@ -1288,10 +1283,10 @@ theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n input) (h : 
     have h2 := toNextStepChecked_true_lt nfa s state heq
     split at h
     rename_i heq
-    have : unvisited state < unvisited s := by
-      unfold unvisited
+    have : BoundedBacktracker.unvisited state < BoundedBacktracker.unvisited s := by
+      unfold BoundedBacktracker.unvisited
       omega
-    have hx := steps_loop_le nfa state s1 h
+    have hx := BoundedBacktracker.steps_loop_le nfa state s1 h
     · simp [Nat.le_trans (Nat.le_of_lt h2) hx]
     · exact Nat.le_of_eq (congrArg SearchState.countVisited h)
   · simp [SearchState.ext_iff] at h
@@ -1300,22 +1295,23 @@ theorem steps_loop_le (nfa : Checked.NFA) (s s1 : SearchState nfa.n input) (h : 
     have h2 := toNextStepChecked_false_eq nfa s s1 heq
     simp [Nat.le_of_eq h2.left]
 
-theorem steps_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input) (h : steps nfa s = s1)
+theorem steps_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
+  (h : BoundedBacktracker.steps nfa s = s1)
   : s.countVisited < s1.countVisited
     ∨ s.countVisited = s1.countVisited ∧ s.stack.length = s1.stack.length := by
-  unfold steps at h
+  unfold BoundedBacktracker.steps at h
   split at h <;> try simp_all
   · rename_i state heq
     have := toNextStepChecked_true_lt nfa s state heq
-    have := steps_loop_le nfa state s1 h
+    have := BoundedBacktracker.steps_loop_le nfa state s1 h
     omega
   · rename_i heq
     have := toNextStepChecked_false_eq nfa s s1 heq
     simp_all
 
-@[inline] private def toNextFrameStep (nfa : Checked.NFA) (state : SearchState nfa.n s)
+@[inline] protected def toNextFrameStep (nfa : Checked.NFA) (state : SearchState nfa.n s)
     : Bool × SearchState nfa.n s :=
-  let state' := steps nfa state
+  let state' := BoundedBacktracker.steps nfa state
   match state'.halfMatch with
   | some _ => (false, state')
   | none =>
@@ -1326,10 +1322,10 @@ theorem steps_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input) (
                     else state'.msgs})
 
 theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
-  (h : toNextFrameStep nfa s = (true, s1)) :
+  (h : BoundedBacktracker.toNextFrameStep nfa s = (true, s1)) :
     s.countVisited < s1.countVisited ∨ s.countVisited = s1.countVisited
         ∧ s.stack.length = s1.stack.length := by
-  unfold toNextFrameStep at h
+  unfold BoundedBacktracker.toNextFrameStep at h
   simp_all
   split at h <;> try simp_all
   let state' := BoundedBacktracker.steps nfa s
@@ -1341,7 +1337,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
   have : state'.stack.length = s1.stack.length := by simp_all
   omega
 
-@[inline] private def toNextFrameRestoreCapture (slot : Nat)
+@[inline] protected def toNextFrameRestoreCapture (slot : Nat)
   (offset : Option (String.Slice.Pos s))
   (stack : Stack n s) (state : SearchState n s) : Bool × SearchState n s :=
   if slot < state.slots.size
@@ -1351,7 +1347,7 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
                              stack := stack,
                              slotsValid := SearchState.slots_of_modify_valid state.slots
                                             state.slotsValid slot f}
-    let state := (withMsg (fun _ =>
+    let state := (BoundedBacktracker.withMsg (fun _ =>
           s!"{state.sid}: Backtrack.RestoreCapture stack {stack}, slot {slot}, slots {state.slots}") state)
     (true, state)
   else (false, state)
@@ -1359,11 +1355,11 @@ theorem toNextFrameStep_true_lt_or_eq_lt (nfa : Checked.NFA) (s s1 : SearchState
 theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat)
   (offset :Option (String.Slice.Pos s))
   (stack : Stack n s) (s : SearchState n s)
-    (h : toNextFrameRestoreCapture slot offset stack s = (true, s1))
+    (h : BoundedBacktracker.toNextFrameRestoreCapture slot offset stack s = (true, s1))
     : s.countVisited = s1.countVisited ∧ stack = s1.stack := by
-  unfold toNextFrameRestoreCapture at h
+  unfold BoundedBacktracker.toNextFrameRestoreCapture at h
   split at h <;> try simp_all
-  unfold withMsg at h
+  unfold BoundedBacktracker.withMsg at h
   split at h <;> simp [SearchState.ext_iff] at h <;> simp_all
 
 @[inline] private def backtrack_msg (state : SearchState n s) (stack : Stack n s) (sid : Fin n) :=
@@ -1371,26 +1367,26 @@ theorem toNextFrameRestoreCapture_true_lt_or_eq_lt (slot : Nat)
 
 /-- execute steps in next frame. Returns false if no more frame available
     or match is found. -/
-@[inline] private def toNextFrame (nfa : Checked.NFA) (state : SearchState nfa.n s)
+@[inline] protected def toNextFrame (nfa : Checked.NFA) (state : SearchState nfa.n s)
     : Bool × SearchState nfa.n s :=
   match Stack.pop? state.stack with
   | some (frame, stack) =>
       match frame with
       | .Step sid «at» =>
-        toNextFrameStep nfa
+        BoundedBacktracker.toNextFrameStep nfa
           {state with sid := sid, «at» := «at», stack := stack,
                       msgs := if state.logEnabled
                               then state.msgs.push (backtrack_msg state stack sid)
                               else state.msgs}
-      | .RestoreCapture _ slot offset => toNextFrameRestoreCapture slot offset stack state
+      | .RestoreCapture _ slot offset => BoundedBacktracker.toNextFrameRestoreCapture slot offset stack state
   | none =>
-    (false, (withMsg (fun _ => s!"{state.sid}: stack empty ") state))
+    (false, (BoundedBacktracker.withMsg (fun _ => s!"{state.sid}: stack empty ") state))
 
 theorem toNextFrame_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
-  (h : toNextFrame nfa s = (true, s1))
+  (h : BoundedBacktracker.toNextFrame nfa s = (true, s1))
     : s.countVisited < s1.countVisited
       ∨ s.countVisited = s1.countVisited ∧ s1.stack.length < s.stack.length := by
-  unfold toNextFrame at h
+  unfold BoundedBacktracker.toNextFrame at h
   split at h
   split at h <;> try simp
   · rename_i stack _ sid _at heq
@@ -1421,10 +1417,10 @@ theorem toNextFrame_true_lt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
     contradiction
 
 theorem searchState_lexLt (nfa : Checked.NFA) (s s1 : SearchState nfa.n input)
-  (h1 : s.countVisited < visitedSize s) (h2 : visitedSize s = visitedSize s1)
-  (h : toNextFrame nfa s = (true, s1)) : unvisited s1 < unvisited s
-            ∨ unvisited s1 = unvisited s ∧ s1.stack.length < s.stack.length := by
-  unfold unvisited
+  (h1 : s.countVisited < BoundedBacktracker.visitedSize s) (h2 : BoundedBacktracker.visitedSize s = BoundedBacktracker.visitedSize s1)
+  (h : BoundedBacktracker.toNextFrame nfa s = (true, s1)) : BoundedBacktracker.unvisited s1 < BoundedBacktracker.unvisited s
+            ∨ BoundedBacktracker.unvisited s1 = BoundedBacktracker.unvisited s ∧ s1.stack.length < s.stack.length := by
+  unfold BoundedBacktracker.unvisited
   rw [← h2]
   have := toNextFrame_true_lt nfa s s1 h
   omega
@@ -1441,24 +1437,24 @@ private def collect_info (state : SearchState n s) : Array String :=
 /-- BoundedBacktrack search -/
 def backtrack (nfa : Checked.NFA)  (state : SearchState nfa.n s) : SearchState nfa.n s :=
   let frame := Frame.Step state.sid state.at
-  let state := (withMsg (fun _ => s!"Backtrack sid {state.sid} charpos {state.at.pos}")
+  let state := (BoundedBacktracker.withMsg (fun _ => s!"Backtrack sid {state.sid} charpos {state.at.pos}")
        {state with stack := Stack.push state.stack frame})
   let state := loop nfa state
   -- let state := {state with msgs := state.msgs ++ (collect_info state)}
   state
 where
   loop (nfa : Checked.NFA) (state : SearchState nfa.n s) : SearchState nfa.n s :=
-    match h : toNextFrame nfa state with
+    match h : BoundedBacktracker.toNextFrame nfa state with
     | (true, state') =>
       -- let state := {state with backtracks := state.backtracks + 1}
-      if h1 : state.countVisited < visitedSize state then
-        if h2 : visitedSize state = visitedSize state' then
+      if h1 : state.countVisited < BoundedBacktracker.visitedSize state then
+        if h2 : BoundedBacktracker.visitedSize state = BoundedBacktracker.visitedSize state' then
           have := searchState_lexLt nfa state state' h1 h2 h
           loop nfa state'
         else state
       else  {state with msgs := state.msgs.push "overflow visited array"}
     | (false, state) => state
-termination_by (unvisited state, state.stack.length)
+termination_by (BoundedBacktracker.unvisited state, state.stack.length)
 decreasing_by
     simp_wf
     exact Prod.lex_def.mpr this
@@ -1516,7 +1512,7 @@ private def toMatches (s : String.Slice) (slots : Array (Option (CharPos.Pair s)
 
 /-- Search for the first match of this regex in the haystack given and return log msgs and
     the matches of each capture group. -/
-def «matches» (s : String.Slice) («at» : String.Slice.Pos s)
+public def «matches» (s : String.Slice) («at» : String.Slice.Pos s)
   (nfa : Checked.NFA) (logEnabled : Bool)
     : (Array String) × (Array (Option { m : String.Slice // String.Slice.isSubslice m  s})) :=
   let (msgs, slots) :=

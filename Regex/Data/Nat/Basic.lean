@@ -1,4 +1,8 @@
-import Batteries.Data.Nat.Lemmas
+module
+
+public import Batteries.Data.Nat.Lemmas
+
+@[expose] public section
 
 namespace Nat
 

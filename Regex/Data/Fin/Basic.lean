@@ -1,4 +1,8 @@
-import Batteries.Data.Fin.Lemmas
+module
+
+public import Batteries.Data.Fin.Lemmas
+
+@[expose] public section
 
 namespace Fin
 

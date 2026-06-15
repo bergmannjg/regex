@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 namespace Array
 
 /-- get head element and array without head element -/

@@ -1,5 +1,7 @@
-import Init.Meta
-import Regex
+module
+
+public import Init.Meta
+public import Regex
 
 open Lean Lean.Syntax
 

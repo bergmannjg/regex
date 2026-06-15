@@ -1,15 +1,18 @@
-import Std.Tactic.Do
-import Std.Tactic.Do.Syntax
+module
 
-import Regex.Compiler.Basic
-import Regex.Compiler.Patch
-import Regex.Compiler.Compile
-import Regex.Compiler.Lemmas.Basic
-import Regex.Compiler.Lemmas.Patch
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
+
+public import Regex.Compiler.Basic
+public import Regex.Compiler.Patch
+public import Regex.Compiler.Compile
+public import Regex.Compiler.Lemmas.Basic
+public import Regex.Compiler.Lemmas.Patch
+
+@[expose] public section
 
 namespace Compiler
 
-open Syntax
 open NFA
 
 namespace Lemmas
@@ -388,7 +391,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
       = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_add_change_state,
       patch2Assignable_of_eq]
 
-@[spec] theorem c_unicode_class_spec (cls : ClassUnicode) (states : Array Unchecked.State)
+@[spec] theorem c_unicode_class_spec (cls : Regex.Syntax.ClassUnicode) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.c_unicode_class cls
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝⟩⦄ := by
@@ -398,7 +401,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
   grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP, = tRefNextOfLt.eq_1,
     patchAssignable_of_assignableIf, = tRefLt.eq_1]
 
-@[spec] theorem c_unicode_class_lift_spec (cls : ClassUnicode) (states : Array Unchecked.State)
+@[spec] theorem c_unicode_class_lift_spec (cls : Regex.Syntax.ClassUnicode) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_unicode_class cls : Code.CompilerM ThompsonRef)
@@ -419,7 +422,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
             ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   exact coe_spec_StateT_to_CompilerM (c_literal_spec _ _)
 
-@[spec] theorem c_look_spec (look : Syntax.Look) (states : Array Unchecked.State)
+@[spec] theorem c_look_spec (look : Regex.Syntax.Look) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
       Code.c_look look
       ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableP r.end states s⌝ ⟩⦄ := by
@@ -429,7 +432,7 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
      grind only [pushPostCond', = tRefNextOfLt.eq_1, assignableP, isAppendOfState, = tRefLt.eq_1,
                   isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_look])
 
-@[spec] theorem c_look_lift_spec (look : Syntax.Look) (states : Array Unchecked.State)
+@[spec] theorem c_look_lift_spec (look : Regex.Syntax.Look) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
     : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
       (Code.c_look look : Code.CompilerM ThompsonRef)
