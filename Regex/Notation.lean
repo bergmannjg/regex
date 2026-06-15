@@ -39,20 +39,20 @@ protected meta def mkTermOfFin (f: Fin n) : Term :=
   Syntax.mkApp (mkCIdent ``Fin.mk)
                 #[Syntax.mkNumLit (ToString.toString f.val), Notation.mkTermOfDecideLt f.val n]
 
-@[expose] meta instance : Quote (Fin n) where
+meta instance : Quote (Fin n) where
   quote := Notation.mkTermOfFin
 
 protected meta def mkTermOfUInt32 (n : UInt32) : Term :=
   Syntax.mkApp (mkCIdent `UInt32.mk) #[Quote.quote n.toFin]
 
-@[expose] meta instance : Quote UInt32 where
+meta instance : Quote UInt32 where
   quote := Notation.mkTermOfUInt32
 
 protected meta def mkTermOfTransition (t: NFA.Checked.Transition n) : Term :=
   Syntax.mkApp (mkCIdent `NFA.Checked.Transition.mk)
                 #[Quote.quote t.start, Quote.quote t.«end», Quote.quote t.next]
 
-@[expose] meta instance : Quote (NFA.Checked.Transition n) where
+meta instance : Quote (NFA.Checked.Transition n) where
   quote := Notation.mkTermOfTransition
 
 protected meta def mkTermOfLook (l : NFA.Look) : Term :=
@@ -73,7 +73,7 @@ protected meta def mkTermOfLook (l : NFA.Look) : Term :=
   | .PreviousMatch => Syntax.mkApp (mkCIdent ``NFA.Look.PreviousMatch) #[]
   | .ClearMatches => Syntax.mkApp (mkCIdent ``NFA.Look.ClearMatches) #[]
 
-@[expose] meta instance : Quote NFA.Look where
+meta instance : Quote NFA.Look where
   quote := Notation.mkTermOfLook
 
 protected meta def mkTermOfRole (r : NFA.Capture.Role) : Term :=
@@ -81,14 +81,14 @@ protected meta def mkTermOfRole (r : NFA.Capture.Role) : Term :=
   | .Start => Syntax.mkApp (mkCIdent ``NFA.Capture.Role.Start) #[]
   | .End => Syntax.mkApp (mkCIdent ``NFA.Capture.Role.End) #[]
 
-@[expose] meta instance : Quote NFA.Capture.Role where
+meta instance : Quote NFA.Capture.Role where
   quote := Notation.mkTermOfRole
 
 protected meta def mkTermOfCapture (c : NFA.Capture) : Term :=
   Syntax.mkApp (mkCIdent ``NFA.Capture.mk)
     #[Notation.mkTermOfRole c.role, Quote.quote c.group]
 
-@[expose] meta instance : Quote NFA.Capture where
+meta instance : Quote NFA.Capture where
   quote := Notation.mkTermOfCapture
 
 protected meta def mkTermOfEatMode (m : NFA.Checked.EatMode n) : Term :=
@@ -96,7 +96,7 @@ protected meta def mkTermOfEatMode (m : NFA.Checked.EatMode n) : Term :=
   | .Until sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.Until) #[Notation.mkTermOfFin sid]
   | .ToLast sid => Syntax.mkApp (mkCIdent ``NFA.Checked.EatMode.ToLast) #[Notation.mkTermOfFin sid]
 
-@[expose] meta instance : Quote (NFA.Checked.EatMode n) where
+meta instance : Quote (NFA.Checked.EatMode n) where
   quote := Notation.mkTermOfEatMode
 
 protected meta def mkTermOfState (s : NFA.Checked.State n) : Term :=
@@ -133,7 +133,7 @@ protected meta def mkTermOfState (s : NFA.Checked.State n) : Term :=
   | .Match id =>
       Syntax.mkApp (mkCIdent ``NFA.Checked.State.Match) #[toNumLit id]
 
-@[expose] meta instance : Quote (NFA.Checked.State n) where
+meta instance : Quote (NFA.Checked.State n) where
   quote := Notation.mkTermOfState
 
 protected meta def mkTermIsEq (n : Nat) : Term :=
@@ -154,7 +154,7 @@ protected meta def mkTermOfNfa (nfa : NFA.Checked.NFA) : Term :=
 protected meta def mkTermOfRegex (re : Regex) : Term :=
   Syntax.mkApp (mkCIdent `Regex.mk) #[Notation.mkTermOfNfa re.nfa]
 
-@[expose] meta instance : Quote Regex where
+meta instance : Quote Regex where
   quote := Notation.mkTermOfRegex
 
 declare_syntax_cat regex
