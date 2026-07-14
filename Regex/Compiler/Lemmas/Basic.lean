@@ -60,7 +60,7 @@ set_option mvcgen.warning false
       ⦃post⟨fun a s => ⌜Q n a s⌝, fun _ => ⌜False⌝ ⟩⦄ := by
   assumption
 
-def coe_spec_StackT_to_EStateM
+theorem coe_spec_StackT_to_EStateM
   {v : StateT σ Id α}
   {P : σ → Prop}
   {Q : α → σ → Prop}

@@ -135,17 +135,16 @@ protected def range_of_named_property (name property : String)
 
 protected def hir_unicode_class (cls : AstItems.ClassUnicode) (flags : Flags)
     : Except String ClassUnicode := do
-  let range ←
-    match cls.kind with
-    | .OneLetter c =>
-        let range ← Syntax.range_of_category c.toString
-        Except.ok (Syntax.unicode_fold_and_negate range flags cls.negated)
-    | .Named s =>
-      let range ← Syntax.range_of_category s
+  match cls.kind with
+  | .OneLetter c =>
+      let range ← Syntax.range_of_category c.toString
       Except.ok (Syntax.unicode_fold_and_negate range flags cls.negated)
-    | .NamedValue _ n s =>
-      let range ← Syntax.range_of_named_property n s
-      Except.ok (Syntax.unicode_fold_and_negate range flags cls.negated)
+  | .Named s =>
+    let range ← Syntax.range_of_category s
+    Except.ok (Syntax.unicode_fold_and_negate range flags cls.negated)
+  | .NamedValue _ n s =>
+    let range ← Syntax.range_of_named_property n s
+    Except.ok (Syntax.unicode_fold_and_negate range flags cls.negated)
 
 protected def hir_perl_unicode_class (cls : AstItems.ClassPerl) (flags : Flags)
     : Except String ClassUnicode := do
