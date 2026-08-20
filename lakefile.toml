@@ -6,17 +6,17 @@ defaultTargets = ["inspect", "benchmark"]
 [[require]]
 name = "UnicodeBasic"
 git = "https://github.com/fgdorais/lean4-unicode-basic"
-rev = "947120c17904da8fc89abe3616d57e1c3e13aa9c"
+rev = "37e7d8cb7316a88cd3e91208385c9ec6ae780019"
 
 [[require]]
 name = "batteries"
 git = "https://github.com/leanprover-community/batteries"
-rev = "v4.32.0"
+rev = "v4.33.0"
 
 [[require]]
 name = "Parser"
 git = "https://github.com/fgdorais/lean4-parser"
-rev = "afcde96c3f0ccd84beb096fd3af5dd144b401e3c"
+rev = "2ca6e66d5bd4f3f51390f98fdb415ed9891b0b89"
 
 [[lean_lib]]
 name = "Regex"

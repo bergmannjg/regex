@@ -42,7 +42,7 @@ class Parser.Stream.Remaining (σ : Type) where
 instance : Parser.Stream.Remaining String.Slice where
   remaining s := s.utf8ByteSize
 
-open Parser.Stream in
+open Parser.Parser.Stream in
 /--
   The recursive function ``loop`` calls ``p`` with a parser that acts like ``p``
   except it fails if called from the same or lower string position
@@ -60,7 +60,7 @@ def loop (p : (ReaderT ρ $ StateT σ SimpleCharParser) α
   p p' r s it
 termination_by _ _ it => Remaining.remaining it
 
-open Parser.Stream in
+open Parser.Parser.Stream in
 /-- accumulates the result of ``p`` until ``p`` fails -/
 private def foldM (p : StateT σ SimpleCharParser α) (acc : Array α)
     : StateT σ SimpleCharParser $ Array α := fun s it =>

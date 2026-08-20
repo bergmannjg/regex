@@ -144,11 +144,12 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
   simp [Code.patch] at h
   dsimp only [get, getThe, MonadStateOf.get,EStateM.instMonadStateOf, EStateM.get,
               bind, Monad.toBind, EStateM.bind] at h
-  split at h
+  simp_all
   simp [patchAssignable]
   intros
+  simp_all
   split
-  case h_11 | isFalse => simp_all
+  case h_11 => simp_all
   all_goals (rename_i heq; rw [heq] at h; unfold EStateM.instMonadStateOf EStateM.set at h; simp at h)
 
 @[simp, grind .] theorem patch2Assignable_of_eq (s1 s2 : Array Unchecked.State)
@@ -182,23 +183,22 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
   dsimp only [get,getThe, EStateM.instMonadStateOf, EStateM.get,
               bind, Monad.toBind, EStateM.bind] at h
   split at h
+  case h_2 =>
+    rename_i heq; unfold MonadStateOf.get EStateM.instMonadStateOf EStateM.get at heq
+    simp_all
   simp [patch2Assignable]
   rename_i heq
   unfold MonadStateOf.get EStateM.instMonadStateOf EStateM.get at heq
   simp at heq
   rw [heq.left]
   rw [heq.left] at hlt
-  split at h
-  case h_2 =>
-    rename_i heq
-    unfold MonadStateOf.get EStateM.instMonadStateOf EStateM.get at heq
-    simp_all
-  case h_1.isFalse => simp_all
+  simp_all only [↓reduceDIte]
   intros
   split
   case h_5 => simp
-  all_goals (rename_i heq; rw [heq] at h; dsimp [EStateM.set] at h;
-              unfold EStateM.instMonadStateOf EStateM.set at h; simp at h)
+  all_goals
+    rename_i heq; rw [heq] at h; dsimp [EStateM.set] at h;
+    unfold EStateM.instMonadStateOf EStateM.set at h; simp at h
 
 @[simp, grind .] theorem not_patch2Assignable_if_patch_eq (s1 s2 : Array Unchecked.State)
   (h : Code.patch f t s1 = EStateM.Result.ok () s2)
@@ -208,17 +208,18 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
   simp [Code.patch] at h
   dsimp [bind, EStateM.bind] at h
   split at h
-  split at h
-  · expose_names
-    have : s1 = a := by
-      dsimp only [get, getThe, MonadStateOf.get, EStateM.get] at heq
-      simp_all
-    have : s1[f] = a[f] := by grind
-    rw [this]
-    split <;> simp_all
-    all_goals (expose_names; rw [heq_1] at h; simp at h)
-  · simp_all
-  · simp_all
+  case h_2 => simp_all
+  expose_names
+  have heq : s1 = a := by
+    simp only [get, getThe, MonadStateOf.get, EStateM.get] at heq
+    simp_all
+  rw [heq] at hlt
+  have : s1[f] = a[f] := by grind
+  rw [this]
+  simp_all
+  split
+  case h_5 => simp_all
+  all_goals (expose_names; rw [heq_2] at h; simp at h)
 
 theorem patch_spec_constant («from»: Unchecked.StateID) («to»: Unchecked.StateID)
   (states : Array Unchecked.State)
@@ -328,16 +329,15 @@ theorem patch2_spec_assignable («from»: Unchecked.StateID) (to₁ to₂ : Unch
   simp [Code.patch2] at h
   dsimp only [bind, EStateM.bind] at h
   split at h
-  split at h
-  · expose_names
-    have : s1 = a := by
-      dsimp only [get, getThe, MonadStateOf.get, EStateM.get] at heq
-      simp_all
-    have : s1[f] = a[f] := by grind
-    rw [this]
-    split <;> simp_all
-  · simp_all
-  · simp_all
+  case h_2 => simp_all
+  expose_names
+  have heq : s1 = a := by
+    dsimp only [get, getThe, MonadStateOf.get, EStateM.get] at heq
+    simp_all
+  rw [heq] at hlt
+  have : s1[f] = a[f] := by grind
+  rw [this]
+  split <;> simp_all
 
 @[spec] theorem patch2_spec («from»: Unchecked.StateID) {to₁ to₂ : Unchecked.StateID}
   {states : Array Unchecked.State}

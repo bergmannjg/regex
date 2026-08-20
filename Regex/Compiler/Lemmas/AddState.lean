@@ -87,7 +87,7 @@ set_option mvcgen.warning false
     Array.size_push, Nat.lt_add_one, true_and, Array.getElem_push_eq, exists_eq_right',
     SPred.down_pure]
   and_intros
-  case h_1.refine_2.refine_2.refine_1 => simp_all
+  case h_1.refine_2.refine_2.refine_1 => simp_all [patchAssignable]
   all_goals grind
 
 @[spec] theorem push_run_lift_spec (sid : Unchecked.State) (states : Array Unchecked.State)
@@ -506,20 +506,12 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
                         ∧ cMemAndValid captures s.2.1
                         ∧ (NFA.Capture.mk Capture.Role.Start group) ∈ s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
   mvcgen [Code.c_cap']
-  grind
-  and_intros
-  grind only [= stateIdNextOfLt.eq_1]
-  grind only [= stateIdNextOfLt.eq_1]
-  grind only [= stateIdNextOfLt.eq_1]
-  grind only [patchAssignable_of_assignableIf]
-  grind only [patch2Assignable_of_assignableIf]
-  grind only [assignableP]
-  grind only [assignableP]
-  grind only [= Array.mem_push]
-  expose_names
-  have : Capture.Valid s.2.fst := by simp only [cValid] at h; grind only
-  grind only [valid_of_push_of_role_start]
-  grind only [= Array.mem_push]
+  generalize hs : (Unchecked.State.Capture Capture.Role.Start 0 0 group) = sid
+  rename_i s _
+  generalize hx : (Code.push sid s.fst).run = x
+  have := Id.of_wp_run_eq hx (fun r => stateIdNextOfLt states r.1 r.2 ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2)
+              (by mspec push_run_spec <;> grind)
+  and_intros <;> grind
 
 @[spec] theorem c_cap'_end_spec (group : Nat) (states : Array Unchecked.State)
   (captures : Array NFA.Capture) (h : ∃ c ∈ captures, c.role = Capture.Role.Start ∧ c.group = group)
@@ -528,7 +520,13 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
       ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1
                       ∧ assignableIf states s.1 ∧ assignableP r states s.1
                       ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_cap'] with grind
+  mvcgen [Code.c_cap']
+  generalize hs : (Unchecked.State.Capture Capture.Role.End 0 0 group) = sid
+  rename_i s _
+  generalize hx : (Code.push sid s.fst).run = x
+  have := Id.of_wp_run_eq hx (fun r => stateIdNextOfLt states r.1 r.2 ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2)
+              (by mspec push_run_spec <;> grind)
+  grind [cMemAndValid]
 
 @[spec] theorem c_back_ref_spec (case_insensitive : Bool) (n : Nat)  (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
