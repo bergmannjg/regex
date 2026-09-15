@@ -4,19 +4,14 @@ lintDriver = "batteries/runLinter"
 defaultTargets = ["inspect", "benchmark"]
 
 [[require]]
-name = "UnicodeBasic"
-git = "https://github.com/fgdorais/lean4-unicode-basic"
-rev = "37e7d8cb7316a88cd3e91208385c9ec6ae780019"
-
-[[require]]
-name = "batteries"
-git = "https://github.com/leanprover-community/batteries"
-rev = "v4.33.0"
+name = "UnicodeData"
+git = "https://github.com/fgdorais/lean4-unicode-data"
+rev = "176a889c4d4a31667ec5bf44a6e4a4291ef32e81"
 
 [[require]]
 name = "Parser"
 git = "https://github.com/fgdorais/lean4-parser"
-rev = "2ca6e66d5bd4f3f51390f98fdb415ed9891b0b89"
+rev = "3db7189e9142c9c463a53bd8b360fea2b78f4be5"
 
 [[lean_lib]]
 name = "Regex"
