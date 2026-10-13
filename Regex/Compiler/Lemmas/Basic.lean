@@ -48,6 +48,7 @@ macro_rules | `(tactic|inst_mvars) => `(tactic| simp; and_intros; all_goals try 
 
 open Std.Do
 
+set_option linter.deprecated.syntax false
 set_option mvcgen.warning false
 
 @[spec] theorem lift_StackT_to_EStateM_spec

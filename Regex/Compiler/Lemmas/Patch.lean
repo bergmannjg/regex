@@ -19,6 +19,7 @@ namespace Lemmas
 
 open Std.Do
 
+set_option linter.deprecated.syntax false
 set_option mvcgen.warning false
 
 @[simp] def State.patchAssignable (state : Unchecked.State)  : Prop :=

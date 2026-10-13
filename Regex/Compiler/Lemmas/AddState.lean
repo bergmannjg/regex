@@ -19,6 +19,7 @@ namespace Lemmas
 
 open Std.Do
 
+set_option linter.deprecated.syntax false
 set_option mvcgen.warning false
 
 @[simp, grind] def isAppendOfState (sid : Unchecked.StateID) (state : Unchecked.State) (s1 s2 : Array Unchecked.State) :=

@@ -26,7 +26,7 @@ namespace Unicode
 
 private def getUnassigned : Array (NonemptyInterval Char) :=
   let init : Option UInt32 × Array (UInt32 × UInt32) := (none, #[])
-  let (prev, arr) := UnicodeData.data |> Array.foldl (init := init) (fun (prev, acc) d =>
+  let (prev, arr) := UnicodeData.data.get |> Array.foldl (init := init) (fun (prev, acc) d =>
     match prev with
     | some prev =>
       if d.code - prev = 1 then (d.code, acc)
@@ -60,7 +60,7 @@ def rangesOfGeneralCategory (category : GC) : Except String $ Array (NonemptyInt
     Except.ok getUnassigned
   else
     let arr :=
-        UnicodeData.data
+        UnicodeData.data.get
         |> .filter (fun u => u.gc ⊆ category)
         |> fold
         |> .filterMap (fun (c1, c2) => if h : c1 ≤ c2 then some ⟨⟨c1, c2⟩, h⟩ else none)
@@ -85,7 +85,7 @@ private def rangessOfPropertyName (name : PropertyName) (prop : String)
     : Except String $ Array (NonemptyInterval Char) := do
   match name with
   | .General_Category => rangesOfCategory prop
-  | .White_Space => Except.ok (property_map PropList.data.whiteSpace)
+  | .White_Space => Except.ok (property_map PropList.data.get.whiteSpace)
   | .Alphabetic => rangesOfDerivedCoreProperty "Alphabetic"
   | .Uppercase => rangesOfDerivedCoreProperty "Uppercase"
   | .Lowercase => rangesOfDerivedCoreProperty "Lowercase"

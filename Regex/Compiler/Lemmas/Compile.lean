@@ -30,6 +30,7 @@ and has no exceptions
 
 open Std.Do
 
+set_option linter.deprecated.syntax false
 set_option mvcgen.warning false
 
 set_option trace.profiler.threshold 2000
