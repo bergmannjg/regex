@@ -1,107 +1,112 @@
 module
 
 public import Init.Meta
-public import Parser
+public import ParseIt
 public import Std.Internal.Parsec
 
-open Lean Lean.Syntax Parser Parser.Char
+open Std Lean Lean.Syntax ParseIt ParseIt.Char
 
 public section
 
 /-! Parser utils for ReaderT and StateT -/
 namespace Parser
 
-abbrev SimpleCharParser := SimpleParser String.Slice Char
+def remaining (it : Std.Iter (α := CharIterator) Char) :=
+  it.internalState.slice.utf8ByteSize - it.internalState.pos.offset.byteIdx
+
+abbrev SimpleCharParser := Parser (Error.Simple CharIterator) CharIterator Char
 
 instance Parser.coeSimpleParser
     : Coe (SimpleCharParser α) ((ReaderT ρ $ StateT σ SimpleCharParser) α) where
   coe p := fun _ σ => do return (← p, σ)
 
-/-- extends `Lean.Parser.attempt` -/
-def attemptM (p : (ReaderT ρ $ StateT σ SimpleCharParser) α)
-    : (ReaderT ρ $ StateT σ SimpleCharParser) α := fun f => do
-  let (a, s) ← Parser.withBacktracking (p f (← get))
-  set s
-  pure a
-
 def fail (msg : String) : SimpleCharParser α :=
   throwUnexpectedWithMessage none msg
 
-private def mkSimpleError (it : String.Slice) (msg : String)
-    : Parser.Result (Error.Simple String.Slice Char) String.Slice α :=
-  .error it (Error.Simple.addMessage
-    (Error.Simple.unexpected it.startInclusive.offset none) it.startInclusive.offset msg)
+def mkSimpleError (it : Std.Iter (α := CharIterator) Char) (msg : String)
+    : ParseIt.Result (Error.Simple CharIterator) (it : Std.Iter (α := CharIterator) Char) α :=
+  .error (Error.Simple.addMessage
+    (Error.Simple.unexpected (HasPos.pos it) none) (HasPos.pos it) msg)
 
-/-- Returns a natural number measure of remaining input.
-  see https://github.com/fgdorais/lean4-parser/pull/99
--/
-class Parser.Stream.Remaining (σ : Type) where
-  remaining : σ -> Nat
-
-/- see https://github.com/fgdorais/lean4-parser/pull/99 -/
-instance : Parser.Stream.Remaining String.Slice where
-  remaining s := s.utf8ByteSize
-
-open Parser.Parser.Stream in
 /--
   The recursive function ``loop`` calls ``p`` with a parser that acts like ``p``
   except it fails if called from the same or lower string position
 
   see https://leanprover.zulipchat.com/#narrow/channel/113488-general/topic/Advent.20of.20Code.3F/near/405471085
 -/
-def loop (p : (ReaderT ρ $ StateT σ SimpleCharParser) α
+def loop (f : (ReaderT ρ $ StateT σ SimpleCharParser) α
   → (ReaderT ρ $ StateT σ SimpleCharParser) α)
     : (ReaderT ρ $ StateT σ SimpleCharParser) α := fun r s it =>
-  let p' : (ReaderT ρ (StateT σ SimpleCharParser)) α := fun r s' it' =>
-    if Remaining.remaining it' < Remaining.remaining it then
-      loop p r s' it'
-    else
-      return mkSimpleError it' "recursive call going backwards in the string"
-  p p' r s it
-termination_by _ _ it => Remaining.remaining it
+  let p : (ReaderT ρ (StateT σ SimpleCharParser)) α := fun r s' it' => do
+    if remaining it' < remaining it then loop f r s' it'
+    else return mkSimpleError it' "iterator does not move strictly forward"
+  f p r s it
+termination_by _ _ it => remaining it
 
-open Parser.Parser.Stream in
-/-- accumulates the result of ``p`` until ``p`` fails -/
-private def foldM (p : StateT σ SimpleCharParser α) (acc : Array α)
-    : StateT σ SimpleCharParser $ Array α := fun s it =>
-  match withBacktracking (p s) it with
-  | .ok rem a =>
-    if Remaining.remaining rem < Remaining.remaining it then foldM p (acc.push a.1) a.2 rem
-    else return mkSimpleError rem "recursive call going backwards in the string"
-  | .error rem _ => ((return acc) : StateT _ SimpleCharParser _) s rem
-termination_by _ it => Remaining.remaining it
+section Folding
 
-/-- accumulates the result of ``p`` until ``p`` fails -/
-private def fold (p : SimpleCharParser α) (acc : Array α)
-    : SimpleCharParser $ Array α :=
-  foldM p acc () >>= (fun x => pure x.1)
+variable {ε ι τ : Type u} {m : Type u → Type v} [Iterator ι Id τ]
+
+/- ParseIt.efoldlP with StateT σ -/
+@[expose] def StateT.efoldlP [Iterators.Finite ι Id] [Monad m]
+  (f : β → α → StateT σ (ParserT ε ι τ m) β) (init : β)
+  (p : StateT σ (ParserT ε ι τ m) α) : StateT σ (ParserT ε ι τ m) (β × Option ε) := fun s it => do
+  loop s it init it (.refl it)
+where
+  /-- Fold from iterator `cur`, which `it` progressed to, with accumulator `y`. -/
+  loop [Iterators.Finite ι Id] (s : σ) (it : Iter (α := ι) τ) (y : β) (cur : Iter (α := ι) τ)
+    (hcur : Progress cur it) : m (Result ε it ((β × Option ε) × σ)) := do
+    match ← p s cur with
+    | .error _ => return .ok cur hcur ((y, none), s)
+    | .ok rest₁ h₁ x =>
+      match ← f y x.1 x.2 rest₁ with
+      | .error e => return .ok cur hcur ((y, some e), x.2)
+      | .ok rest₂ h₂ y =>
+        match h₂.trans h₁ with
+        | .stay h => return .ok rest₂ (h ▸ hcur) ((y.1, none), y.2)
+        | .moved h => loop y.2 it y.1 rest₂ ((Progress.moved h).trans hcur)
+  termination_by cur.finitelyManySteps
+  decreasing_by exact h
+
+/- ParseIt.foldlP with StateT σ -/
+def StateT.foldlP [Iterators.Finite ι Id] [Monad m]
+  (f : β → α → StateT σ (ParserT ε ι τ m) β) (init : β)
+  (p : StateT σ (ParserT ε ι τ m) α) : StateT σ (ParserT ε ι τ m) β :=
+  Prod.fst <$> efoldlP f init p
+
+/- ParseIt.foldl with StateT σ -/
+public def StateT.foldl [Iterators.Finite ι Id] [Monad m] (f : β → α → β) (init : β)
+    (p : StateT σ (ParserT ε ι τ m) α) : StateT σ (ParserT ε ι τ m) β :=
+  StateT.foldlP (fun y x => pure (f y x)) init p
+
+end Folding
 
 def manyM (p : (ReaderT ρ $ StateT σ SimpleCharParser) α)
-    : (ReaderT ρ $ StateT σ SimpleCharParser) $ Array α := do
-  foldM (p (← read)) #[]
+    : (ReaderT ρ $ StateT σ SimpleCharParser) $ Array α := fun r => do
+  StateT.foldl (fun acc a => acc.push a) (#[] : Array α) (p r)
 
-def ws : (ReaderT ρ $ StateT σ SimpleCharParser) PUnit := fun _ t => do
-  let _ ← fold (Char.ASCII.whitespace) #[]
-  pure ((), t)
+def ws : (ReaderT ρ $ StateT σ SimpleCharParser) PUnit := fun _ s => do
+  let _ ← foldl (fun acc _ => acc) (#[] : Array Char) (Char.ASCII.whitespace)
+  pure ((), s)
 
 def peekChar?  : SimpleCharParser $ Option Char :=
-  option? peek
+  option? (lookAhead anyToken)
 
 def peekChar : SimpleCharParser Char :=
-  peek
+  lookAhead anyToken
 
 def withPos (p : SimpleCharParser α)
     : SimpleCharParser (String.Pos.Raw × String.Pos.Raw × α) := do
-  let (a, s) ← withCapture p
-  return (s.start, s.stop, a)
+  let (a, s1, s2) ← withSpan p
+  return (s1, s2, a)
 
 def withPosM (p : (ReaderT ρ $ StateT σ SimpleCharParser) α)
     : (ReaderT ρ $ StateT σ SimpleCharParser) (String.Pos.Raw × String.Pos.Raw × α) := fun f s => do
-  let (a, s) ← withCapture (p f s)
-  return ((s.start, s.stop, a.1), a.2)
+  let (a, s1, s2) ← withSpan (p f s)
+  return ((s1, s2, a.1), a.2)
 
 def skipChar (c : Char) : SimpleCharParser Unit := do
-  match ← eoption peek with
+  match ← tryCatch (Sum.inl <$> (lookAhead anyToken)) (fun e => pure (.inr e)) with
   | .inl c' => if c = c' then anyToken *> pure () else throwUnexpected
   | .inr e => throw e
 
@@ -113,10 +118,10 @@ def skipChar? (c : Char) : SimpleCharParser Unit := do
   catch _ => pure ()
 
 def skipString (tks : String) : SimpleCharParser Unit := do
-  chars tks *> pure ()
+  string tks *> pure ()
 
 def skipString? (tks : String) : SimpleCharParser Unit := do
-  try withBacktracking (skipString tks)
+  try (skipString tks)
   catch _ => pure ()
 
 /-- exec `check` on current char -/
@@ -162,9 +167,9 @@ def tryCharWithPosMap (check : Char -> Bool) (f : Char → String.Pos.Raw → St
   else pure none
 
 def manyChars (p : SimpleCharParser Char) : SimpleCharParser String := do
-  let chars ← fold p #[]
+  let chars ← foldl (fun acc a => acc.push a)  (#[] : Array Char) p
   return String.ofList chars.toList
 
 def many1Chars (p : SimpleCharParser Char) : SimpleCharParser String := do
-  let chars ← fold p #[← p]
+  let chars ← foldl (fun acc a => acc.push a)  (#[← p] : Array Char) p
   return String.ofList chars.toList

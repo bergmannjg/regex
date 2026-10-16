@@ -11,12 +11,12 @@ rev = "v4.35.0"
 [[require]]
 name = "UnicodeData"
 git = "https://github.com/fgdorais/lean4-unicode-data"
-rev = "53840add82007699215462d8a6ef0a19c0f8e9dc"
+rev = "24e9b668a6550ec02ad625c92ae5835918a46246"
 
 [[require]]
-name = "Parser"
-git = "https://github.com/fgdorais/lean4-parser"
-rev = "84ccc0c95c822851244587834be29044f96a236f"
+name = "ParseIt"
+git = "https://github.com/fgdorais/lean4-parseit"
+rev = "e411c02b878b2149bb632575762648432189068b"
 
 [[lean_lib]]
 name = "Regex"
