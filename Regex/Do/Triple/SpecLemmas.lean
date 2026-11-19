@@ -7,6 +7,8 @@ public import Std.Tactic.Do.Syntax
 
 namespace Std.Do
 
+set_option linter.deprecated.syntax false
+
 @[spec]
 theorem except_ok_spec {α ε : Type} {x : α} {pre : Prop}
   {post : α → Prop} {error : ε → Prop}

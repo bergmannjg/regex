@@ -20,7 +20,6 @@ namespace Lemmas
 open Std.Do
 
 set_option linter.deprecated.syntax false
-set_option mvcgen.warning false
 
 @[simp, grind] def isAppendOfState (sid : Unchecked.StateID) (state : Unchecked.State) (s1 s2 : Array Unchecked.State) :=
   s2 = s1 ++ #[state] ∧ s2[sid]? = some state
@@ -62,7 +61,9 @@ set_option mvcgen.warning false
   mvcgen [Code.push]
   simp
   and_intros
-  all_goals grind only [= NextOfLt.iff, all_push]
+  all_goals try grind only [all_push]
+  simp [NextOfLt.iff]
+  grind
 
 @[spec] theorem push_lift_spec (sid : Unchecked.State) (states : Array Unchecked.State)
     : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
@@ -631,7 +632,10 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
   mspec add_empty_lift_spec
   grind
   mvcgen
-  all_goals grind
+  · grind
+  · grind
+  · simp [NextOfLt.iff]
+    and_intros <;> grind
 
 @[spec] theorem c_lookaround_PositiveLookbehind_lift_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -699,7 +703,12 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
   mintro _
   mspec add_empty_lift_spec
   grind
-  mvcgen with grind
+  mvcgen
+  · grind
+  · grind
+  · grind
+  · simp [NextOfLt.iff]
+    and_intros <;> grind
 
 @[spec] theorem c_repetition_0_some_1_false_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
@@ -794,7 +803,11 @@ theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked
   mintro _
   mspec greedy_union_spec
   grind
-  mvcgen with grind
+  mvcgen
+  · grind
+  · grind
+  · simp [NextOfLt.iff]
+    and_intros <;> grind
 
 @[spec] theorem c_at_least_0_pre_lift_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)

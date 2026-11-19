@@ -31,7 +31,6 @@ and has no exceptions
 open Std.Do
 
 set_option linter.deprecated.syntax false
-set_option mvcgen.warning false
 
 set_option trace.profiler.threshold 2000
 
@@ -45,7 +44,11 @@ set_option trace.profiler.threshold 2000
   dsimp [Code.c_bounded.fold.patch.pre]
   mintro _
   mspec greedy_union_spec; grind
-  mvcgen with grind
+  mvcgen
+  · grind
+  · grind
+  · simp [NextOfLt.iff]
+    and_intros <;> grind
 
 @[spec] private theorem c_bounded.fold.patch.possessive_spec (compiled: ThompsonRef) (empty : Unchecked.StateID)
   (states : Array Unchecked.State)
