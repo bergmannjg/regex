@@ -15,18 +15,6 @@ open NFA
 
 namespace Lemmas
 
-/-- instantiate mvar,
-    mspec with a precondition like `fun s => s = states ∧ P` gives a uninstantiated mvar
--/
-syntax "inst_mvar" : tactic
-macro_rules | `(tactic|inst_mvar) => `(tactic| simp; (try and_intros; rfl); try simp_all)
-
-/-- instantiate mvars,
-    mspec with a precondition like `fun s => s = states ∧ P` gives a uninstantiated mvar
--/
-syntax "inst_mvars" : tactic
-macro_rules | `(tactic|inst_mvars) => `(tactic| simp; and_intros; all_goals try rfl)
-
 @[simp, grind] def isAppend (s1 s2 : Array Unchecked.State) :=
   ∃ s', s2 = s1 ++ s'
 
@@ -46,34 +34,9 @@ macro_rules | `(tactic|inst_mvars) => `(tactic| simp; and_intros; all_goals try 
     exact Nat.lt_add_right 1 (hlt i h')
   . exact Nat.lt_add_one_of_le h
 
-open Std.Do
+open Std.WP
 
 set_option linter.deprecated.syntax false
-
-@[spec] theorem lift_StackT_to_EStateM_spec
-  (v : StateT σ Id α)
-  {P : σ → Prop}
-  (Q : σ → α → σ → Prop)
-  (hspec : ⦃fun s => ⌜s = n ∧ P n⌝⦄ v ⦃post⟨fun a s => ⌜Q n a s⌝⟩⦄)
-    : ⦃fun s => ⌜s = n ∧ P n⌝⦄
-      (v : (EStateM ε σ α))
-      ⦃post⟨fun a s => ⌜Q n a s⌝, fun _ => ⌜False⌝ ⟩⦄ := by
-  assumption
-
-theorem coe_spec_StackT_to_EStateM
-  {v : StateT σ Id α}
-  {P : σ → Prop}
-  {Q : α → σ → Prop}
-  (hspec : ⦃fun s => ⌜P s⌝⦄ v ⦃post⟨fun a s => ⌜Q a s⌝⟩⦄)
-    : ⦃fun s => ⌜P s⌝⦄
-      (v : (EStateM ε σ α))
-      ⦃post⟨fun a s => ⌜Q a s⌝, fun _ _ => ⌜False⌝ ⟩⦄ := by
-  assumption
-
-instance {v : StateT σ Id α} {P : σ → Prop} {Q : α → σ → Prop}
-  : Coe (⦃fun s => ⌜P s⌝⦄ v ⦃post⟨fun a s => ⌜Q a s⌝⟩⦄)
-      (⦃fun s => ⌜P s⌝⦄ (v : (EStateM ε σ α)) ⦃post⟨fun a s => ⌜Q a s⌝, fun _ _ => ⌜False⌝ ⟩⦄)
-  where coe := coe_spec_StackT_to_EStateM
 
 @[simp, grind] def tRefLt (t : ThompsonRef) (r : Array Unchecked.State) :=
   t.1 < r.size ∧ t.2 < r.size
@@ -177,61 +140,37 @@ def cMemAndValidFunc (captures : Array NFA.Capture) : Array NFA.Capture → Prop
   dsimp only [cMemAndValidFunc]
   simp_all
 
-theorem coe_spec_EStateM_to_EStateM_Prod
-  (σ₃ : Type)
-  {v₁ : EStateM ε σ₁ α}
-  {P₁ : σ₁ → Prop}
-  {Q₁  : α → σ₁ → Prop}
-  (hspec₁ : ⦃fun s => ⌜P₁ s⌝⦄ v₁ ⦃post⟨fun a s => ⌜Q₁ a s⌝, fun _ => ⌜False⌝⟩⦄)
-  (P₂ : σ₂ → Prop)
-  (Q₂ : σ₂ → Prop)
-  (hpq : ∀ s : σ₂, P₂ s → Q₂ s)
-    : ⦃fun s => ⌜P₁ s.1 ∧ P₂ s.2.1⌝⦄
-      (v₁ : EStateM ε (σ₁ × σ₂ × σ₃) α)
-      ⦃post⟨fun r s => ⌜Q₁ r s.1 ∧ Q₂ s.2.1⌝, fun _ _ => ⌜False⌝ ⟩⦄ := by
-  simp_all [Triple, wp, liftM, monadLift, SPred.entails, EStateM.run]
-  intros
-  simp [PredTrans.apply] at hspec₁
-  simp [PredTrans.apply]
-  split <;>
-    (rename_i heq
-     split at heq
-     all_goals grind)
+theorem lift_spec_StateT_to_PatchM {v : StateT (Array Unchecked.State) Id α}
+  {P : (Array Unchecked.State) → Prop} {Q : α → (Array Unchecked.State) → Prop}
+  (h : ⦃P⦄ v ⦃Q⦄) : ⦃P⦄ (v : Code.PatchM α) ⦃Q; fun _ _ => False⦄ := by
+  refine ⟨fun s hs => ?_⟩
+  have := h.le_wp s hs
+  simp only [WP.wp, WP.trans, liftM, monadLift, MonadLiftT.monadLift, EStateM.modifyGet] at this ⊢
+  exact this
 
-theorem coe_spec_EStateM_to_CompilerM
-  {captures : Array NFA.Capture}
-  {v₁ : EStateM ε σ₁ α}
-  {P₁ : σ₁ → Prop}
-  {Q₁  : α → σ₁ → Prop}
-  (hspec₁ : ⦃fun s => ⌜P₁ s⌝⦄ v₁ ⦃post⟨fun a s => ⌜Q₁ a s⌝, fun _ => ⌜False⌝⟩⦄)
-    : ⦃fun s => ⌜P₁ s.1 ∧ s.2.1 = captures ∧ cValid captures⌝⦄
-      (v₁ : EStateM ε (σ₁ × (Array NFA.Capture) × (Array Nat)) α)
-      ⦃post⟨fun r s => ⌜Q₁ r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ _ => ⌜False⌝ ⟩⦄ := by
-  exact coe_spec_EStateM_to_EStateM_Prod (Array Nat) hspec₁
-          (cValidFunc captures) (cMemAndValidFunc captures) (by simp_all)
+theorem lift_spec_PatchM_to_CompilerM {captures : Array NFA.Capture}
+  {v : Code.PatchM α} {P : (Array Unchecked.State) → Prop} {Q : α → (Array Unchecked.State) → Prop}
+  (h : ⦃P⦄ v ⦃Q; fun _ _ => False⦄)
+    : ⦃fun s => P s.1 ∧ s.2.1 = captures ∧ cValid captures⦄
+      (v : Code.CompilerM α)
+      ⦃fun r s => Q r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  refine ⟨fun s ⟨hp, hc, hv⟩ => ?_⟩
+  have := h.le_wp s.1 hp
+  simp only [WP.wp, WP.trans, liftM, monadLift, MonadLiftT.monadLift, EStateM.run] at this ⊢
+  cases hx : v s.1 <;> simp only [hx] at this ⊢
+  exact ⟨this, hc, cMemAndValid_of_cValid_of_eq captures _ ⟨hc, hv⟩⟩
 
-theorem coe_spec_StateT_to_CompilerM
-  {captures : Array NFA.Capture}
-  {v : StateT σ₁ Id α}
-  {P₁: σ₁ → Prop}
-  {Q₁ : α → σ₁ → Prop}
-  (hspec : ⦃fun s => ⌜P₁ s⌝⦄ v ⦃post⟨fun a s => ⌜Q₁ a s⌝⟩⦄)
-    : ⦃fun s => ⌜P₁ s.1 ∧ s.2.1 = captures ∧ cValid captures⌝⦄
-      (v : EStateM ε (σ₁ × (Array NFA.Capture) × (Array Nat)) α)
-      ⦃post⟨fun r s => ⌜Q₁ r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ _ => ⌜False⌝⟩⦄ :=
-  coe_spec_EStateM_to_EStateM_Prod (Array Nat) (coe_spec_StackT_to_EStateM hspec)
-          (cValidFunc captures) (cMemAndValidFunc captures) (by simp_all)
-
-theorem lift_CompilerM_bind_pure [MonadLiftT (EStateM ε σ) Code.CompilerM] (x : EStateM ε σ α)
-    : liftM x >>= EStateM.pure = (x : Code.CompilerM α) := by
-  apply bind_pure
-
-theorem pure_of_imp_spec {x : α} {P1 P2 : α → σ → Prop} (h : ∀ a s, P1 a s → P2 a s)
-    : ⦃fun s => ⌜P1 x s⌝⦄
-      (EStateM.pure x : EStateM ε σ α)
-      ⦃post⟨fun r s => ⌜P2 r s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  simp [Triple, wp, PredTrans.apply, EStateM.run, EStateM.pure]
-  grind
+theorem lift_spec_StateT_to_CompilerM {captures : Array NFA.Capture}
+  {v : StateT (Array Unchecked.State) Id α} {P : (Array Unchecked.State) → Prop}
+  {Q : α → (Array Unchecked.State) → Prop}
+  (h : ⦃P⦄ v ⦃Q⦄)
+    : ⦃fun s => P s.1 ∧ s.2.1 = captures ∧ cValid captures⦄
+      (v : Code.CompilerM α)
+      ⦃fun r s => Q r s.1 ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  refine ⟨fun s ⟨hp, hc, hv⟩ => ?_⟩
+  have := h.le_wp s.1 hp
+  simp only [WP.wp, WP.trans, liftM, monadLift, MonadLiftT.monadLift, StateT.run, Id.run] at this ⊢
+  exact ⟨this, hc, cMemAndValid_of_cValid_of_eq captures _ ⟨hc, hv⟩⟩
 
 @[grind .] theorem nextOf_look_eq : (Unchecked.State.Look look 0).nextOf = 0 := by
   simp_all [Unchecked.State.nextOf]

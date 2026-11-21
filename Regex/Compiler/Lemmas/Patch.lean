@@ -1,7 +1,6 @@
 module
 
-public import Std.Tactic.Do
-public import Std.Tactic.Do.Syntax
+public import Std.WP
 
 public import Regex.Data.Nat.Basic
 public import Regex.Compiler.Basic
@@ -17,9 +16,9 @@ open NFA
 
 namespace Lemmas
 
-open Std.Do
+open Std.WP
 
-set_option linter.deprecated.syntax false
+set_option experimental.vcgen true
 
 @[simp] def State.patchAssignable (state : Unchecked.State)  : Prop :=
   match state with
@@ -221,105 +220,87 @@ def patch2Assignable (s : Array Unchecked.State) (sid : Unchecked.StateID) : Pro
   case h_5 => simp_all
   all_goals (expose_names; rw [heq_2] at h; simp at h)
 
+/-- `Code.patch` uses `EStateM.Result.error e` directly as a program; this is its spec for `vcgen`. -/
+theorem EStateM.Result.error_spec (e : ε) {Q : α → σ → Prop} {E : ε → σ → Prop}
+    : Triple (Prog := EStateM ε σ α) (EStateM.Result.error e) (fun s => E e s) Q E :=
+  ⟨fun _ h => h⟩
+
 theorem patch_spec_constant («from»: Unchecked.StateID) («to»: Unchecked.StateID)
   (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ «from» < states.size ∧ «to» < states.size⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ «from» < states.size ∧ «to» < states.size⦄
       Code.patch «from» «to»
-      ⦃post⟨fun _ r => ⌜stateIdNextOfEqLt states «to» r
-                        ∧ (∀ sid : Fin r.size, (_ : sid < states.size) →
-                           sid.val ≠ «from» → r[sid] = states[sid])⌝, fun _ => ⌜True⌝ ⟩⦄ := by
-  mintro _
-  simp [Code.patch]
-  intros
-  mvcgen
-  all_goals grind
+      ⦃fun _ r => stateIdNextOfEqLt states «to» r
+                  ∧ (∀ sid : Fin r.size, (_ : sid < states.size) →
+                     sid.val ≠ «from» → r[sid] = states[sid]);
+       fun _ _ => True⦄ := by
+  vcgen [Code.patch, EStateM.Result.error_spec] with finish
 
 theorem patch_spec_assignable («from»: Unchecked.StateID) («to»: Unchecked.StateID)
   (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ «from» < states.size ∧ «to» < states.size⌝⦄
+    : ⦃fun s => s = states ∧ «from» < states.size ∧ «to» < states.size⦄
       Code.patch «from» «to»
-      ⦃post⟨fun _ r => ⌜patchAssignable r «from»⌝, fun _ => ⌜True⌝ ⟩⦄ := by
-  mintro _
-  simp [Code.patch]
-  intros
-  mvcgen
-  all_goals simp_all [patchAssignable]
+      ⦃fun _ r => patchAssignable r «from»; fun _ _ => True⦄ := by
+  vcgen [Code.patch, EStateM.Result.error_spec] with finish [patchAssignable, State.patchAssignable]
 
 @[simp, grind .] theorem patchAssignable_of_patch_eq (s1 s2 : Array Unchecked.State)
   (h : Code.patch f t s1 = EStateM.Result.ok e s2) (hf : f < s1.size) (ht : t < s1.size)
     : patchAssignable s2 f := by
-  have hpatch := patch_spec_assignable f t s1
-  simp [Triple] at hpatch
-  have hpatch := hpatch hf ht
-  simp only [wp, PredTrans.apply, EStateM.run] at hpatch
-  split at hpatch
-  all_goals grind
+  have hpatch := (patch_spec_assignable f t s1).le_wp s1 ⟨rfl, hf, ht⟩
+  simpa [WP.wp, WP.trans, h] using hpatch
 
 @[spec] theorem patch_spec («from»: Unchecked.StateID) {«to»: Unchecked.StateID}
   {states : Array Unchecked.State}
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ «from» < states.size ∧ «to» < states.size
-                ∧ patchAssignable states «from»⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ «from» < states.size ∧ «to» < states.size
+                ∧ patchAssignable states «from»⦄
       Code.patch «from» «to»
-      ⦃post⟨fun _ r => ⌜stateIdNextOfEqLt states «to» r ∧ assignableIf states r⌝, fun _ => ⌜False⌝ ⟩⦄ := by
-  simp [Triple]
-  intros h f t
-  simp [wp]
-  have hpatch := patch_spec_constant «from» to states
-  simp [Triple] at hpatch
-  have hpatch := hpatch h f t
-  simp only [wp, PredTrans.apply, EStateM.run] at hpatch
-  intros
-  simp only [PredTrans.apply, EStateM.run]
-  split
-  · intros
-    and_intros
+      ⦃fun _ r => stateIdNextOfEqLt states «to» r ∧ assignableIf states r; fun _ _ => False⦄ := by
+  refine ⟨fun s ⟨hs, hn, hf, ht, ha⟩ => ?_⟩
+  subst hs
+  have hpatch := (patch_spec_constant «from» «to» s).le_wp s ⟨rfl, hn, hf, ht⟩
+  simp only [WP.wp, WP.trans] at hpatch ⊢
+  split at hpatch
+  · and_intros
     all_goals grind
   · grind
 
 @[spec] theorem patch_lift_spec («from»: Unchecked.StateID) {«to»: Unchecked.StateID}
   {states : Array Unchecked.State}
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states ∧ «from» < states.size ∧ «to» < states.size
-                ∧ patchAssignable states «from») ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states ∧ «from» < states.size ∧ «to» < states.size
+                ∧ patchAssignable states «from») ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.patch «from» «to» : Code.CompilerM Unit)
-      ⦃post⟨fun _ s => ⌜(stateIdNextOfEqLt states «to» s.1 ∧ assignableIf states s.1)
-                        ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝ ⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (patch_spec _)
+      ⦃fun _ s => (stateIdNextOfEqLt states «to» s.1 ∧ assignableIf states s.1)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  refine ⟨fun s ⟨h, hc, hv⟩ => ?_⟩
+  have hpatch := (patch_spec «from» (to := «to») (states := states)).le_wp s.1 h
+  simp only [WP.wp, WP.trans, liftM, monadLift, MonadLiftT.monadLift, EStateM.run] at hpatch ⊢
+  cases hp : Code.patch «from» «to» s.1 <;> simp only [hp] at hpatch ⊢
+  exact ⟨hpatch, hc, cMemAndValid_of_cValid_of_eq captures _ ⟨hc, hv⟩⟩
 
 theorem patch2_spec_constant («from»: Unchecked.StateID) (to₁ to₂: Unchecked.StateID)
   (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ «from» < states.size ∧ to₁ < states.size
-                  ∧ to₂ < states.size⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ «from» < states.size ∧ to₁ < states.size
+                  ∧ to₂ < states.size⦄
       Code.patch2 «from» to₁ to₂
-      ⦃post⟨fun _ r => ⌜stateIdNextOfEqLt states to₁ r
-                        ∧ (∀ sid : Fin r.size, (_ : sid < states.size) →
-                           sid.val ≠ «from» → r[sid] = states[sid])⌝, fun _ => ⌜True⌝ ⟩⦄ := by
-  mintro _
-  simp [Code.patch2]
-  intros
-  mvcgen
-  all_goals grind
+      ⦃fun _ r => stateIdNextOfEqLt states to₁ r
+                  ∧ (∀ sid : Fin r.size, (_ : sid < states.size) →
+                     sid.val ≠ «from» → r[sid] = states[sid]);
+       fun _ _ => True⦄ := by
+  vcgen [Code.patch2, EStateM.Result.error_spec] with finish
+
 
 theorem patch2_spec_assignable («from»: Unchecked.StateID) (to₁ to₂ : Unchecked.StateID)
   (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ «from» < states.size ∧ to₁ < states.size ∧ to₂ < states.size⌝⦄
+    : ⦃fun s => s = states ∧ «from» < states.size ∧ to₁ < states.size ∧ to₂ < states.size⦄
       Code.patch2 «from» to₁ to₂
-      ⦃post⟨fun _ r => ⌜patch2Assignable r «from»⌝, fun _ => ⌜True⌝ ⟩⦄ := by
-  mintro _
-  simp [Code.patch2]
-  intros
-  mvcgen
-  all_goals simp_all [patch2Assignable]
+      ⦃fun _ r => patch2Assignable r «from»; fun _ _ => True⦄ := by
+  vcgen [Code.patch2, EStateM.Result.error_spec] with finish [patch2Assignable, State.patch2Assignable]
 
 @[simp, grind .] theorem patch2Assignable_of_patch_eq (s1 s2 : Array Unchecked.State)
   (h : Code.patch2 f t1 t2 s1 = EStateM.Result.ok e s2) (hf : f < s1.size)
     (ht1 : t1 < s1.size) (ht2 : t2 < s1.size)
     : patch2Assignable s2 f := by
-  have hpatch := patch2_spec_assignable f t1 t2 s1
-  simp [Triple] at hpatch
-  have hpatch := hpatch hf ht1
-  simp only [wp, PredTrans.apply, EStateM.run] at hpatch
-  split at hpatch
-  all_goals grind
+  have hpatch := (patch2_spec_assignable f t1 t2 s1).le_wp s1 ⟨rfl, hf, ht1, ht2⟩
+  simpa [WP.wp, WP.trans, h] using hpatch
 
 @[simp, grind .] theorem not_patchAssignable_if_patch2_eq (s1 s2 : Array Unchecked.State)
   (h : Code.patch2 f t1 t2 s1 = EStateM.Result.ok () s2)
@@ -341,18 +322,16 @@ theorem patch2_spec_assignable («from»: Unchecked.StateID) (to₁ to₂ : Unch
 
 @[spec] theorem patch2_spec («from»: Unchecked.StateID) {to₁ to₂ : Unchecked.StateID}
   {states : Array Unchecked.State}
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ «from» < states.size ∧ to₁ < states.size
-                  ∧ to₂ < states.size ∧ patch2Assignable states «from»⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ «from» < states.size ∧ to₁ < states.size
+                  ∧ to₂ < states.size ∧ patch2Assignable states «from»⦄
       Code.patch2 «from» to₁ to₂
-      ⦃post⟨fun _ r => ⌜stateIdNextOfEqLt states to₁ r ∧ to₂ < r.size ∧ assignableIf states r⌝, fun _ => ⌜False⌝ ⟩⦄ := by
-  simp [Triple]
-  intros h f t
-  have hpatch := patch2_spec_constant «from» to₁ to₂ states
-  simp [Triple, wp, PredTrans.apply] at hpatch
-  simp only [wp, PredTrans.apply]
-  intros
-  split
-  · intros
-    and_intros
-    all_goals grind [EStateM.run]
-  · grind [EStateM.run]
+      ⦃fun _ r => stateIdNextOfEqLt states to₁ r ∧ to₂ < r.size ∧ assignableIf states r;
+       fun _ _ => False⦄ := by
+  refine ⟨fun s ⟨hs, hn, hf, ht1, ht2, ha⟩ => ?_⟩
+  subst hs
+  have hpatch := (patch2_spec_constant «from» to₁ to₂ s).le_wp s ⟨rfl, hn, hf, ht1, ht2⟩
+  simp only [WP.wp, WP.trans] at hpatch ⊢
+  split at hpatch
+  · and_intros
+    all_goals grind
+  · grind

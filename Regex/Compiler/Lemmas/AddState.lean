@@ -1,7 +1,6 @@
 module
 
-public import Std.Tactic.Do
-public import Std.Tactic.Do.Syntax
+public import Std.WP
 
 public import Regex.Compiler.Basic
 public import Regex.Compiler.Patch
@@ -17,11 +16,12 @@ open NFA
 
 namespace Lemmas
 
-open Std.Do
+open Std.WP
 
-set_option linter.deprecated.syntax false
+set_option experimental.vcgen true
 
-@[simp, grind] def isAppendOfState (sid : Unchecked.StateID) (state : Unchecked.State) (s1 s2 : Array Unchecked.State) :=
+@[simp, grind] def isAppendOfState (sid : Unchecked.StateID) (state : Unchecked.State)
+    (s1 s2 : Array Unchecked.State) :=
   s2 = s1 ++ #[state] ∧ s2[sid]? = some state
 
 @[simp, grind] def isAppendOfStateID (sid : Unchecked.StateID) (s1 s2 : Array Unchecked.State) :=
@@ -33,10 +33,12 @@ set_option linter.deprecated.syntax false
 @[simp, grind] def assignableP2 (sid : Unchecked.StateID) (s1 s2 : Array Unchecked.State) :=
   patch2Assignable s2 sid ∧ isAppendOfStateID sid s1 s2
 
-@[simp, grind .] def pushPostCond (prevsid : Unchecked.State) (prevs : Array Unchecked.State) (sid : Unchecked.StateID) (s : Array Unchecked.State) :=
+@[simp, grind .] def pushPostCond (prevsid : Unchecked.State) (prevs : Array Unchecked.State)
+    (sid : Unchecked.StateID) (s : Array Unchecked.State) :=
   stateIdNextOfLt prevs sid s ∧ isAppendOfState sid prevsid prevs s ∧ sid = prevs.size
 
-@[simp, grind .] def pushPostCond' (prevsid : Unchecked.State) (prevs : Array Unchecked.State) (r : ThompsonRef) (s : Array Unchecked.State) :=
+@[simp, grind .] def pushPostCond' (prevsid : Unchecked.State) (prevs : Array Unchecked.State)
+    (r : ThompsonRef) (s : Array Unchecked.State) :=
   tRefNextOfLt prevs r s ∧ isAppendOfState r.end prevsid prevs s ∧ r.end = prevs.size
 
 @[simp, grind →] theorem isAppend_of_isAppendOfState (h : isAppendOfStateID sid1 s1 s2)
@@ -55,10 +57,10 @@ set_option linter.deprecated.syntax false
   exact ⟨#[state], by grind⟩
 
 @[spec] theorem push_spec (sid : Unchecked.State) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⦄
       Code.push sid
-      ⦃post⟨fun r s => ⌜pushPostCond sid states r s⌝⟩⦄ := by
-  mvcgen [Code.push]
+      ⦃fun r s => pushPostCond sid states r s⦄ := by
+  vcgen [Code.push]
   simp
   and_intros
   all_goals try grind only [all_push]
@@ -66,43 +68,51 @@ set_option linter.deprecated.syntax false
   grind
 
 @[spec] theorem push_lift_spec (sid : Unchecked.State) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⦄
       (Code.push sid : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜pushPostCond sid states r s⌝, fun _ => ⌜False⌝ ⟩⦄ := by
-  exact ↑(push_spec sid states)
+      ⦃fun r s => pushPostCond sid states r s; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (push_spec sid states)
+@[simp] theorem push_run_eq (sid : Unchecked.State) (states : Array Unchecked.State)
+    : (Code.push sid).run states = (states.size, states.push sid) := rfl
+
+@[simp, grind =] theorem push_run_run_eq (sid : Unchecked.State) (states : Array Unchecked.State)
+    : ((Code.push sid).run states).run = (states.size, states.push sid) := rfl
+
+@[simp, grind =] theorem push_apply_run_eq (sid : Unchecked.State)
+  (states : Array Unchecked.State)
+    : (Code.push sid states).run = (states.size, states.push sid) := rfl
+
+private theorem assignable_of (sid : Unchecked.State) (states : Array Unchecked.State)
+  (h1 : NextOfLt states) (h2 : NFA.Unchecked.State.nextOf sid ≤ states.size)
+  (h3 : State.patchAssignable sid)
+    : stateIdNextOfLt states states.size (states.push sid)
+      ∧ assignableIf states (states.push sid)
+      ∧ assignableP states.size states (states.push sid) := by
+  simp only [stateIdNextOfLt, assignableIf, assignableP, isAppendOfStateID, isAppendOfState,
+    Array.append_singleton, Array.size_push, Nat.lt_add_one, true_and, getElem?_pos,
+    Array.getElem_push_eq]
+  and_intros
+  all_goals grind [patchAssignable]
 
 @[spec] theorem push_run_spec (sid : Unchecked.State) (states : Array Unchecked.State)
   (h1 : NextOfLt states) (h2 : NFA.Unchecked.State.nextOf sid ≤ states.size)
   (h3 : State.patchAssignable sid)
-    : ⦃⌜True⌝⦄
+    : ⦃True⦄
       ((Code.push sid).run states : Id (Unchecked.StateID × Array Unchecked.State))
-      ⦃post⟨fun r => ⌜stateIdNextOfLt states r.1 r.2
-                      ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2⌝⟩⦄ := by
-  mvcgen [Code.push]
-  dsimp only [bind, StateT.bind, Functor.map, StateT.map, wp, Id.run]
-  split
-  rename_i heq
-  dsimp only [MonadStateOf.get, StateT.get, pure] at heq
-  simp only [set, StateT.set, StateT.pure, pure,stateIdNextOfLt,
-    assignableIf, getElem?_pos, Option.some.injEq, assignableP,
-    isAppendOfStateID, isAppendOfState, Array.append_singleton, PredTrans.apply_pure,
-    Array.size_push, Nat.lt_add_one, true_and, Array.getElem_push_eq, exists_eq_right',
-    SPred.down_pure]
-  and_intros
-  case h_1.refine_2.refine_2.refine_1 => simp_all [patchAssignable]
-  all_goals grind
+      ⦃fun r => stateIdNextOfLt states r.1 r.2
+                      ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2⦄ := by
+  refine ⟨fun _ => ?_⟩
+  simp only [WP.wp, WP.trans, push_run_eq]
+  exact assignable_of sid states h1 h2 h3
 
 @[spec] theorem push_run_lift_spec (sid : Unchecked.State) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s.1 = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size
-                ∧ State.patchAssignable sid⌝⦄
+    : ⦃fun s => s.1 = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size
+                ∧ State.patchAssignable sid⦄
       (Code.push sid states : Code.CompilerM (Unchecked.StateID × Array Unchecked.State))
-      ⦃post⟨fun r _ => ⌜stateIdNextOfLt states r.1 r.2
-                        ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2⌝, fun _ => ⌜False⌝ ⟩⦄ := by
-  mvcgen
-  intros
-  generalize h : (Code.push sid).run states = x
-  apply Id.of_wp_run_eq h
-  apply push_run_spec sid states <;> simp_all
+      ⦃fun r _ => stateIdNextOfLt states r.1 r.2
+                        ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2;
+                  fun _ _ => False⦄ := by
+  vcgen with finish [assignable_of]
 
 @[simp, grind .]theorem push'_lt (state : Unchecked.State) (states : Array Unchecked.State)
     : states.size < (Code.push' state states).snd.size := by
@@ -111,10 +121,10 @@ set_option linter.deprecated.syntax false
     StateT.map, StateT.set, Array.size_push, Nat.lt_add_one]
 
 @[spec] theorem push'_spec (sid : Unchecked.State) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ NFA.Unchecked.State.nextOf sid ≤ states.size⦄
       Code.push' sid
-      ⦃post⟨fun r s => ⌜pushPostCond' sid states r s⌝⟩⦄ := by
-  mvcgen [Code.push']
+      ⦃fun r s => pushPostCond' sid states r s⦄ := by
+  vcgen [Code.push']
   simp
   grind
 
@@ -143,126 +153,113 @@ set_option linter.deprecated.syntax false
   exact assignableIfP_of_push s s_1 r.end h_2 hs h_4 h_5
 
 @[spec] theorem add_match_spec (pattern_id : PatternID) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_match pattern_id
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s⌝⟩⦄ := by
-  mvcgen [Code.add_match]
-  grind only [= Unchecked.State.nextOf.eq_16]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, isAppendOfState,
-    patchAssignable_of_eq, patchAssignable_of_some, = Array.getElem?_append, = getElem?_pos,
-    patch2Assignable_of_eq, = Array.getElem_append]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s⦄ := by
+  vcgen [Code.add_match] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_match_lift_spec (pattern_id : PatternID) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.add_match pattern_id : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝ , fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (add_match_spec _ _)
+      ⦃fun r s => (stateIdNextOfLt states r s.1 ∧ assignableIf states s.1)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (add_match_spec _ _)
 
 @[spec] theorem add_union_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_union
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
-  mvcgen [Code.add_union]
-  grind only [nextOf_union_eq]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
-    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_union,
-    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
-    = Array.getElem_append]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r states s⦄ := by
+  vcgen [Code.add_union] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_union_lift_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       (Code.add_union : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_union_spec states)
-
-@[spec] theorem add_union_lift_spec' (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s;
+                  fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_union_spec states)
+@[spec] theorem add_union_lift_spec' (states : Array Unchecked.State)
+  (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.add_union : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ assignableP r states s.1) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (add_union_spec _)
+      ⦃fun r s => (stateIdNextOfLt states r s.1 ∧ assignableIf states s.1
+                    ∧ assignableP r states s.1)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (add_union_spec _)
 
 @[spec] theorem add_union_reverse_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_union_reverse
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableP r states s⌝⟩⦄ := by
-  mvcgen [Code.add_union_reverse]
-  with grind
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r states s⦄ := by
+  vcgen [Code.add_union_reverse] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_union_reverse_lift_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       (Code.add_union_reverse : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableP r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_union_reverse_spec states)
-
-@[spec] theorem add_backrefence_spec (case_insensitive : Bool) (b : Nat) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s;
+                  fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_union_reverse_spec states)
+@[spec] theorem add_backrefence_spec (case_insensitive : Bool) (b : Nat)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_backrefence case_insensitive b
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
-  mvcgen [Code.add_backrefence]
-  grind only [= Unchecked.State.nextOf.eq_8]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
-    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_backRef,
-    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
-    = Array.getElem_append]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r states s⦄ := by
+  vcgen [Code.add_backrefence] with finish [Unchecked.State.nextOf]
 
-@[spec] theorem add_backrefence_lift_spec (case_insensitive : Bool) (b : Nat) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
-      (Code.add_backrefence case_insensitive b : (EStateM String (Array Unchecked.State) Unchecked.StateID))
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_backrefence_spec case_insensitive b states)
-
+@[spec] theorem add_backrefence_lift_spec (case_insensitive : Bool) (b : Nat)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
+      (Code.add_backrefence case_insensitive b
+        : (EStateM String (Array Unchecked.State) Unchecked.StateID))
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s;
+                  fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_backrefence_spec case_insensitive b states)
 @[spec] theorem c_range_spec (start «end» : UInt32) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.c_range start «end»
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ assignableP r.end states s⌝⟩⦄ := by
-  mvcgen [Code.c_range]
-  grind only [= Unchecked.State.nextOf.eq_9]
-  grind only [pushPostCond', = tRefNextOfLt.eq_1, = assignableIf.eq_1, assignableP, isAppendOfState,
-    = tRefLt.eq_1, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_byte_range,
-    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
-    = Array.getElem_append]
+      ⦃fun r s => tRefNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r.end states s⦄ := by
+  vcgen [Code.c_range] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_empty_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_empty
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
-  mvcgen [Code.add_empty]
-  grind only [= Unchecked.State.nextOf.eq_1]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
-    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_empty,
-    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_eq,
-    = Array.getElem_append]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r states s⦄ := by
+  vcgen [Code.add_empty] with finish [Unchecked.State.nextOf]
 
-@[spec] theorem add_empty_lift_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+@[spec] theorem add_empty_lift_PatchM_spec (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       (Code.add_empty : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_empty_spec states)
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s;
+                  fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_empty_spec states)
 
-theorem add_empty_lift_spec' (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+theorem add_empty_lift_CompilerM_spec (states : Array Unchecked.State)
+  (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.add_empty : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ assignableP r states s.1)
-          ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (add_empty_spec _)
+      ⦃fun r s => (stateIdNextOfLt states r s.1 ∧ assignableIf states s.1
+                    ∧ assignableP r states s.1)
+          ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (add_empty_spec _)
 
 @[spec] theorem add_fail_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_fail
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ isAppendOfStateID r states s⌝⟩⦄ := by
-  mvcgen [Code.add_fail]
-  grind only [= Unchecked.State.nextOf.eq_3]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, isAppendOfStateID,
-    isAppendOfState, patchAssignable_of_eq, patchAssignable_of_some, = Array.getElem?_append,
-    = getElem?_pos, patch2Assignable_of_eq, = Array.getElem_append]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ isAppendOfStateID r states s⦄ := by
+  vcgen [Code.add_fail] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_fail_lift_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       (Code.add_fail : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ isAppendOfStateID r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_fail_spec states)
-
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ isAppendOfStateID r states s; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_fail_spec states)
 theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < states.size)
     : (Unchecked.State.Eat mode 0).nextOf ≤ states.size := by
   simp [Unchecked.State.nextOf]
@@ -284,21 +281,20 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
     cases mode <;> simp_all⟩
 
 @[spec] theorem add_eat_spec (mode : Unchecked.EatMode) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ (mode.nextOf < states.size)⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ (mode.nextOf < states.size)⦄
       Code.add_eat mode
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s⌝⟩⦄ := by
-  mvcgen [Code.add_eat]
-  simp_all [@eat_next_of_le mode states (by simp_all)]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP2,
-    isAppendOfState, isAppendOfStateID, patch2Assignable_of_eat_state, patchAssignable_of_eq,
-    = Array.getElem_append, patch2Assignable_of_eq]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP2 r states s⦄ := by
+  vcgen [Code.add_eat]
+  case vc2 => rename_i h; obtain ⟨rfl, -, h⟩ := h; exact eat_next_of_le _ h
+  all_goals grind [Unchecked.State.nextOf]
 
 @[spec] theorem add_eat_lift_spec (mode : Unchecked.EatMode) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ (mode.nextOf < states.size)⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ (mode.nextOf < states.size)⦄
       (Code.add_eat mode : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_eat_spec mode states)
-
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s;
+                  fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_eat_spec mode states)
 @[simp, grind .] theorem patch2Assignable_of_state (states : Array Unchecked.State)
   (sid: Unchecked.StateID) (hlt : sid < states.size) (h : State.patch2Assignable state)
   (heq : states[sid]? = some (state))
@@ -310,633 +306,490 @@ theorem eat_next_of_le (states : Array Unchecked.State) (h : mode.nextOf < state
   (sid: Unchecked.StateID) (hlt : sid < states.size)
   (heq : states[sid]? = some (Unchecked.State.ChangeFrameStep 0 0))
     : patch2Assignable states sid := by
-  exact @patch2Assignable_of_state (Unchecked.State.ChangeFrameStep 0 0) states sid hlt (by grind) heq
+  exact @patch2Assignable_of_state (Unchecked.State.ChangeFrameStep 0 0) states sid hlt
+    (by grind) heq
 
 @[spec] theorem add_change_state_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ 0 < states.size⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ 0 < states.size⦄
       Code.add_change_state
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s⌝⟩⦄ := by
-  mvcgen [Code.add_change_state]
-  grind only [= Unchecked.State.nextOf.eq_6]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP2,
-    isAppendOfState, patch2Assignable_of_add_change_state, isAppendOfStateID, patchAssignable_of_eq,
-    = Array.getElem_append, patch2Assignable_of_eq]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP2 r states s⦄ := by
+  vcgen [Code.add_change_state] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_change_state_lift_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ 0 < states.size⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ 0 < states.size⦄
       (Code.add_change_state : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_change_state_spec states)
-
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP2 r states s;
+                  fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_change_state_spec states)
 @[spec] theorem add_remove_state_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_remove_state
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
-  mvcgen [Code.add_remove_state]
-  grind only [= Unchecked.State.nextOf.eq_7]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
-    isAppendOfState, isAppendOfStateID, patchAssignable_of_some,
-    State.patchAssignable_of_remove_frame_step, patchAssignable_of_eq, = Array.getElem?_append,
-    = getElem?_pos, patch2Assignable_of_add_change_state, patch2Assignable_of_eq]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r states s⦄ := by
+  vcgen [Code.add_remove_state] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_remove_state_lift_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       (Code.add_remove_state : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact ↑(add_remove_state_spec states)
-
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s;
+                  fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_PatchM (add_remove_state_spec states)
 @[spec] theorem add_next_char_spec (offset : Nat) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.add_next_char offset
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ assignableP r states s⌝⟩⦄ := by
-  mvcgen [Code.add_next_char]
-  grind only [= Unchecked.State.nextOf.eq_2]
-  grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, assignableP,
-    isAppendOfState, isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_next_char,
-    patchAssignable_of_eq, = Array.getElem?_append, = getElem?_pos,
-    patch2Assignable_of_add_change_state, patch2Assignable_of_eq]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r states s⦄ := by
+  vcgen [Code.add_next_char] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem add_next_char_lift_spec (offset : Nat) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.add_next_char offset : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ assignableP r states s.1)
-              ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (add_next_char_spec _ _)
+      ⦃fun r s => (stateIdNextOfLt states r s.1 ∧ assignableIf states s.1
+                    ∧ assignableP r states s.1)
+              ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (add_next_char_spec _ _)
 
 @[spec] theorem c_empty_spec (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.c_empty
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableP r.end states s⌝⟩⦄ := by
-  mvcgen [Code.c_empty]
-  with grind
+      ⦃fun r s => tRefNextOfLt states r s ∧ assignableP r.end states s⦄ := by
+  vcgen [Code.c_empty] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem c_empty_lift_spec (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_empty : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLt states r s.1 ∧ assignableP r.end states s.1)
-              ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (c_empty_spec _)
+      ⦃fun r s => (tRefNextOfLt states r s.1 ∧ assignableP r.end states s.1)
+              ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (c_empty_spec _)
 
-@[spec] theorem add_sparse_spec (trans : Array Unchecked.Transition) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states ∧ ∀ (i : Nat) _, trans[i].next ≤ states.size⌝⦄
+@[spec] theorem add_sparse_spec (trans : Array Unchecked.Transition)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ NextOfLt states ∧ ∀ (i : Nat) _, trans[i].next ≤ states.size⦄
       Code.add_sparse trans
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝⟩⦄ := by
-  mvcgen [Code.add_sparse]
-  . and_intros
-    grind only
-    grind only
-    exact nextOf_transition_le_of_le _ trans (by grind only)
-  · intros
-    grind only [pushPostCond, = stateIdNextOfLt.eq_1, = assignableIf.eq_1, isAppendOfState,
-      patchAssignable_of_some, State.patchAssignable_of_sparse_transistions, patchAssignable_of_eq,
-      = Array.getElem?_append, = getElem?_pos, patch2Assignable_of_add_change_state,
-      patch2Assignable_of_eq]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⦄ := by
+  vcgen [Code.add_sparse]
+  case vc2 => rename_i h; obtain ⟨rfl, -, h⟩ := h; exact nextOf_transition_le_of_le _ trans h
+  all_goals grind [Unchecked.State.nextOf]
 
-@[spec] theorem c_unicode_class_spec (cls : Regex.Syntax.ClassUnicode) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+@[spec] theorem c_unicode_class_spec (cls : Regex.Syntax.ClassUnicode)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.c_unicode_class cls
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝⟩⦄ := by
-  mvcgen [Code.c_unicode_class]
-  grind only
-  grind only [= stateIdNextOfLt.eq_1, = Array.getElem_map]
-  grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP, = tRefNextOfLt.eq_1,
-    patchAssignable_of_assignableIf, = tRefLt.eq_1]
+      ⦃fun r s => tRefNextOfLt states r s ∧ assignableIf states s
+                  ∧ patchAssignable s r.end⦄ := by
+  vcgen [Code.c_unicode_class] with finish [Unchecked.State.nextOf]
 
-@[spec] theorem c_unicode_class_lift_spec (cls : Regex.Syntax.ClassUnicode) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+@[spec] theorem c_unicode_class_lift_spec (cls : Regex.Syntax.ClassUnicode)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_unicode_class cls : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (c_unicode_class_spec _ _)
+      ⦃fun r s => (tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (c_unicode_class_spec _ _)
 
 @[spec] theorem c_literal_spec (c : Char) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.c_literal c
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ assignableP r.end states s⌝⟩⦄ := by
-  mvcgen [Code.c_literal]
+      ⦃fun r s => tRefNextOfLt states r s ∧ assignableIf states s
+                  ∧ assignableP r.end states s⦄ := by
+  vcgen [Code.c_literal] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem c_literal_lift_spec (c : Char) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_literal c : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ assignableP r.end states s.1)
-            ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (c_literal_spec _ _)
+      ⦃fun r s => (tRefNextOfLt states r s.1 ∧ assignableIf states s.1
+                    ∧ assignableP r.end states s.1)
+            ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (c_literal_spec _ _)
 
 @[spec] theorem c_look_spec (look : Regex.Syntax.Look) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.c_look look
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableP r.end states s⌝ ⟩⦄ := by
-  cases look <;>
-    (mvcgen [Code.c_look];
-     grind only [= Unchecked.State.nextOf.eq_11];
-     grind only [pushPostCond', = tRefNextOfLt.eq_1, assignableP, isAppendOfState, = tRefLt.eq_1,
-                  isAppendOfStateID, patchAssignable_of_some, State.patchAssignable_of_look])
+      ⦃fun r s => tRefNextOfLt states r s ∧ assignableP r.end states s⦄ := by
+  vcgen [Code.c_look] with finish [Unchecked.State.nextOf]
 
 @[spec] theorem c_look_lift_spec (look : Regex.Syntax.Look) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_look look : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLt states r s.1 ∧ assignableP r.end states s.1)
-             ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_StateT_to_CompilerM (c_look_spec _ _)
+      ⦃fun r s => (tRefNextOfLt states r s.1 ∧ assignableP r.end states s.1)
+             ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_StateT_to_CompilerM (c_look_spec _ _)
 
 @[spec] theorem c_possessive_spec (tref : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ tref.start < states.size
+    : ⦃fun s => s = states ∧ tref.start < states.size
                       ∧ tref.end < states.size ∧ NextOfLt states
-                      ∧ patchAssignable states tref.end⌝⦄
+                      ∧ patchAssignable states tref.end⦄
       Code.c_possessive tref
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_possessive]
-  mintro _
-  mspec add_union_lift_spec; grind only [← SPred.entails.refl]
-  mspec add_fail_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec add_eat_lift_spec; grind only [= stateIdNextOfLt.eq_1, ← SPred.pure_mono,
-    = Unchecked.EatMode.nextOf.eq_2]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableP, → isAppend_of_isAppendOfState,
-    → isAppend_of_assignableP2, ← SPred.pure_mono, → patchAssignable_of_append,
-    patchAssignable_of_assignableIf]
-  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
-    assignableIf_trans, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP,
-    → isAppend_of_isAppendOfState, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
-    → patchAssignable_of_append, patchAssignable_of_assignableIf]
-  mspec patch2_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP2,
-    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, patch2Assignable_of_assignableIf]
-  simp only [WP.pure, SPred.entails, SPred.down_pure]
-  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
-    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
+      ⦃fun r s => tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_possessive] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
 @[spec] theorem c_possessive_lift_spec (tref : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size
+    : ⦃fun s => (s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size
                     ∧ NextOfLt states ∧ patchAssignable states tref.end)
-                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_possessive tref : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end)
-            ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_possessive_spec _ _)
-
-theorem tref_le_of_lt_spec (states : Array Unchecked.State)
-    : ∀ (tref : ThompsonRef),
-      ⦃fun s => ⌜(tRefNextOfLt states tref s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 tref.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝⦄
-      (EStateM.pure tref : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  intro tref
-  apply pure_of_imp_spec (by grind)
+      ⦃fun r s => (tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end)
+            ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_possessive_spec _ _)
 
 -- relax postcondition of c_possessive_lift_spec
 theorem c_possessive_le_lift_spec (tref : ThompsonRef) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size
+    : ⦃fun s => (s.1 = states ∧ tref.start < states.size ∧ tref.end < states.size
                     ∧ NextOfLt states ∧ patchAssignable states tref.end)
-                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_possessive tref : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  have := Triple.bind _ _ (c_possessive_lift_spec tref states captures) (tref_le_of_lt_spec states)
-  rwa [lift_CompilerM_bind_pure (Code.c_possessive tref)] at this
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact ⟨Triple.entails_wp_of_post (c_possessive_lift_spec tref states captures)
+    (fun _ _ h => by grind)⟩
 
 @[spec] theorem c_cap'_start_spec (group : Nat) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜s.1 = states ∧ NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => s.1 = states ∧ NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⦄
       Code.c_cap' Capture.Role.Start group
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1
+      ⦃fun r s => stateIdNextOfLt states r s.1
                         ∧ assignableIf states s.1 ∧ assignableP r states s.1
                         ∧ cMemAndValid captures s.2.1
-                        ∧ (NFA.Capture.mk Capture.Role.Start group) ∈ s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_cap']
-  generalize hs : (Unchecked.State.Capture Capture.Role.Start 0 0 group) = sid
-  rename_i s _
-  generalize hx : (Code.push sid s.fst).run = x
-  have := Id.of_wp_run_eq hx (fun r => stateIdNextOfLt states r.1 r.2 ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2)
-              (by mspec push_run_spec <;> grind)
-  and_intros <;> grind
+                        ∧ (NFA.Capture.mk Capture.Role.Start group) ∈ s.2.1;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_cap'] with finish [assignable_of, cMemAndValid]
 
 @[spec] theorem c_cap'_end_spec (group : Nat) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture) (h : ∃ c ∈ captures, c.role = Capture.Role.Start ∧ c.group = group)
-    : ⦃fun s => ⌜s.1 = states ∧ NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+  (captures : Array NFA.Capture)
+  (h : ∃ c ∈ captures, c.role = Capture.Role.Start ∧ c.group = group)
+    : ⦃fun s => s.1 = states ∧ NextOfLt states ∧ s.2.1 = captures ∧ cValid captures⦄
       Code.c_cap' Capture.Role.End group
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1
+      ⦃fun r s => stateIdNextOfLt states r s.1
                       ∧ assignableIf states s.1 ∧ assignableP r states s.1
-                      ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_cap']
-  generalize hs : (Unchecked.State.Capture Capture.Role.End 0 0 group) = sid
-  rename_i s _
-  generalize hx : (Code.push sid s.fst).run = x
-  have := Id.of_wp_run_eq hx (fun r => stateIdNextOfLt states r.1 r.2 ∧ assignableIf states r.2 ∧ assignableP r.1 states r.2)
-              (by mspec push_run_spec <;> grind)
-  grind [cMemAndValid]
+                      ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  vcgen [Code.c_cap'] with finish [assignable_of, cMemAndValid]
 
-@[spec] theorem c_back_ref_spec (case_insensitive : Bool) (n : Nat)  (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+@[spec] theorem c_back_ref_spec (case_insensitive : Bool) (n : Nat)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.c_back_ref case_insensitive n
-      ⦃post⟨fun r s => ⌜tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_back_ref]
-  mintro _
-  mspec add_backrefence_lift_spec; grind
-  mspec add_empty_lift_spec; grind
-  mvcgen with grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP,
-    = stateIdNextOfEqLt.eq_1, patchAssignable_of_assignableIf, patch2Assignable_of_assignableIf]
+      ⦃fun r s => tRefNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_back_ref] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_back_ref_lift_spec (case_insensitive : Bool) (n : Nat)  (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+@[spec] theorem c_back_ref_lift_spec (case_insensitive : Bool) (n : Nat)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_back_ref case_insensitive n : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end)
-                        ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_back_ref_spec _ _ _)
+      ⦃fun r s => (tRefNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end)
+                        ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_back_ref_spec _ _ _)
 
-@[spec] theorem c_lookaround_PositiveLookahead_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_lookaround_PositiveLookahead_spec (compiled : ThompsonRef)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ tRefLt compiled states ∧ NextOfLt states
+                ∧ patchAssignable states compiled.end⦄
       Code.c_lookaround_PositiveLookahead compiled
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_lookaround_PositiveLookahead]
-  mintro _
-  mspec add_change_state_lift_spec; grind only [← SPred.pure_mono]
-  mspec add_fail_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec add_union_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
-    ← SPred.pure_mono, assignableIf_trans]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, → isAppend_of_assignableP, assignableP,
-    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, → patchAssignable_of_append,
-    patchAssignable_of_assignableIf]
-  mspec patch2_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans, assignableP2,
-    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, patch2Assignable_of_assignableIf]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
-    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
-    → patchAssignable_of_append, patchAssignable_of_assignableIf]
-  simp only [WP.pure, SPred.entails, SPred.down_pure]
-  grind only [assignableP, patchAssignable_of_assignableIf,
-    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_lookaround_PositiveLookahead] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_lookaround_PositiveLookahead_lift_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end)
-                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+@[spec] theorem c_lookaround_PositiveLookahead_lift_spec (compiled : ThompsonRef)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states
+                    ∧ patchAssignable states compiled.end)
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_lookaround_PositiveLookahead compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_lookaround_PositiveLookahead_spec _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_lookaround_PositiveLookahead_spec _ _)
 
-@[spec] theorem c_lookaround_NegativeLookahead_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_lookaround_NegativeLookahead_spec (compiled : ThompsonRef)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ tRefLt compiled states ∧ NextOfLt states
+                ∧ patchAssignable states compiled.end⦄
       Code.c_lookaround_NegativeLookahead compiled
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_lookaround_NegativeLookahead]
-  mintro _
-  mspec add_remove_state_lift_spec; grind only [← SPred.entails.refl]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec add_union_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
-    ← SPred.pure_mono, assignableIf_trans]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
-    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
-    → patchAssignable_of_append, patchAssignable_of_assignableIf]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, → isAppend_of_assignableP, assignableP,
-    = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono, → patchAssignable_of_append,
-    patchAssignable_of_assignableIf, assignableIf_trans]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
-    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
-    → patchAssignable_of_append, patchAssignable_of_assignableIf]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
-    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
-    → patchAssignable_of_append, patchAssignable_of_assignableIf]
-  simp only [WP.pure, SPred.entails, SPred.down_pure]
-  intros
-  and_intros
-  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
-    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_lookaround_NegativeLookahead] with finish only [patchAssignable_of_assignableIf,
+    = stateIdNextOfLt.eq_1, assignableIf_trans, → isAppend_of_assignableP, assignableP,
+    = stateIdNextOfEqLt.eq_1, → patchAssignable_of_append, patch2Assignable_of_assignableIf,
+    = assignableIf.eq_1, = tRefNextOfLeLt.eq_1, = tRefLt.eq_1, = tRefNextOfLt.eq_1]
 
-@[spec] theorem c_lookaround_NegativeLookahead_lift_spec (compiled : ThompsonRef) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end)
-                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+@[spec] theorem c_lookaround_NegativeLookahead_lift_spec (compiled : ThompsonRef)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states
+                    ∧ patchAssignable states compiled.end)
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_lookaround_NegativeLookahead compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end)
-            ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_lookaround_NegativeLookahead_spec _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_lookaround_NegativeLookahead_spec _ _)
 
-@[spec] theorem c_lookaround_PositiveLookbehind_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
-                   ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_lookaround_PositiveLookbehind_spec (next_char : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+                   ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⦄
       Code.c_lookaround_PositiveLookbehind next_char compiled
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s  ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_lookaround_PositiveLookbehind]
-  mintro _
-  mspec add_empty_lift_spec
-  grind
-  mvcgen
-  · grind
-  · grind
-  · simp [NextOfLt.iff]
-    and_intros <;> grind
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s  ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_lookaround_PositiveLookbehind] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_lookaround_PositiveLookbehind_lift_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
-                  ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+@[spec] theorem c_lookaround_PositiveLookbehind_lift_spec (next_char : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+                  ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end)
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_lookaround_PositiveLookbehind next_char compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1  ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_lookaround_PositiveLookbehind_spec _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1  ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_lookaround_PositiveLookbehind_spec _ _ _)
 
-@[spec] theorem c_lookaround_NegativeLookbehind_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
-                  ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_lookaround_NegativeLookbehind_spec (next_char : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+                  ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end⦄
       Code.c_lookaround_NegativeLookbehind next_char compiled
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_lookaround_NegativeLookbehind]
-  mintro _
-  mspec add_remove_state_lift_spec; grind only [← SPred.entails.refl]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec add_union_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
-    ← SPred.pure_mono, assignableIf_trans]
-  mspec patch_spec; grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1,
-    assignableIf_trans, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
-    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
-    → patchAssignable_of_append, patchAssignable_of_assignableIf]
-  mspec patch_spec; grind only [= stateIdNextOfLt.eq_1, assignableIf_trans,
-    → isAppend_of_assignableP, assignableP, = stateIdNextOfEqLt.eq_1, ← SPred.pure_mono,
-    → patchAssignable_of_append, patchAssignable_of_assignableIf]
-  mspec patch_spec
-  · simp only [true_and, SPred.entails_nil, SPred.down_pure, forall_const]
-    all_goals grind only [assignableP, patchAssignable_of_assignableIf,
-      = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
-  mspec patch_spec
-  · simp only [true_and, SPred.entails_nil, SPred.down_pure, forall_const]
-    all_goals grind only [assignableP, patchAssignable_of_assignableIf,
-      = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
-  simp only [WP.pure, SPred.entails, SPred.down_pure]
-  intros
-  and_intros
-  grind only [= stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1]
-  grind only [= stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1]
-  grind only [= stateIdNextOfEqLt.eq_1]
-  grind only [= stateIdNextOfEqLt.eq_1]
-  all_goals grind only [assignableP, patchAssignable_of_assignableIf,
-    = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    patch2Assignable_of_assignableIf, assignableIf_trans, = assignableIf.eq_1]
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_lookaround_NegativeLookbehind] with finish only [patchAssignable_of_assignableIf,
+    = stateIdNextOfLt.eq_1, assignableIf_trans, → isAppend_of_assignableP, assignableP,
+    = stateIdNextOfEqLt.eq_1, → patchAssignable_of_append, patch2Assignable_of_assignableIf,
+    = assignableIf.eq_1, = tRefNextOfLeLt.eq_1, = tRefLt.eq_1, = tRefNextOfLt.eq_1]
 
-@[spec] theorem c_lookaround_NegativeLookbehind_lift_spec (next_char : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+@[spec] theorem c_lookaround_NegativeLookbehind_lift_spec (next_char : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ next_char < states.size ∧ tRefLt compiled states ∧ NextOfLt states
                     ∧ patchAssignable states next_char ∧ patchAssignable states compiled.end)
-                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_lookaround_NegativeLookbehind next_char compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_lookaround_NegativeLookbehind_spec _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_lookaround_NegativeLookbehind_spec _ _ _)
 
-@[spec] theorem c_repetition_0_some_1_false_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
-                    ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_repetition_0_some_1_false_spec (union : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+                    ∧ patchAssignable states union ∧ patchAssignable states compiled.end⦄
       Code.c_repetition_0_some_1_false union compiled
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_repetition_0_some_1_false]
-  mintro _
-  mspec add_empty_lift_spec
-  grind
-  mvcgen
-  · grind
-  · grind
-  · grind
-  · simp [NextOfLt.iff]
-    and_intros <;> grind
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_repetition_0_some_1_false] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_repetition_0_some_1_false_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+@[spec] theorem c_repetition_0_some_1_false_lift_spec (union : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
                   ∧ patchAssignable states union ∧ patchAssignable states compiled.end)
-                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_repetition_0_some_1_false union compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_repetition_0_some_1_false_spec _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_repetition_0_some_1_false_spec _ _ _)
 
-@[spec] theorem c_repetition_0_some_1_true_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
-                  ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_repetition_0_some_1_true_spec (union : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+                  ∧ patchAssignable states union ∧ patchAssignable states compiled.end⦄
       Code.c_repetition_0_some_1_true union compiled
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_repetition_0_some_1_true]
-  mintro _
-  mspec add_eat_lift_spec; grind only [← SPred.pure_mono, = Unchecked.EatMode.nextOf.eq_1]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mvcgen
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableIf_trans]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    assignableIf_trans]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    assignableIf_trans]
-  grind only [assignableIf_trans, assignableP2, = stateIdNextOfEqLt.eq_1,
-    patch2Assignable_of_assignableIf]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableP,
-    = stateIdNextOfEqLt.eq_1, assignableIf_trans, = assignableIf.eq_1]
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_repetition_0_some_1_true] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_repetition_0_some_1_true_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+@[spec] theorem c_repetition_0_some_1_true_lift_spec (union : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
                     ∧ patchAssignable states union ∧ patchAssignable states compiled.end)
-                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_repetition_0_some_1_true union compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_repetition_0_some_1_true_spec _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_repetition_0_some_1_true_spec _ _ _)
 
-@[spec] theorem c_repetition_0_none_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
-                  ∧ patchAssignable states union ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_repetition_0_none_spec (union : Unchecked.StateID) (compiled : ThompsonRef)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+                  ∧ patchAssignable states union ∧ patchAssignable states compiled.end⦄
       Code.c_repetition_0_none union compiled
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_repetition_0_none] with grind
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_repetition_0_none] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_repetition_0_none_lift_spec (union : Unchecked.StateID) (compiled : ThompsonRef) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+@[spec] theorem c_repetition_0_none_lift_spec (union : Unchecked.StateID)
+  (compiled : ThompsonRef) (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
                     ∧ patchAssignable states union ∧ patchAssignable states compiled.end)
-                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_repetition_0_none union compiled : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_repetition_0_none_spec _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_repetition_0_none_spec _ _ _)
 
 @[spec] theorem greedy_union_spec (greedy : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       (if greedy then Code.add_union else Code.add_union_reverse : Code.PatchM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mintro _
-  dsimp [Code.add_union, Code.add_union_reverse]
-  intros
-  split
-  · mspec push_lift_spec
-    grind only [← SPred.pure_mono, nextOf_union_eq]
-    simp only [pushPostCond, stateIdNextOfLt, isAppendOfState, Array.append_singleton,
-      SPred.entails_1, SPred.down_pure]
-    intros; and_intros;
-    grind only
-    grind only
-    grind only
-    grind only [patchAssignable_of_eq, = Array.getElem_push]
-    grind only [patch2Assignable_of_eq, = Array.getElem_push]
-    grind only [patchAssignable_of_some, State.patchAssignable_of_union]
-  · mspec push_lift_spec
-    grind only [← SPred.pure_mono, nextOf_union_reverse_eq]
-    simp only [pushPostCond, stateIdNextOfLt, isAppendOfState, Array.append_singleton,
-      SPred.entails_1, SPred.down_pure]
-    intros; and_intros;
-    grind only
-    grind only
-    grind only
-    grind only [patchAssignable_of_eq, = Array.getElem_push]
-    grind only [patch2Assignable_of_eq, = Array.getElem_push]
-    grind only [patchAssignable_of_some, State.patchAssignable_of_union_reverse]
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r;
+                  fun _ _ => False⦄ := by
+  vcgen with finish [Unchecked.State.nextOf, Unchecked.EatMode.nextOf, assignableP, assignableP2,
+    isAppend_of_isAppendOfState, isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_at_least_0_pre_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end⌝⦄
+@[spec] theorem c_at_least_0_pre_spec (compiled : ThompsonRef) (greedy : Bool)
+  (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ tRefLt compiled states ∧ NextOfLt states
+                ∧ patchAssignable states compiled.end⦄
       Code.c_at_least_0_pre compiled greedy
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_at_least_0_pre]
-  mintro _
-  mspec greedy_union_spec
-  grind
-  mvcgen
-  · grind
-  · grind
-  · simp [NextOfLt.iff]
-    and_intros <;> grind
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_0_pre] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_at_least_0_pre_lift_spec (compiled : ThompsonRef) (greedy : Bool) (states : Array Unchecked.State)
-  (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end)
-                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+@[spec] theorem c_at_least_0_pre_lift_spec (compiled : ThompsonRef) (greedy : Bool)
+  (states : Array Unchecked.State) (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states
+                    ∧ patchAssignable states compiled.end)
+                ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_at_least_0_pre compiled greedy : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_at_least_0_pre_spec _ _ _)
+      ⦃fun r s => (stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_at_least_0_pre_spec _ _ _)
 
 @[spec] theorem c_at_least_set_spec (possible_empty_capture_group : Option Nat) (greedy : Bool)
   (states : Array Unchecked.State) (captures : Array NFA.Capture) {groups : Array Nat}
-    : ⦃fun s => ⌜s.1 = states ∧ s.2.1 = captures ∧ s.2.2 = groups⌝⦄
+    : ⦃fun s => s.1 = states ∧ s.2.1 = captures ∧ s.2.2 = groups⦄
       Code.c_at_least_set possible_empty_capture_group greedy
-      ⦃post⟨fun _ s => ⌜states = s.1 ∧ s.2.1 = captures ∧ groups.size ≤ s.2.2.size ∧ assignableIf states s.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_set] with grind
+      ⦃fun _ s => states = s.1 ∧ s.2.1 = captures ∧ groups.size ≤ s.2.2.size
+                  ∧ assignableIf states s.1; fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_set] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_at_least_0_post_spec (compiled : ThompsonRef) (plus : Unchecked.StateID) (greedy : Bool)
-  (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ plus < states.size ∧ compiled.start < states.size ∧ NextOfLt states
-                 ∧ patchAssignable states compiled.end  ∧ patchAssignable states plus⌝⦄
+@[spec] theorem c_at_least_0_post_spec (compiled : ThompsonRef) (plus : Unchecked.StateID)
+  (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
+    : ⦃fun s => s = states ∧ plus < states.size ∧ compiled.start < states.size ∧ NextOfLt states
+                 ∧ patchAssignable states compiled.end  ∧ patchAssignable states plus⦄
       Code.c_at_least_0_post compiled plus greedy possessive
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_at_least_0_post]
-  mintro _
-  mspec greedy_union_spec; grind only [← SPred.entails.refl]
-  mspec add_empty_lift_spec; grind only [= stateIdNextOfLt.eq_1, = SPred.entails_nil]
-  mvcgen
-  case vc5 =>
-    intros; and_intros;
-    grind only [= stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1, = tRefNextOfLt.eq_1]
-    grind only [= tRefNextOfLt.eq_1, = tRefLt.eq_1]
-    grind only [= tRefNextOfLt.eq_1, = tRefLt.eq_1]
-    grind only [= tRefNextOfLt.eq_1]
-    grind only [patchAssignable_of_assignableIf, assignableIf_trans]
-    grind only [assignableIf_trans, patch2Assignable_of_assignableIf]
-    grind only
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    assignableIf_trans]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    assignableIf_trans]
-  grind only [= stateIdNextOfLt.eq_1, assignableP, = stateIdNextOfEqLt.eq_1,
-    patchAssignable_of_assignableIf, assignableIf_trans]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, assignableP,
-    = stateIdNextOfEqLt.eq_1, assignableIf_trans, = assignableIf.eq_1]
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_0_post] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
-@[spec] theorem c_at_least_0_post_lift_spec (compiled : ThompsonRef) (plus : Unchecked.StateID) (greedy : Bool)
-  (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ plus < states.size ∧ compiled.start < states.size ∧ NextOfLt states
-                      ∧ patchAssignable states compiled.end  ∧ patchAssignable states plus)
-                ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+@[spec] theorem c_at_least_0_post_lift_spec (compiled : ThompsonRef) (plus : Unchecked.StateID)
+  (greedy : Bool) (possessive : Bool) (states : Array Unchecked.State)
+  (captures : Array NFA.Capture)
+    : ⦃fun s => (s.1 = states ∧ plus < states.size ∧ compiled.start < states.size
+                      ∧ NextOfLt states ∧ patchAssignable states compiled.end
+                      ∧ patchAssignable states plus)
+                ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_at_least_0_post compiled plus greedy possessive : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_at_least_0_post_spec _ _ _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_at_least_0_post_spec _ _ _ _ _)
 
-@[spec] theorem c_at_least_0_spec (compiled : ThompsonRef) (possible_empty_capture_group : Option Nat) (greedy : Bool)
+@[spec] theorem c_at_least_0_spec (compiled : ThompsonRef)
+  (possible_empty_capture_group : Option Nat) (greedy : Bool)
   (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states ∧ patchAssignable states compiled.end ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => s.1 = states ∧ tRefLt compiled states ∧ NextOfLt states
+                ∧ patchAssignable states compiled.end ∧ s.2.1 = captures ∧ cValid captures⦄
       Code.c_at_least_0 compiled possible_empty_capture_group greedy
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_0] with grind
+      ⦃fun r s => stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_0] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
 @[spec] theorem c_at_least_1_pre_spec (greedy : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ NextOfLt states⌝⦄
+    : ⦃fun s => s = states ∧ NextOfLt states⦄
       Code.c_at_least_1_pre greedy
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mintro _
-  dsimp [Code.c_at_least_1_pre]
-  intros
-  mspec greedy_union_spec
+      ⦃fun r s => stateIdNextOfLt states r s ∧ assignableIf states s ∧ patchAssignable s r;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_1_pre] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
 @[spec] theorem c_at_least_1_pre_lift_spec (greedy : Bool) (states : Array Unchecked.State)
   (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_at_least_1_pre greedy : Code.CompilerM Unchecked.StateID)
-      ⦃post⟨fun r s => ⌜(stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_at_least_1_pre_spec _ _)
+      ⦃fun r s => (stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_at_least_1_pre_spec _ _)
 
 @[spec] theorem c_at_least_1_post_spec (compiled : ThompsonRef) (union : Unchecked.StateID)
   (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
-              ∧ patchAssignable states compiled.end ∧ patchAssignable states union⌝⦄
+    : ⦃fun s => s = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+              ∧ patchAssignable states compiled.end ∧ patchAssignable states union⦄
       Code.c_at_least_1_post compiled union possessive
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_1_post] with grind
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_1_post] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
 @[spec] theorem c_at_least_1_post_lift_spec (compiled : ThompsonRef) (union : Unchecked.StateID)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
+    : ⦃fun s => (s.1 = states ∧ union < states.size ∧ tRefLt compiled states ∧ NextOfLt states
                    ∧ patchAssignable states compiled.end ∧ patchAssignable states union)
-                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_at_least_1_post compiled union possessive : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_at_least_1_post_spec _ _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_at_least_1_post_spec _ _ _ _)
 
 @[spec] theorem c_at_least_1_spec (possible_empty_capture_group : Option Nat) (greedy : Bool)
   (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+    : ⦃fun s => (s.1 = states ∧ NextOfLt states) ∧ s.2.1 = captures ∧ cValid captures⦄
       Code.c_at_least_1 possible_empty_capture_group greedy
-      ⦃post⟨fun r s => ⌜stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  mvcgen [Code.c_at_least_1] with grind
+      ⦃fun r s => stateIdNextOfLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_1] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
 @[spec] theorem c_at_least_2_spec («prefix» last : ThompsonRef) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State)
-    : ⦃fun s => ⌜s = states ∧ tRefLt «prefix» states ∧ tRefLt last states ∧ NextOfLt states
-                ∧ patchAssignable states «prefix».end ∧ patchAssignable states last.end⌝⦄
+    : ⦃fun s => s = states ∧ tRefLt «prefix» states ∧ tRefLt last states ∧ NextOfLt states
+                ∧ patchAssignable states «prefix».end ∧ patchAssignable states last.end⦄
       Code.c_at_least_2 «prefix» last greedy possessive
-      ⦃post⟨fun r s => ⌜tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end⌝, fun _ => ⌜False⌝⟩⦄ := by
-  dsimp [Code.c_at_least_2]
-  mintro _
-  mspec greedy_union_spec
-  grind only [← SPred.entails.refl]
-  mvcgen
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    assignableIf_trans]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfEqLt.eq_1, assignableIf_trans]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    assignableIf_trans]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    = tRefNextOfLt.eq_1, assignableIf_trans, = tRefLt.eq_1, = assignableIf.eq_1]
-  grind only [patchAssignable_of_assignableIf, = stateIdNextOfLt.eq_1, = stateIdNextOfEqLt.eq_1,
-    assignableIf_trans, = assignableIf.eq_1]
+      ⦃fun r s => tRefNextOfLeLt states r s ∧ assignableIf states s ∧ patchAssignable s r.end;
+                  fun _ _ => False⦄ := by
+  vcgen [Code.c_at_least_2] with finish [Unchecked.State.nextOf,
+    Unchecked.EatMode.nextOf, assignableP, assignableP2, isAppend_of_isAppendOfState,
+    isAppend_of_assignableP2, patchAssignable_of_append]
 
 @[spec] theorem c_at_least_2_lift_spec («prefix» last : ThompsonRef) (greedy : Bool)
   (possessive : Bool) (states : Array Unchecked.State) (captures : Array NFA.Capture)
-    : ⦃fun s => ⌜(s.1 = states ∧ tRefLt «prefix» states ∧ tRefLt last states ∧ NextOfLt states
+    : ⦃fun s => (s.1 = states ∧ tRefLt «prefix» states ∧ tRefLt last states ∧ NextOfLt states
                   ∧ patchAssignable states «prefix».end ∧ patchAssignable states last.end)
-                  ∧ s.2.1 = captures ∧ cValid captures⌝⦄
+                  ∧ s.2.1 = captures ∧ cValid captures⦄
       (Code.c_at_least_2 «prefix» last greedy possessive : Code.CompilerM ThompsonRef)
-      ⦃post⟨fun r s => ⌜(tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1 ∧ patchAssignable s.1 r.end) ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1⌝, fun _ => ⌜False⌝⟩⦄ := by
-  exact coe_spec_EStateM_to_CompilerM (c_at_least_2_spec _ _ _ _ _)
+      ⦃fun r s => (tRefNextOfLeLt states r s.1 ∧ assignableIf states s.1
+                    ∧ patchAssignable s.1 r.end)
+                  ∧ s.2.1 = captures ∧ cMemAndValid captures s.2.1; fun _ _ => False⦄ := by
+  exact lift_spec_PatchM_to_CompilerM (c_at_least_2_spec _ _ _ _ _)
