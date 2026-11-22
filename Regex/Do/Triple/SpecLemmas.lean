@@ -5,6 +5,8 @@ public import Std.Tactic.Do.Syntax
 
 @[expose] public section
 
+set_option linter.deprecated.syntax false
+
 namespace Std.Do
 
 set_option linter.deprecated.syntax false

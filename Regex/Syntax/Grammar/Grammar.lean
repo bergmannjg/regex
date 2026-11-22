@@ -2,12 +2,22 @@ module
 
 public import Init.Meta
 public import ParseIt
+public import Lemmas
 public import Regex.Syntax.Flavor
 public import Regex.Syntax.Grammar.Basic
+public import Regex.Syntax.Grammar.Loop
 
-open Lean Lean.Syntax ParseIt ParseIt.Char Parser
+public import Std.Tactic.Do
+public import Std.Tactic.Do.Syntax
+public import Std.WP
+
+public import Lemmas
+
+open Lean Lean.Syntax Std Std.WP ParseIt ParseIt.Char Parser
 
 public section
+
+set_option experimental.vcgen true
 
 /-! Parse a regular expressions into a `Lean.Syntax` tree according to the `Syntax.Flavor`.
 -/
@@ -50,8 +60,18 @@ private def mkBackRefOrLiteral (b : String) (c : Char) (f t : String.Pos.Raw) : 
       Syntax.atom .none (String.ofList [c])
   ]
 
-private def consumeChar? (c : Char ): ParsecM $ Option Syntax := do
-  Parser.tryCharWithPosMap (· = c) Grammar.mkLiteral
+private def consumeChar? (c : Char ) : SimpleCharParser $ Option Syntax := do
+  if let some (p1, p2, c) ← tryCharWithPos (· = c) then pure $ Grammar.mkLiteral c p1 p2
+  else pure none
+
+/-- `consumeChar? c` started at `it` with parse start `it₀`. -/
+@[spec] private theorem Spec.consumeChar? (c : Char) (it₀ it : Iter (α := CharIterator) Char)
+    : Triple (Grammar.consumeChar? c : SimpleCharParser (Option Syntax))
+      (fun s => s.it = it₀ ∧ s.rest = it)
+      (fun stx s => s.it = it₀
+          ∧ match stx with | some _ => Advanced s.rest it | none => s.rest = it)
+      (fun _ => False) := by
+  vcgen [Grammar.consumeChar?] with finish
 
 private def literal (inCharacterClass : Bool := false) : ParsecM Syntax := do
   let (f, t, c) ← Parser.withPos anyToken
@@ -99,7 +119,7 @@ private def comments : ParsecM Syntax := do
   else fail ""
 
 private def skipCommentsAndWsChars : ParsecM Unit := do
-  let _ ← manyM (Grammar.comments <|> Grammar.wsChars false)
+  let _ ← StateT.takeMany (Grammar.comments <|> Grammar.wsChars false)
   pure ()
 
 private def toControlChar  (c : Char) (f t : String.Pos.Raw) : ParsecM Syntax := do
@@ -159,7 +179,7 @@ private def decodeDigits (l : List Nat) (base : Nat) : Char :=
 
 private def parenWithCharsM (p : ParsecM α) (startChar : Char := '{') (endChar : Char := '}')
     : ParsecM $ Array α := do
-  skipChar startChar *> manyM p <* skipChar endChar
+  skipChar startChar *> StateT.takeMany p <* skipChar endChar
 
 private def groupLetter : SimpleCharParser Char := do
   let c ← anyToken
@@ -313,6 +333,16 @@ private def groupKind : ParsecM Syntax := do
   else if ← testChar (· = '*') then (Grammar.namedLookaroundGroupKind <|> Grammar.controlVerbGroupKind)
   else pure $ mkLit `capturingGroup "" (SourceInfo.none)
 
+@[spec] private theorem Spec.groupKind (f : Syntax.Flavor) (p : Parser)
+  (it : Iter (α := CharIterator) Char)
+    : Triple (Grammar.groupKind : ParsecM Syntax)
+      (fun (r, st, s) => s.it = it ∧ s.rest = it ∧ f = r ∧ p = st )
+      (fun a (_r, _st, s) => s.it = it ∧ Grammar.groupKind _r p s.it = .ok s.rest s.p (a, _st))
+      (fun e => Grammar.groupKind f p it = .error e) :=
+  Triple.intro <| Triple.entails_wp_of_pre
+    (Spec.ReaderTStateTParser.default_parser Grammar.groupKind f p it)
+    (fun _ h => ⟨h.1, h.2.1, h.2.2.1, h.2.2.2⟩)
+
 namespace EscapeSeq
 
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC5 -/
@@ -366,7 +396,7 @@ private def backReference : ParsecM Syntax := do
     pure $ Grammar.mkNodeOfKind `backReferenceNumber (String.ofList [c]) f t
   else if let some _ ← tryCharWithPos (· = 'g') then
     if ← testChar (· = '{') then
-      let (f, t, chars) ← withPosM $ (Grammar.parenWithCharsM (Parser.coeSimpleParser.coe (Grammar.groupLetter <|> char '-')))
+      let (f, t, chars) ← withPosM $ (Grammar.parenWithCharsM (liftM (Grammar.groupLetter <|> char '-')))
 
       let kind := if Array.all chars (fun c => c.isDigit || c = '-')
                   then `backReferenceNumber
@@ -398,7 +428,7 @@ private def simpleAssertion (inCharacterClass : Bool := false) : ParsecM Syntax 
   let (f, t, c) ← withPos anyToken
   if c = 'b' && inCharacterClass then pure $ Grammar.mkLiteral ⟨8, by simp +arith +decide⟩ f t
   else if (← read) == Syntax.Flavor.Rust && (← testChar (c = 'b' && · = '{')) then
-    let (_, t, chars) ← withPosM (Grammar.parenWithCharsM (Parser.coeSimpleParser.coe (Char.ASCII.alphanum <|> char '-')))
+    let (_, t, chars) ← withPosM (Grammar.parenWithCharsM (liftM ((Char.ASCII.alphanum : SimpleCharParser Char) <|> char '-')))
     let s := String.ofList chars.toList
     if s = "start" || s = "end" || s = "start-half" || s = "end-half"
     then pure $ Grammar.mkNodeOfKind `simpleAssertion s f t
@@ -546,19 +576,69 @@ private def posixCharacterClass : SimpleCharParser Syntax := do
       manyChars (notFollowedBy (string ":]") *> (Char.ASCII.alphanum <|> Char.char '^')) <* string ":]"
   pure $ Grammar.mkNodeOfKind `posixCharacterClass chars f t
 
-private def consumeStartOfCharacterClass : ParsecM $ Array Syntax := do
+@[spec] private theorem Spec.posixCharacterClass
+  (it : Iter (α := CharIterator) Char)
+    : Triple (Grammar.posixCharacterClass : SimpleCharParser Syntax)
+      (fun s => s.it = it ∧ s.rest = it)
+      (fun _ s => s.it = it ∧ Advanced s.rest s.it)
+      (fun _ => True) := by
+  vcgen [Grammar.posixCharacterClass, Spec.withPos _ (Spec.string "[:" it) it,
+         Spec.progress (Parser.withPos
+           (manyChars (notFollowedBy (string ":]") *> (ASCII.alphanum <|> char '^'))
+           <* string ":]"))] with finish
+
+private def consumeStartOfCharacterClass : SimpleCharParser $ Array Syntax := do
   if let some stx ← Grammar.consumeChar? '^' then
     if let some stx' ← Grammar.consumeChar? ']' then pure #[stx, stx']
     else pure #[stx]
   else if let some stx ← Grammar.consumeChar? ']' then pure #[stx]
   else pure #[]
 
+/-- `consumeStartOfCharacterClass` started at `it` with parse start `it₀`. -/
+@[spec] private theorem Spec.consumeStartOfCharacterClass (it₀ it : Iter (α := CharIterator) Char)
+    : Triple (Grammar.consumeStartOfCharacterClass : SimpleCharParser (Array Syntax))
+      (fun s => s.it = it₀ ∧ s.rest = it)
+      (fun arr s => s.it = it₀ ∧ if arr = #[] then s.rest = it else Advanced s.rest it)
+      (fun _ => False) := by
+  vcgen [Grammar.consumeStartOfCharacterClass] with finish
+
 private def characterClassPre (checkFlavor : Bool) : ParsecM (String.Pos.Raw × Array Syntax) := do
-  if checkFlavor && Syntax.Flavor.Rust != (← read) then fail "" else
-  if let some _ ← (option? posixCharacterClass) then fail ""
-  let (f, _, _) ← withPos (Char.char ('['))
+  _parse checkFlavor (← read)
+where _parse checkFlavor f : SimpleCharParser (String.Pos.Raw × Array Syntax) := do
+  if checkFlavor && Syntax.Flavor.Rust != f
+  then  (fail "") else
+  if let some _ ←  (option? posixCharacterClass)
+  then  (fail "")
+  let (f, _, _) ←  (withPos (Char.char ('[')))
   let start ← Grammar.consumeStartOfCharacterClass
   pure (f, start)
+
+@[spec] private theorem Spec.characterClassPre.parse (checkFlavor : Bool) (f : Syntax.Flavor)
+  (it : Iter (α := CharIterator) Char)
+    : Triple (Grammar.characterClassPre._parse checkFlavor f : SimpleCharParser (String.Pos.Raw × Array Syntax))
+      (fun s => s.it = it ∧ s.rest = it)
+      (fun _ s => s.it = it ∧ Advanced s.rest s.it)
+      (fun _ => True) := by
+  vcgen [Grammar.characterClassPre._parse,
+         Spec.withPos _ (Spec.char (ε := Error.Simple CharIterator) '[' it) it,
+         Spec.consumeStartOfCharacterClass] with finish
+
+@[spec] private theorem Spec.characterClassPre (checkFlavor : Bool) (f : Syntax.Flavor) (p : Parser)
+  (it : Iter (α := CharIterator) Char)
+    : Triple (Grammar.characterClassPre checkFlavor : ParsecM (String.Pos.Raw × Array Syntax))
+      (fun (r, st, s) => s.it = it ∧ s.rest = it ∧ r = f ∧ st = p)
+      (fun _ (_, _, s) => s.it = it ∧ Advanced s.rest s.it)
+      (fun _ => True) := by
+  vcgen [Grammar.characterClassPre,
+         Spec.ReaderTStateTParser.monadLift _ (Spec.characterClassPre.parse _ _ _)]
+    with finish
+
+@[simp, grind .] private theorem Advanced.characterClassPre (r : Syntax.Flavor) (st : Parser)
+  (it rest₁ : Std.Iter Char) (h₁ : Progress rest₁ it) (x : (String.Pos.Raw × Array Syntax) × Parser)
+  (h : characterClassPre true r st it = Result.ok rest₁ h₁ x)
+    : Advanced rest₁ it := by
+  grind [ReaderTStateTParser.of_wp_eq _
+          (Spec.characterClassPre true r st it) r st it (by simp [IterWithProgress.refl])]
 
 private def characterClassPost (r : String.Pos.Raw × Array Syntax) (arr : Array Syntax) : ParsecM Syntax := do
   let (_, t, _) ← withPos (Char.char (']'))
@@ -567,47 +647,72 @@ private def characterClassPost (r : String.Pos.Raw × Array Syntax) (arr : Array
 /-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC9 -/
 private def characterClass (checkFlavor : Bool) (val : ParsecM Syntax) : ParsecM Syntax := do
   let r ← characterClassPre checkFlavor
-  let arr ← manyM (val (← read))
+  let arr ← StateT.takeMany (val (← read))
   characterClassPost r arr
 
 private def valInCharacterClass : ParsecM $ Syntax :=
-  loop (fun p =>
-    characterClass true p
-    <|> EscapeSeq.escapeSeq true
-    <|> posixCharacterClass
-    <|> wsChars true
-    <|> characterClassSetOperation <|> hyphen
-    <|> literal true)
+  loopTakeMany (characterClassPre true) characterClassPost
+    ((EscapeSeq.escapeSeq true)
+     <|> (liftM posixCharacterClass)
+     <|> (wsChars true)
+     <|> characterClassSetOperation <|> hyphen
+     <|> literal true) (by grind only [Advanced.characterClassPre])
 
 private def getFlags (x : Syntax) : Option String :=
   match x with
   | Syntax.node _ `nonCapturingGroup #[Lean.Syntax.atom _ s] => some s
   | _ => none
 
-/-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC14 -/
-private def group (val : ParsecM Syntax) : ParsecM Syntax := do
+private def groupPre : ParsecM (Parser × String.Pos.Raw × Syntax) := do
   let state ← get
   let (f, _, _) ← withPos (Char.char ('('))
   let kind ← Grammar.groupKind
-  let arr ← manyM val
+  pure (state, f, kind)
+
+@[spec] private theorem Spec.groupPre (f : Syntax.Flavor) (p : Parser)
+  (it : Iter (α := CharIterator) Char)
+    : Triple (Grammar.groupPre : ParsecM (Parser × String.Pos.Raw × Syntax))
+      (fun (r, st, s) => s.it = it ∧ s.rest = it ∧ r = f ∧ st = p)
+      (fun _ (_, _, s) => s.it = it ∧ Advanced s.rest s.it)
+      (fun _ => True) := by
+  vcgen [Grammar.groupPre,
+         Spec.ReaderTStateTParser.monadLift _
+           (Spec.withPos _ (Spec.char (ε := Error.Simple CharIterator) '(' it) it),
+         Spec.ReaderTStateTParser.progress Grammar.groupKind it]
+    with finish
+
+@[simp, grind .] private theorem Advanced.groupPre (r : Syntax.Flavor) (st : Parser)
+  (it rest₁ : Std.Iter Char) (h₁ : Progress rest₁ it) (x : (Parser × String.Pos.Raw × Syntax) × Parser)
+  (h : Grammar.groupPre r st it = Result.ok rest₁ h₁ x)
+    : Advanced rest₁ it := by
+  grind [ReaderTStateTParser.of_wp_eq _
+          (Spec.groupPre r st it) r st it (by simp [IterWithProgress.refl])]
+
+private def groupPost (r : Parser × String.Pos.Raw × Syntax) (arr : Array Syntax) : ParsecM Syntax := do
   let (_, t, _) ← withPos (Char.char (')'))
 
-  let flags := Option.getD (Grammar.getFlags kind) ""
+  let flags := Option.getD (Grammar.getFlags r.2.2) ""
   if arr.size =  0 then -- set state in outer group
     let state ← get
     set {state with extended := Grammar.toExtendedKind flags}
-  else set state -- set previous state
+  else set r.1 -- set previous state
 
-  pure $ Syntax.node (SourceInfo.synthetic f t) `group (#[kind] ++ arr)
+  pure $ Syntax.node (SourceInfo.synthetic r.2.1 t) `group (#[r.2.2] ++ arr)
 
-private def val : ParsecM $ Syntax :=
-  loop fun p => do
-    EscapeSeq.escapeSeq <|> (group p) <|> verticalBar <|> assertion
+/-- https://www.pcre.org/current/doc/html/pcre2pattern.html#SEC14 -/
+private def group (val : ParsecM Syntax) : ParsecM Syntax := do
+  let r ← groupPre
+  let arr ← StateT.takeMany val
+  groupPost r arr
+
+public def val : ParsecM $ Syntax :=
+  loopTakeMany groupPre groupPost
+    (EscapeSeq.escapeSeq <|> verticalBar <|> assertion
     <|> characterClass false valInCharacterClass <|> repetition <|> comments
-    <|> wsChars false <|> dot <|> literal
+    <|> wsChars false <|> dot <|> literal) (by grind only [Advanced.groupPre])
 
 def sequence : ParsecM $ TSyntax `sequence := do
-  let (f, t, arr) ← withPosM (manyM Grammar.val)
+  let (f, t, arr) ← withPosM (StateT.takeMany Grammar.val)
   pure $ (TSyntax.mk (Syntax.node (SourceInfo.synthetic f t) `sequence arr))
 
 /-- Parse a PCRE2 regular expressions into a `Lean.Syntax` tree. -/

@@ -18,6 +18,11 @@ name = "ParseIt"
 git = "https://github.com/fgdorais/lean4-parseit"
 rev = "f53b3986c483c3907fc2a7606f7ecf0d3953f4fc"
 
+[[require]]
+name = "Lemmas"
+git = "https://github.com/bergmannjg/lean4-parseit-lemmas"
+rev = "v4.36.0"
+
 [[lean_lib]]
 name = "Regex"
 buildType = "debug"
