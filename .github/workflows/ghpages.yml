@@ -35,6 +35,8 @@ jobs:
       - name: Build Doc
         run: |
           cd docbuild
+          export LEAN_NUM_THREADS=4
+          export DISABLE_EQUATIONS=1
           lake update doc-gen4
           lake build Regex:docs
       - name: Setup Pages
